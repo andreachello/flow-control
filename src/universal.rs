@@ -946,6 +946,30 @@ fn is_closer(t: &str) -> bool {
     CLOSERS.contains(&first) || t.starts_with('}') || t.starts_with(')') || t.starts_with(']')
 }
 
+/// The names used in a piece of code, in order.
+pub fn words(path: &str, text: &str) -> Vec<String> {
+    let mut lex = Lexer { syn: syntax(&lang_of(path)), in_block: false, in_str: None };
+    text.split('\n').flat_map(|l| lex.line(l).0).filter_map(|t| if let Tok::Word(w) = t { Some(w) } else { None }).collect()
+}
+
+/// The values written in a piece of code, in order: text, numbers, true and false. The flag marks
+/// styling, like a class list, so a restyle does not read as a change of content.
+pub fn literals(path: &str, text: &str) -> Vec<(String, bool)> {
+    let mut lex = Lexer { syn: syntax(&lang_of(path)), in_block: false, in_str: None };
+    let toks: Vec<Tok> = text.split('\n').flat_map(|l| lex.line(l).0).collect();
+    let mut out = vec![];
+    for (i, t) in toks.iter().enumerate() {
+        let style = i >= 2 && toks[i - 1] == Tok::Punct('=') && matches!(&toks[i - 2], Tok::Word(w) if ["className", "class", "style", "sx"].contains(&w.as_str()));
+        match t {
+            Tok::Str(s) if !s.trim().is_empty() => out.push((format!("\"{s}\""), style)),
+            Tok::Num(n) => out.push((n.clone(), false)),
+            Tok::Word(w) if w == "true" || w == "false" => out.push((w.clone(), false)),
+            _ => {}
+        }
+    }
+    out
+}
+
 fn tok_text(t: &[Tok]) -> String {
     let mut s = String::new();
     for x in t {

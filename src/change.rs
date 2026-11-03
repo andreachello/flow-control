@@ -44,6 +44,8 @@ pub struct FnChange {
     pub label: String,
     pub state: String,
     pub journeys: Vec<String>,
+    /// What is different, read from the code.
+    pub facts: Vec<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -55,6 +57,8 @@ pub struct Report {
     pub new_unplaced: Vec<String>,
     pub other_files: Vec<String>,
     pub packages: Vec<PackageChange>,
+    /// (file, what changed in it) for data files with readable keys.
+    pub data_facts: Vec<(String, Vec<String>)>,
 }
 
 #[derive(Debug, Clone)]
@@ -95,6 +99,8 @@ fn steps(l: &Lift, fi: usize, moved: &BTreeMap<String, String>) -> BTreeMap<Stri
     l.flows[fi]
         .steps
         .iter()
+        // A command's first step is the dispatcher all commands share: not a change to this one.
+        .filter(|s| !(l.flows[fi].kind == "command" && s.depth == 0))
         .map(|s| {
             let sid = l.repo.sid(s.at);
             (moved.get(&sid).cloned().unwrap_or(sid), (s.at, l.repo.slice(s.at).shape.clone()))
@@ -107,7 +113,7 @@ fn writes(l: &Lift, fi: usize) -> BTreeSet<String> {
 }
 
 fn journeys_using(l: &Lift, names: &Names, r: (usize, usize)) -> Vec<String> {
-    l.flows.iter().filter(|f| f.steps.iter().any(|s| s.at == r)).map(|f| journey_title(names, &f.id)).collect()
+    l.flows.iter().filter(|f| f.steps.iter().any(|s| s.at == r && !(f.kind == "command" && s.depth == 0))).map(|f| journey_title(names, &f.id)).collect()
 }
 
 /// Compare snapshot `a` (before) with `b` (after).
@@ -174,11 +180,18 @@ pub fn compare(a: &Lift, b: &Lift, names: &Names, other_files: Vec<String>) -> R
                 None => "new".to_string(),
             },
         };
-        rep.functions.push(FnChange { sid: sid.clone(), label: step_label(names, b, *r), state, journeys: journeys_using(b, names, *r) });
+        let facts = match (state.as_str(), la.get(sid), moved_to.get(sid)) {
+            ("reformatted only", ..) => vec![],
+            (_, Some((ra, ..)), _) => crate::facts::edited(a, *ra, b, *r),
+            (s, None, Some(from)) if s.ends_with("and edited") => crate::facts::edited(a, la[*from].0, b, *r),
+            (_, None, Some(_)) => vec![],
+            _ => crate::facts::added(b, *r),
+        };
+        rep.functions.push(FnChange { sid: sid.clone(), label: step_label(names, b, *r), state, journeys: journeys_using(b, names, *r), facts });
     }
     for (sid, (r, ..)) in &la {
         if !lb.contains_key(sid) && !moved.contains_key(sid) {
-            rep.functions.push(FnChange { sid: sid.clone(), label: step_label(names, a, *r), state: "gone".into(), journeys: journeys_using(a, names, *r) });
+            rep.functions.push(FnChange { sid: sid.clone(), label: step_label(names, a, *r), state: "gone".into(), journeys: journeys_using(a, names, *r), facts: vec![] });
         }
     }
 
@@ -200,6 +213,13 @@ pub fn compare(a: &Lift, b: &Lift, names: &Names, other_files: Vec<String>) -> R
     }
     rep.other_files.sort();
     rep.other_files.dedup();
+    let text = |l: &Lift, p: &str| l.repo.file_idx(p).map(|i| l.repo.files[i].src.clone()).unwrap_or_default();
+    for p in &rep.other_files {
+        let f = crate::facts::data_file(p, &text(a, p), &text(b, p));
+        if !f.is_empty() {
+            rep.data_facts.push((p.clone(), f));
+        }
+    }
     for name in a.repo.packages.keys().chain(b.repo.packages.keys()).collect::<BTreeSet<_>>() {
         let (from, to) = (a.repo.packages.get(name), b.repo.packages.get(name));
         if from != to {
@@ -263,6 +283,9 @@ pub fn render(r: &Report) -> String {
         for f in &r.functions {
             let used = if f.journeys.is_empty() { "no journey runs it".to_string() } else { format!("in {}", list(&f.journeys, 3)) };
             o += &format!("  {} ({})  {}\n      {}\n", f.label, f.state, f.sid.split('#').next().unwrap_or(""), used);
+            for x in &f.facts {
+                o += &format!("      {x}\n");
+            }
         }
     }
     if !r.setup_changed.is_empty() {
@@ -304,125 +327,82 @@ fn cut(s: &str, n: usize) -> String {
     }
 }
 
-/// Aligned columns: text on the left, the rest lined up.
-fn table(head: &[&str], rows: &[Vec<String>]) -> String {
-    let w: Vec<usize> = (0..head.len()).map(|i| rows.iter().map(|r| r[i].chars().count()).chain([head[i].chars().count()]).max().unwrap_or(0)).collect();
-    let line = |cells: Vec<&str>| {
-        let mut l = String::from("  ");
-        for (i, c) in cells.iter().enumerate() {
-            l += &format!("{:<width$}  ", c, width = w[i]);
-        }
-        l.trim_end().to_string() + "\n"
-    };
-    let mut o = line(head.to_vec());
-    for r in rows {
-        o += &line(r.iter().map(String::as_str).collect());
+const CHANGES: usize = 8;
+
+fn reaches(j: &[String]) -> String {
+    match j.len() {
+        0 => "reaches no journey".to_string(),
+        1 | 2 => cut(&format!("reaches {}", j.join(", ")), 70),
+        n => cut(&format!("reaches {n} journeys: {}, {}", j[0], j[1]), 70),
     }
-    o
 }
 
-const SHOWN: usize = 12;
+const FACTS: usize = 3;
 
-/// The short version: what moved for people, then where in the code, in two tables.
+fn facts_block(o: &mut String, facts: &[String], indent: &str) {
+    for f in facts.iter().take(FACTS) {
+        *o += &format!("{indent}{f}\n");
+    }
+    if facts.len() > FACTS {
+        *o += &format!("{indent}and {} more\n", facts.len() - FACTS);
+    }
+}
+
+/// The short version: each change, how far it reaches, and what is actually different.
 pub fn compact(r: &Report) -> String {
     if r.is_empty() {
         return "Nothing changed.\n".into();
     }
     let n = r.journeys.len();
     let mut o = format!("{} changed, {} untouched\n", if n == 1 { "1 journey".to_string() } else { format!("{n} journeys") }, r.untouched);
-    if n > 0 {
-        let rows: Vec<Vec<String>> = r
-            .journeys
-            .iter()
-            .take(SHOWN)
-            .map(|j| {
-                let what = match j.state {
-                    JState::New => "new journey".to_string(),
-                    JState::Gone => "removed".to_string(),
-                    JState::Changed => {
-                        let mut p = vec![];
-                        if !j.edited.is_empty() {
-                            p.push(format!("{} edited", j.edited.len()));
-                        }
-                        if !j.added.is_empty() {
-                            p.push(format!("{} new", j.added.len()));
-                        }
-                        if !j.removed.is_empty() {
-                            p.push(format!("{} gone", j.removed.len()));
-                        }
-                        p.join(", ")
-                    }
-                };
-                vec![cut(&j.title, 48), what]
-            })
-            .collect();
-        o += "\n";
-        o += &table(&["JOURNEY", "STEPS"], &rows);
-        if n > SHOWN {
-            o += &format!("  and {} more\n", n - SHOWN);
+    for (state, word) in [(JState::New, "New journey"), (JState::Gone, "Journey removed")] {
+        for j in r.journeys.iter().filter(|j| j.state == state).take(5) {
+            o += &format!("{word}: {}\n", j.title);
         }
     }
-    // file -> edited, new, gone, moved, journeys touched
-    let mut files: BTreeMap<String, ([usize; 4], BTreeSet<String>)> = BTreeMap::new();
-    let mut reformatted = 0;
-    for f in &r.functions {
-        if f.state == "reformatted only" {
-            reformatted += 1;
-            continue;
-        }
-        let e = files.entry(f.sid.split('#').next().unwrap_or("").to_string()).or_default();
-        let k = match f.state.as_str() {
-            "edited" => 0,
-            "new" => 1,
-            "gone" => 2,
-            _ => 3,
-        };
-        e.0[k] += 1;
-        e.1.extend(f.journeys.iter().cloned());
+    let mut list: Vec<&FnChange> = r.functions.iter().filter(|f| f.state != "reformatted only").collect();
+    let reformatted = r.functions.len() - list.len();
+    let thin = |f: &&FnChange| f.facts.is_empty() || f.facts[0] == "the shape of this data changed";
+    list.sort_by_key(|f| (thin(f), std::cmp::Reverse(f.journeys.len()), f.label.clone()));
+    for f in list.iter().take(CHANGES) {
+        let how = if f.state == "edited" { String::new() } else { format!(" ({})", f.state) };
+        o += &format!("\n{}{how}   {}\n", cut(&f.label, 44), reaches(&f.journeys));
+        facts_block(&mut o, &f.facts, "    ");
     }
-    if !files.is_empty() {
-        let mut list: Vec<_> = files.into_iter().collect();
-        list.sort_by_key(|(p, (c, _))| (std::cmp::Reverse(c.iter().sum::<usize>()), p.clone()));
-        let total = list.len();
-        let num = |n: usize| if n == 0 { "-".to_string() } else { n.to_string() };
-        let rows: Vec<Vec<String>> = list
-            .iter()
-            .take(SHOWN)
-            .map(|(p, (c, j))| {
-                let shown = if p.chars().count() > 44 { format!("…{}", p.chars().skip(p.chars().count() - 43).collect::<String>()) } else { p.clone() };
-                vec![shown, num(c[0]), num(c[1]), num(c[2]), num(c[3]), if j.is_empty() { "-".into() } else { j.len().to_string() }]
-            })
-            .collect();
-        o += "\n";
-        o += &table(&["FILE", "EDITED", "NEW", "GONE", "MOVED", "JOURNEYS"], &rows);
-        if total > SHOWN {
-            o += &format!("  and {} more files\n", total - SHOWN);
-        }
+    if list.len() > CHANGES {
+        o += &format!("\nand {} smaller changes\n", list.len() - CHANGES);
+    }
+    let shown: BTreeSet<&String> = r.data_facts.iter().map(|d| &d.0).collect();
+    for (p, facts) in r.data_facts.iter().take(4) {
+        o += &format!("\n{p}\n");
+        facts_block(&mut o, facts, "    ");
     }
     let mut notes = vec![];
     if reformatted > 0 {
         notes.push(format!("Reformatted only: {reformatted}"));
     }
-    if !r.setup_changed.is_empty() {
-        notes.push(format!("Imports changed in {} file(s)", r.setup_changed.len()));
-    }
     if !r.new_unplaced.is_empty() {
         notes.push(format!("New code no journey owns: {}", r.new_unplaced.len()));
     }
     if !r.packages.is_empty() {
-        let used = r.packages.iter().filter(|p| !p.journeys.is_empty()).count();
-        notes.push(format!("Packages changed: {} ({used} used by journeys)", r.packages.len()));
+        let names: Vec<String> = r.packages.iter().map(|p| p.name.clone()).collect();
+        notes.push(format!("Packages changed: {}", list_of(&names)));
     }
-    if !r.other_files.is_empty() {
-        notes.push(format!("Docs, config and other files: {}", list(&r.other_files, 4)));
+    let others: Vec<String> = r.other_files.iter().filter(|f| !shown.contains(f)).cloned().collect();
+    if !others.is_empty() {
+        notes.push(format!("Other files: {}", list_of(&others)));
     }
     if !notes.is_empty() {
         o += "\n";
         for n in notes {
-            o += &format!("  {n}\n");
+            o += &format!("{n}\n");
         }
     }
     o
+}
+
+fn list_of(v: &[String]) -> String {
+    list(v, 4)
 }
 
 /// One line for the log: which journeys moved.

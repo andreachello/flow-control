@@ -21,6 +21,7 @@ pub mod merge;
 pub mod universal;
 pub mod accuracy;
 pub mod packages;
+pub mod facts;
 pub mod scenario;
 
 use anyhow::Result;
@@ -47,6 +48,7 @@ pub fn lift_opts(src: &source::Source, out_dir: &str, no_grammars: bool) -> Resu
     let repo = repo::Repo::from_source_opts(src, out_dir, no_grammars)?;
     let graph = repo::Graph::build(&repo);
     let (mut entries, problems) = flows::entries(&repo);
+    flows::commands(&repo, &graph, &mut entries);
     if entries.is_empty() {
         entries = flows::roots(&repo, &graph);
     }

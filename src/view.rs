@@ -7,18 +7,18 @@ use serde_json::{json, Map, Value};
 const TEMPLATE: &str = include_str!("view.html");
 
 /// The first sentence of the comment written above a declaration, if anyone wrote one.
-fn doc(sl: &crate::parse::Slice, f: &crate::parse::ParsedFile) -> String {
+pub fn doc(sl: &crate::parse::Slice, f: &crate::parse::ParsedFile) -> String {
     let mut words = vec![];
     for &n in &sl.lines {
         let t = f.lines[n].trim();
         if t.is_empty() && words.is_empty() {
             continue;
         }
-        let is_comment = t.starts_with("//") || t.starts_with("/*") || t.starts_with('*');
+        let is_comment = t.starts_with("//") || t.starts_with("/*") || t.starts_with('*') || (t.starts_with('#') && !t.starts_with("#[") && !t.starts_with("#!")) || t.starts_with("-- ") || t.starts_with(";;");
         if !is_comment {
             break;
         }
-        let body = t.trim_start_matches("/**").trim_start_matches("/*").trim_start_matches("//").trim_start_matches('*').trim_end_matches("*/").trim();
+        let body = t.trim_start_matches("/**").trim_start_matches("/*").trim_start_matches('/').trim_start_matches('*').trim_end_matches("*/").trim_start_matches('#').trim_start_matches("--").trim_start_matches(';').trim();
         if body.starts_with('@') || body.starts_with("eslint") || body.starts_with("biome-ignore") || body.starts_with("ts-") {
             continue;
         }

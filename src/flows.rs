@@ -13,6 +13,8 @@ pub struct Entry {
     /// What the framework runs around the entry without any line of code calling it:
     /// layouts, loading and error boundaries, generateMetadata. (slice, label)
     pub framework: Vec<(SRef, String)>,
+    /// The entry is one branch of a bigger function: only `framework` follows from it.
+    pub leaf: bool,
 }
 
 const METHODS: &[&str] = &["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"];
@@ -77,7 +79,7 @@ pub fn entries(repo: &Repo) -> (Vec<Entry>, Vec<String>) {
     let push = |out: &mut Vec<Entry>, id: String, kind: &'static str, res: Res| {
         if let Res::Slice(r) = res {
             if !out.iter().any(|e| e.at == r) {
-                out.push(Entry { id, kind, at: r, framework: vec![] });
+                out.push(Entry { id, kind, at: r, framework: vec![], leaf: false });
             }
         }
     };
@@ -140,6 +142,59 @@ pub fn entries(repo: &Repo) -> (Vec<Entry>, Vec<String>) {
     (out, problems)
 }
 
+/// A command-line tool's journeys are its commands. `match cmd { Cmd::Status => ..., Cmd::Merge => ... }`
+/// in a main or run function makes each branch its own journey, in place of one giant `program`.
+pub fn commands(repo: &Repo, g: &Graph, out: &mut Vec<Entry>) {
+    use regex::Regex;
+    use std::sync::OnceLock;
+    static ARM: OnceLock<Regex> = OnceLock::new();
+    let arm = ARM.get_or_init(|| Regex::new(r"^(\s*)(?:\w+(?:::|\.))+(\w+)(?:\s*[\{(].*?[\})])?\s*=>").unwrap());
+    let mut found: Vec<Entry> = vec![];
+    let mut files = HashSet::new();
+    for (fi, f) in repo.files.iter().enumerate() {
+        if crate::output::is_test_file(&f.path) {
+            continue;
+        }
+        for (si, s) in f.slices.iter().enumerate().skip(1) {
+            if !matches!(s.name.as_str(), "main" | "run" | "cli" | "dispatch") {
+                continue;
+            }
+            let hits: Vec<(usize, usize, String)> = s.lines.iter().filter_map(|&r| arm.captures(&f.lines[r]).map(|c| (r, c[1].len(), c[2].to_string()))).collect();
+            let Some(indent) = hits.iter().map(|h| h.1).min() else { continue };
+            let arms: Vec<&(usize, usize, String)> = hits.iter().filter(|h| h.1 == indent).collect();
+            if arms.len() < 3 {
+                continue;
+            }
+            let edges = g.edges.get(&(fi, si)).cloned().unwrap_or_default();
+            for (i, (start, _, name)) in arms.iter().map(|a| (a.0, a.1, &a.2)).enumerate() {
+                let end = arms.get(i + 1).map(|a| a.0).unwrap_or(usize::MAX);
+                let called: HashSet<String> = s
+                    .calls
+                    .iter()
+                    .filter(|c| c.line >= start && c.line < end && c.kind != crate::parse::CallKind::Ref)
+                    .filter_map(|c| match &c.callee {
+                        crate::parse::Callee::Ident(n) | crate::parse::Callee::Member(_, n) | crate::parse::Callee::Method(_, n) => Some(n.clone()),
+                        _ => None,
+                    })
+                    .collect();
+                let mut steps: Vec<(SRef, String)> = vec![];
+                for e in &edges {
+                    if repo.slice(e.to).names.iter().any(|n| called.contains(n.rsplit('.').next().unwrap_or(n))) {
+                        steps.push((e.to, e.kind.label()));
+                    }
+                }
+                found.push(Entry { id: format!("command {}", crate::util::human(name).to_lowercase()), kind: "command", at: (fi, si), framework: steps, leaf: true });
+            }
+            files.insert(fi);
+        }
+    }
+    if !found.is_empty() {
+        out.retain(|e| !(e.kind == "program" && files.contains(&e.at.0)));
+        out.extend(found);
+        finish(out);
+    }
+}
+
 /// When nothing in a repo looks like an entry point (a library, scripts, contracts, a framework flow
 /// has no rule for), the functions nothing else calls are where everything starts.
 pub fn roots(repo: &Repo, g: &Graph) -> Vec<Entry> {
@@ -159,7 +214,7 @@ pub fn roots(repo: &Repo, g: &Graph) -> Vec<Entry> {
     }
     let busy: Vec<SRef> = all.iter().copied().filter(|r| g.edges.get(r).map(|e| !e.is_empty()).unwrap_or(false)).collect();
     let pick = if busy.is_empty() { all } else { busy };
-    let mut out: Vec<Entry> = pick.into_iter().map(|r| Entry { id: format!("start {}", repo.slice(r).name), kind: "start", at: r, framework: vec![] }).collect();
+    let mut out: Vec<Entry> = pick.into_iter().map(|r| Entry { id: format!("start {}", repo.slice(r).name), kind: "start", at: r, framework: vec![], leaf: false }).collect();
     finish(&mut out);
     out
 }
@@ -195,7 +250,7 @@ fn universal_entries(repo: &Repo, out: &mut Vec<Entry>) {
     const VERBS: &[&str] = &["get", "post", "put", "patch", "delete", "head", "options"];
     let push = |out: &mut Vec<Entry>, id: String, kind: &'static str, at: SRef| {
         if !out.iter().any(|e| e.at == at) {
-            out.push(Entry { id, kind, at, framework: vec![] });
+            out.push(Entry { id, kind, at, framework: vec![], leaf: false });
         }
     };
     for (fi, f) in repo.files.iter().enumerate() {
@@ -286,7 +341,7 @@ pub fn build(repo: &Repo, g: &Graph, entries: &[Entry]) -> Vec<Flow> {
                     continue;
                 }
                 steps.push(Step { at: r, depth, via });
-                if let Some(es) = g.edges.get(&r) {
+                if let Some(es) = g.edges.get(&r).filter(|_| !(e.leaf && r == e.at)) {
                     for ed in es.iter().rev() {
                         if !seen.contains(&ed.to) {
                             stack.push((ed.to, depth + 1, ed.kind.label()));

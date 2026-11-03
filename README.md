@@ -85,7 +85,9 @@ A merge is as repeatable as git's: its result is a git tree that depends only on
 
 Git writes the result, so binary files, file modes and links come through exactly, and a merge refuses to overwrite a file git does not track. Files in `flows/` are never merged: they are rebuilt from the merged code. In a git repository, `flow lift` reads exactly what a save would record: tracked files plus new files that are not ignored. Line endings count the way git counts them, so a Windows checkout lifts to the same bytes.
 
-A file renamed on one side and edited on the other keeps the edit at its new path. `.gitattributes` rules `merge=binary`, `-merge` and `merge=union` are read from the commits being merged. A named merge driver is ignored, because it lives in someone's personal git config and a merge must not depend on that.
+A file renamed on one side and edited on the other keeps the edit at its new path. When both sides rename a file, their edits still merge. If they chose different names, that is a collision: `flow resolve <file> ours|theirs` picks the name, so the file never ends up in both places. `.gitattributes` rules `merge=binary`, `-merge` and `merge=union` are read from the commits being merged. A named merge driver is ignored, because it lives in someone's personal git config and a merge must not depend on that.
+
+`flow status` and `flow explain` say what each change is, read from the two versions with no AI: values that changed, conditions, calls added or removed, data it now writes, and what a new function's comment says. Keys that changed in JSON, YAML, TOML and `.env` files are listed too. The same change always gives the same facts. `--full` lists every function.
 
 ## Plain names
 

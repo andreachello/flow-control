@@ -243,3 +243,12 @@ fn a_typescript_class_is_split_into_methods() {
     let names = steps(&l, "GET /api/cart");
     assert!(names.contains(&"Cart.total".to_string()) && names.contains(&"Cart.sum".to_string()) && !names.contains(&"Cart.unused".to_string()), "{names:?}");
 }
+
+#[test]
+fn each_command_of_a_cli_is_a_journey() {
+    let rs = "fn main() {\n    run();\n}\n\nfn run() {\n    match cli.cmd {\n        Cmd::Status { full } => {\n            status();\n        }\n        Cmd::Merge { branch } => {\n            merge(branch);\n            log();\n        }\n        Cmd::Log => log(),\n    }\n}\n\nfn status() {}\n\nfn merge(b: String) {}\n\nfn log() {}\n";
+    let l = lift(&[("src/main.rs", rs)]);
+    let ids: Vec<&str> = l.flows.iter().map(|f| f.id.as_str()).collect();
+    assert_eq!(ids, ["command log", "command merge", "command status"]);
+    assert_eq!(steps(&l, "command merge"), ["run", "merge", "log"]);
+}

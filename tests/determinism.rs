@@ -519,3 +519,149 @@ fn resolving_changes_the_named_function_even_with_a_twin() {
     merge::resolve(&v, "other", "theirs").unwrap();
     assert_eq!(std::fs::read_to_string(d.join("lib/m.ts")).unwrap(), src(2, 3));
 }
+
+const LONG: &str = "export function a() {\n  return 1;\n}\n\nexport function b() {\n  return 1;\n}\n\nexport function c() {\n  return 1;\n}\n\nexport function d() {\n  return 1;\n}\n";
+
+/// lib/a.ts renamed to lib/l.ts on `l` and lib/r.ts on `r`, with different functions edited.
+fn two_names(name: &str) -> PathBuf {
+    let d = repo(name);
+    write(&d, "lib/a.ts", LONG);
+    write(&d, "other.ts", "export const o = 1;\n");
+    commit(&d, "base");
+    branch(&d, "l", "main");
+    git(&d, &["mv", "lib/a.ts", "lib/l.ts"]);
+    write(&d, "lib/l.ts", &LONG.replacen("return 1;", "return 2;", 1));
+    commit(&d, "l");
+    branch(&d, "r", "main");
+    git(&d, &["mv", "lib/a.ts", "lib/r.ts"]);
+    write(&d, "lib/r.ts", &LONG.replace("function d() {\n  return 1;", "function d() {\n  return 3;"));
+    commit(&d, "r");
+    d
+}
+
+fn has(d: &Path, rev: &str, f: &str) -> bool {
+    Command::new("git").arg("-C").arg(d).args(["cat-file", "-e", &format!("{rev}:{f}")]).status().unwrap().success()
+}
+
+#[test]
+fn two_names_for_one_file_is_a_collision_and_keeps_both_edits() {
+    let d = two_names("rename2");
+    git(&d, &["checkout", "-q", "l"]);
+    let mut v = open(&d);
+    let p = merge::plan(&mut v, "r").unwrap();
+    assert_eq!(p.collisions.len(), 1);
+    assert_eq!(p.collisions[0].renamed_to.as_deref(), Some("lib/r.ts"));
+    assert!(p.collisions[0].label.contains("lib/l.ts") && p.collisions[0].label.contains("lib/r.ts"));
+    assert!(!has(&d, &p.tree, "lib/r.ts") && !has(&d, &p.tree, "lib/a.ts"), "never in both places");
+    let t = git(&d, &["show", &format!("{}:lib/l.ts", p.tree)]);
+    assert!(t.contains("return 2;") && t.contains("return 3;"), "{t}");
+    merge::apply(&v, &p, "r").unwrap();
+    assert!(v.save("too early").is_err());
+    merge::resolve(&v, "lib/l.ts", "ours").unwrap();
+    v.save("keep l").unwrap();
+    assert!(has(&d, "HEAD", "lib/l.ts") && !has(&d, "HEAD", "lib/r.ts"));
+}
+
+#[test]
+fn the_same_choice_of_name_gives_the_same_tree_either_way_round() {
+    let d = two_names("rename2-swap");
+    let finish = |ours: &str, theirs: &str, side: &str| -> String {
+        git(&d, &["checkout", "-q", "--detach", ours]);
+        let mut v = open(&d);
+        let p = merge::plan(&mut v, theirs).unwrap();
+        merge::apply(&v, &p, theirs).unwrap();
+        merge::resolve(&v, "different name", side).unwrap();
+        v.save("merge").unwrap();
+        git(&d, &["rev-parse", "HEAD^{tree}"])
+    };
+    let a = finish("l", "r", "theirs");
+    assert_eq!(a, finish("r", "l", "ours"));
+    assert!(has(&d, &a, "lib/r.ts") && !has(&d, &a, "lib/l.ts"));
+}
+
+#[test]
+fn undoing_after_choosing_a_name_restores_everything() {
+    let d = two_names("rename2-abort");
+    git(&d, &["checkout", "-q", "l"]);
+    let before = git(&d, &["rev-parse", "HEAD^{tree}"]);
+    let mut v = open(&d);
+    let p = merge::plan(&mut v, "r").unwrap();
+    merge::apply(&v, &p, "r").unwrap();
+    merge::resolve(&v, "lib/l.ts", "theirs").unwrap();
+    merge::abort(&v).unwrap();
+    assert_eq!(git(&d, &["status", "--porcelain"]), "");
+    assert_eq!(git(&d, &["write-tree"]), before);
+    assert!(d.join("lib/l.ts").exists() && !d.join("lib/r.ts").exists());
+}
+
+#[test]
+fn a_function_collision_follows_the_name_chosen() {
+    let d = repo("rename2-fn");
+    write(&d, "lib/a.ts", LONG);
+    commit(&d, "base");
+    branch(&d, "l", "main");
+    git(&d, &["mv", "lib/a.ts", "lib/l.ts"]);
+    write(&d, "lib/l.ts", &LONG.replacen("return 1;", "return 2;", 1));
+    commit(&d, "l");
+    branch(&d, "r", "main");
+    git(&d, &["mv", "lib/a.ts", "lib/r.ts"]);
+    write(&d, "lib/r.ts", &LONG.replacen("return 1;", "return 3;", 1));
+    commit(&d, "r");
+    git(&d, &["checkout", "-q", "l"]);
+    let mut v = open(&d);
+    let p = merge::plan(&mut v, "r").unwrap();
+    assert_eq!(p.collisions.len(), 2);
+    merge::apply(&v, &p, "r").unwrap();
+    merge::resolve(&v, "different name", "theirs").unwrap();
+    merge::resolve(&v, "a", "theirs").unwrap();
+    v.save("merge").unwrap();
+    assert_eq!(git(&d, &["show", "HEAD:lib/r.ts"]) + "\n", LONG.replacen("return 1;", "return 3;", 1));
+}
+
+#[test]
+fn a_binary_with_two_names_resolves_to_exact_bytes() {
+    let d = repo("rename2-bin");
+    let mut bytes = vec![0u8, 0xff];
+    bytes.extend(std::iter::repeat(7u8).take(4000));
+    let edited = |tail: &[u8]| [bytes.as_slice(), tail].concat();
+    std::fs::write(d.join("a.bin"), &bytes).unwrap();
+    commit(&d, "base");
+    branch(&d, "l", "main");
+    git(&d, &["mv", "a.bin", "l.bin"]);
+    std::fs::write(d.join("l.bin"), edited(b"\xffL")).unwrap();
+    commit(&d, "l");
+    branch(&d, "r", "main");
+    git(&d, &["mv", "a.bin", "r.bin"]);
+    std::fs::write(d.join("r.bin"), edited(b"\xffR")).unwrap();
+    commit(&d, "r");
+    git(&d, &["checkout", "-q", "l"]);
+    let mut v = open(&d);
+    let p = merge::plan(&mut v, "r").unwrap();
+    assert_eq!(p.collisions.len(), 1);
+    assert!(p.collisions[0].take_whole);
+    merge::apply(&v, &p, "r").unwrap();
+    merge::resolve(&v, "l.bin", "theirs").unwrap();
+    v.save("merge").unwrap();
+    assert_eq!(std::fs::read(d.join("r.bin")).unwrap(), edited(b"\xffR"));
+    assert!(!d.join("l.bin").exists());
+}
+
+#[test]
+fn both_sides_choosing_one_new_name_merge_like_any_edit() {
+    let d = repo("rename-same");
+    write(&d, "lib/a.ts", LONG);
+    commit(&d, "base");
+    branch(&d, "l", "main");
+    git(&d, &["mv", "lib/a.ts", "lib/n.ts"]);
+    write(&d, "lib/n.ts", &LONG.replacen("return 1;", "return 2;", 1));
+    commit(&d, "l");
+    branch(&d, "r", "main");
+    git(&d, &["mv", "lib/a.ts", "lib/n.ts"]);
+    write(&d, "lib/n.ts", &LONG.replace("function d() {\n  return 1;", "function d() {\n  return 3;"));
+    commit(&d, "r");
+    let t = tree_of(&d, "l", "r");
+    assert_eq!(t, tree_of(&d, "r", "l"));
+    git(&d, &["checkout", "-q", "--detach", "l"]);
+    git(&d, &["merge", "-q", "--no-edit", "r"]);
+    assert_eq!(t, git(&d, &["rev-parse", "HEAD^{tree}"]), "git agrees");
+}

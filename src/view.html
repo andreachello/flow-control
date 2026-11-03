@@ -185,6 +185,7 @@ function routeOf(f) {
 function title(f) {
   if (f.title) return f.title;
   const entry = f.steps[0];
+  if (f.kind === 'command') return human(f.id.replace(/^command /, ''));
   if (f.kind === 'action') return human(entry.name);
   if (f.kind === 'middleware') return 'Before every request';
   if (f.kind === 'page') {

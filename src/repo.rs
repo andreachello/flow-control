@@ -112,6 +112,10 @@ const BUILTIN_METHODS: &[&str] = &[
     "removeAttribute", "appendChild", "remove", "json", "text", "arrayBuffer", "formData", "blob", "bind", "call", "apply",
 ];
 
+pub fn is_builtin_method(m: &str) -> bool {
+    BUILTIN_METHODS.contains(&m)
+}
+
 /// Methods that write the table or collection passed as their first argument (Drizzle, Knex, Kysely style).
 const WRITE_METHODS: &[&str] = &["insert", "update", "delete", "insertInto", "deleteFrom", "upsert"];
 

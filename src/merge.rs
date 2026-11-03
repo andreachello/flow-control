@@ -34,6 +34,12 @@ pub struct Collision {
     pub theirs: Option<String>,
     pub journeys: Vec<String>,
     pub resolved: bool,
+    /// Each side gave this file a different name: `file` is ours, this is theirs.
+    #[serde(default)]
+    pub renamed_to: Option<String>,
+    /// The two versions could not be merged, so choosing a name also chooses that side's content.
+    #[serde(default)]
+    pub take_whole: bool,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -508,7 +514,7 @@ fn virtual_merge(v: &mut Vcs, a: &str, b: &str, poison: &mut Poison) -> Result<S
 }
 
 fn collision(path: &str, base: Option<String>, ours: Option<String>, theirs: Option<String>) -> Collision {
-    Collision { file: path.to_string(), name: String::new(), label: String::new(), base, ours, theirs, journeys: vec![], resolved: false }
+    Collision { file: path.to_string(), name: String::new(), label: String::new(), base, ours, theirs, journeys: vec![], resolved: false, renamed_to: None, take_whole: false }
 }
 
 /// Generated files are never merged: they are rebuilt from the merged code.
@@ -609,6 +615,49 @@ fn step(v: &mut Vcs, ours: &str, theirs: &str, quiet: bool, poison: &mut Poison)
     let mut followed: BTreeSet<String> = BTreeSet::new();
     if !base.is_empty() && bb.keys().any(|k| !bo.contains_key(k) || !bt.contains_key(k)) {
         let (ro, rt) = (renames(&root, &base, ours)?, renames(&root, &base, theirs)?);
+        // Both sides renamed the same file. The original is still the ancestor, so their edits
+        // merge as usual. If the new names differ, only a person can choose one.
+        for (old, n1) in &ro {
+            let Some(n2) = rt.get(old) else { continue };
+            let two_names = n1 != n2;
+            if generated(&out, n1) || generated(&out, n2) || bad.iter().any(|(f, _)| f == old || f == n1 || f == n2) {
+                continue;
+            }
+            // Another file already holds one of the names: the path-by-path merge below decides.
+            if two_names && (bt.contains_key(n1) || bo.contains_key(n2)) {
+                continue;
+            }
+            let (Some(eo), Some(et)) = (bo.get(n1), bt.get(n2)) else { continue };
+            if !two_names && eo == et {
+                continue;
+            }
+            let same = eo.1 == et.1;
+            let mut merged = None;
+            if !same {
+                if let (Some(tb), Some(to), Some(tt)) = (text_of(&base, old, true), text_of(ours, n1, true), text_of(theirs, n2, true)) {
+                    if is_source(n1) && !crate::universal::is_plain(n1) {
+                        let m = merge_file_with(n1, Some(&tb), &to, &tt, &BTreeSet::new(), &BTreeSet::new())?;
+                        for c in m.collisions {
+                            p.collisions.push(Collision { name: c.name, ..collision(n1, c.base, c.ours, c.theirs) });
+                        }
+                        p.combined.extend(m.combined.into_iter().map(|n| (n1.clone(), n)));
+                        merged = m.text;
+                    } else {
+                        merged = text_merge(&tb, &to, &tt)?;
+                    }
+                }
+            }
+            if let Some(text) = &merged {
+                p.files.insert(n1.clone(), Some(text.clone()));
+            } else if !same && !two_names {
+                continue; // the same path, changed two ways: an ordinary collision below
+            }
+            followed.insert(n1.clone());
+            if two_names {
+                followed.insert(n2.clone());
+                p.collisions.push(Collision { renamed_to: Some(n2.clone()), take_whole: !same && merged.is_none(), ..collision(n1, None, None, None) });
+            }
+        }
         for (mover, editor, list, kept, mover_tree) in [(ours, theirs, &ro, &bt, &bo), (theirs, ours, &rt, &bo, &bt)] {
             for (old, new) in list {
                 let (b, e) = (bb.get(old), kept.get(old));
@@ -845,7 +894,11 @@ fn step(v: &mut Vcs, ours: &str, theirs: &str, quiet: bool, poison: &mut Poison)
     let ours_lift = v.lift_rev(ours)?;
     for c in p.collisions.iter_mut() {
         let sid = format!("{}#{}", c.file, c.name);
-        c.label = if c.name.is_empty() { c.file.clone() } else { label_of(&names, &sid) };
+        c.label = match &c.renamed_to {
+            Some(to) => format!("{} or {} (each side chose a different name)", c.file, to),
+            None if c.name.is_empty() => c.file.clone(),
+            None => label_of(&names, &sid),
+        };
         c.journeys = ours_lift.flows.iter().filter(|f| f.steps.iter().any(|s| ours_lift.repo.sid(s.at) == sid)).map(|f| journey_title(&names, &f.id)).collect();
     }
     Ok(p)
@@ -926,7 +979,26 @@ pub fn resolve(v: &Vcs, what: &str, side: &str) -> Result<String> {
     let Some(i) = i else { bail!("no open collision matches {what:?}") };
     let c = st.collisions[i].clone();
     if side == "theirs" {
-        if c.name.is_empty() {
+        if let Some(to) = &c.renamed_to {
+            if let Some(d) = v.root.join(to).parent() {
+                std::fs::create_dir_all(d)?;
+            }
+            if c.take_whole {
+                git(&v.root, &["--literal-pathspecs", "rm", "-q", "-f", "--", &c.file])?;
+                restore(v, &st.theirs, std::slice::from_ref(to))?;
+            } else {
+                git(&v.root, &["--literal-pathspecs", "mv", "--", &c.file, to])?;
+            }
+            for p in [&c.file, to] {
+                if !st.written.contains(p) {
+                    st.written.push(p.clone());
+                }
+            }
+            // Anything else still open in this file now lives under the new name.
+            for other in st.collisions.iter_mut().filter(|o| o.file == c.file) {
+                other.file = to.clone();
+            }
+        } else if c.name.is_empty() {
             // Whole files come from git, so anything that is not text survives byte for byte, and
             // only a file truly absent on their side is removed.
             restore(v, &st.theirs, std::slice::from_ref(&c.file))?;
