@@ -100,6 +100,7 @@ pub fn render_with_history(l: &Lift, repo_name: &str, names: &crate::names::Name
                 "area": jn.map(|n| n.area.clone()),
                 "nameBy": jn.map(|n| n.by.clone()),
                 "nameStale": jn.map(|n| n.hash != crate::names::journey_hash(l, fi)).unwrap_or(false),
+                "scenario": repo.cfg.scenario.iter().find(|s| s.journey.as_deref() == Some(f.id.as_str())).map(|s| s.name.clone()),
                 "id": f.id,
                 "slug": f.slug,
                 "kind": f.kind,

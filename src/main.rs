@@ -41,8 +41,23 @@ enum Cmd {
     Ledger { file: Option<String> },
     /// Score the universal reader against the grammar reader on this repo.
     Accuracy,
+    /// Print every link between functions, for comparing with other tools.
+    Edges,
+    /// Run scenarios here and compare with their recorded outcomes.
+    Run {
+        name: Option<String>,
+        /// Save what happens now as the expected outcome.
+        #[arg(long)]
+        record: bool,
+    },
+    /// Accept what a merge does in a scenario. It is recorded and checked from then on.
+    Accept { scenario: String },
     /// Which journeys your unsaved edits change.
-    Status,
+    Status {
+        /// List every function, not just the summary tables.
+        #[arg(long)]
+        full: bool,
+    },
     /// Save the working folder as a snapshot. The message records which journeys changed.
     Save {
         #[arg(short, long)]
@@ -60,7 +75,13 @@ enum Cmd {
         count: usize,
     },
     /// What one saved change did, in journeys.
-    Explain { change: String },
+    Explain {
+        change: String,
+        /// List every function, not just the summary tables.
+        #[arg(long)]
+        full: bool,
+    },
+
     /// Merge one or more branches function by function, and show where the two sides meet.
     Merge {
         branches: Vec<String>,
@@ -70,6 +91,9 @@ enum Cmd {
         /// Put everything back as it was before the merge.
         #[arg(long)]
         abort: bool,
+        /// Do not run scenarios.
+        #[arg(long)]
+        no_run: bool,
     },
     /// Decide a merge collision: keep ours or take theirs.
     Resolve { step: String, side: String },
@@ -292,6 +316,13 @@ fn run() -> Result<ExitCode> {
             println!("\nUnverified: no scenario runs this flow yet.");
             Ok(ExitCode::SUCCESS)
         }
+        Cmd::Edges => {
+            let l = flowcontrol::lift(&cli.repo, &cli.out)?;
+            let mut v: Vec<String> = l.graph.edges.iter().flat_map(|(a, es)| es.iter().map(|e| format!("{}\t{}", l.repo.sid(*a), l.repo.sid(e.to))).collect::<Vec<_>>()).collect();
+            v.sort();
+            println!("{}", v.join("\n"));
+            Ok(ExitCode::SUCCESS)
+        }
         Cmd::Accuracy => {
             let s = flowcontrol::accuracy::measure(&cli.repo, &cli.out)?;
             println!("{} journeys compared, {} with no starting point found.", s.journeys, s.missing_entries);
@@ -305,10 +336,13 @@ fn run() -> Result<ExitCode> {
             println!("Missed most often:\n{}", top(&s.misses));
             Ok(ExitCode::SUCCESS)
         }
-        Cmd::Status => {
+        Cmd::Status { full } => {
             let mut v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, flowcontrol::names::Names::load(&names_path)?)?;
             let r = v.status()?;
-            print!("{}", flowcontrol::change::render(&r));
+            print!("{}", if full { flowcontrol::change::render(&r) } else { flowcontrol::change::compact(&r) });
+            if !full && !r.is_empty() {
+                println!("\nEvery function: flow status --full");
+            }
             if v.merge_state_path().exists() {
                 let st: flowcontrol::merge::MergeState = serde_json::from_str(&std::fs::read_to_string(v.merge_state_path())?)?;
                 let open: Vec<_> = st.collisions.iter().filter(|c| !c.resolved).collect();
@@ -368,15 +402,62 @@ fn run() -> Result<ExitCode> {
             }
             Ok(ExitCode::SUCCESS)
         }
-        Cmd::Explain { change } => {
+        Cmd::Explain { change, full } => {
             let mut v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, flowcontrol::names::Names::load(&names_path)?)?;
             let id = v.resolve(&change)?;
             let c = v.commits(1, &id)?.remove(0);
             println!("{}  {}  {}\n", &c.id[..8], c.date, c.subject);
-            print!("{}", flowcontrol::change::render(&v.change_of(&c)?));
+            let r = v.change_of(&c)?;
+            print!("{}", if full { flowcontrol::change::render(&r) } else { flowcontrol::change::compact(&r) });
             Ok(ExitCode::SUCCESS)
         }
-        Cmd::Merge { branches, dry_run, abort } => {
+        Cmd::Run { name, record } => {
+            let cfg = flowcontrol::config::load(&cli.repo)?;
+            let list: Vec<_> = cfg.scenario.iter().filter(|s| name.as_ref().map(|n| n == &s.name).unwrap_or(true)).collect();
+            if list.is_empty() {
+                bail!("no scenario found. Add one to flow.toml:\n\n[[scenario]]\nname = \"upgrade\"\njourney = \"POST /api/upgrade\"\nrun = \"node scenarios/upgrade.mjs\"");
+            }
+            let mut bad = 0;
+            for s in list {
+                let (a, b) = (flowcontrol::scenario::run(&cli.repo, s, "here")?, flowcontrol::scenario::run(&cli.repo, s, "here")?);
+                let stable: flowcontrol::scenario::Outcome = a.iter().filter(|(k, v)| b.get(*k) == Some(*v)).map(|(k, v)| (k.clone(), v.clone())).collect();
+                let unstable = a.len() - stable.len();
+                let note = if unstable > 0 { format!(" ({unstable} value(s) ignored, different on every run)") } else { String::new() };
+                if record {
+                    flowcontrol::scenario::record(&cli.repo, &cli.out, &s.name, &stable)?;
+                    println!("{}: recorded {} value(s){note}.", s.name, stable.len());
+                    continue;
+                }
+                match flowcontrol::scenario::recorded(&cli.repo, &cli.out, &s.name) {
+                    None => {
+                        println!("{}: ran, nothing recorded to compare with yet{note}.", s.name);
+                        for (k, v) in &stable {
+                            println!("    {k} = {v}");
+                        }
+                        if stable.contains_key("failed") {
+                            bad += 1;
+                        }
+                    }
+                    Some(want) => {
+                        let diff: Vec<String> = want.keys().chain(stable.keys()).collect::<std::collections::BTreeSet<_>>().into_iter().filter(|k| want.get(*k) != stable.get(*k)).map(|k| format!("    {k}: expected {}, got {}", want.get(k).map(String::as_str).unwrap_or("nothing"), stable.get(k).map(String::as_str).unwrap_or("nothing"))).collect();
+                        if diff.is_empty() {
+                            println!("{}: as recorded{note}.", s.name);
+                        } else {
+                            bad += 1;
+                            println!("{}: different from what was recorded:\n{}", s.name, diff.join("\n"));
+                        }
+                    }
+                }
+            }
+            Ok(if bad == 0 { ExitCode::SUCCESS } else { ExitCode::from(1) })
+        }
+        Cmd::Accept { scenario } => {
+            let v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, flowcontrol::names::Names::load(&names_path)?)?;
+            flowcontrol::merge::accept(&v, &scenario)?;
+            println!("Accepted. {scenario} is recorded, and any change that breaks it will be flagged.");
+            Ok(ExitCode::SUCCESS)
+        }
+        Cmd::Merge { branches, dry_run, abort, no_run } => {
             let mut v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, flowcontrol::names::Names::load(&names_path)?)?;
             if abort {
                 flowcontrol::merge::abort(&v)?;
@@ -440,11 +521,32 @@ fn run() -> Result<ExitCode> {
             if p.blocked.is_some() {
                 bail!("{branch} cannot merge all at once, and nothing was written. Merge them one at a time, deciding collisions as you go");
             }
+            let mut checks = vec![];
+            if !no_run && p.collisions.is_empty() {
+                checks = flowcontrol::scenario::check_merge(&v, &p, &p.base)?;
+                if !checks.is_empty() {
+                    println!("\nRan {} on the versions before, each side, and merged:", plural(checks.len(), "scenario", "scenarios"));
+                    for c in &checks {
+                        print!("{}", flowcontrol::scenario::render(c, &branch));
+                    }
+                }
+            }
+            for (i, (j, ..)) in p.meets.iter().enumerate() {
+                let covered = checks.iter().any(|c| c.journey.is_none() || c.journey.as_deref() == Some(j.as_str()) || c.journey.as_deref() == Some(p.meet_ids[i].as_str()));
+                if !covered {
+                    println!("\nNo scenario runs {j}, so that meet is unchecked.");
+                }
+            }
             if dry_run {
                 println!("\nDry run: nothing was written.");
                 return Ok(ExitCode::SUCCESS);
             }
-            flowcontrol::merge::apply(&v, &p, &branch)?;
+            let blocked: Vec<String> = checks.iter().filter(|c| !c.clean()).map(|c| c.scenario.clone()).collect();
+            flowcontrol::merge::apply_checked(&v, &p, &branch, checks)?;
+            if !blocked.is_empty() {
+                println!("\nWritten to the folder, but saving is blocked until someone decides. Change the code, or accept the result with `flow accept {}`.", blocked[0]);
+                return Ok(ExitCode::SUCCESS);
+            }
             println!("\nWritten to the folder. {}", if p.collisions.is_empty() { "Run `flow save -m \"...\"` to record the merge." } else { "Decide each collision with `flow resolve <step> ours|theirs`, then `flow save`." });
             Ok(ExitCode::SUCCESS)
         }

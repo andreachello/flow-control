@@ -23,13 +23,26 @@ Anything the lifter cannot prove is reported, never guessed. That includes a cal
 
 ## Every language
 
-Flow reads every text file in a repo, in any language, including languages it has never heard of. There are three levels of understanding, and a file gets the best one available:
+Flow reads every text file in a repo, in any language, including languages it has never heard of. Files git ignores stay out, so two clones of a commit read the same files. A file gets the best understanding available:
 
-The universal reader needs no grammar. It finds what nearly all languages share: blocks at the left margin, brackets and indentation that keep them open, comments and decorators above them, methods one level inside a class, names followed by `(`. That gives one owner per line, merging by function, comparing without formatting, moves and renames, and journeys linked by name within a language. Routes are recognised from shapes most frameworks share (`@app.get("/x")`, `@GetMapping("/x")`, `#[get("/x")]`, `HandleFunc("/x", h)`, `app.post("/x", h)`, `path("x/", view)`), along with `main` functions and `if __name__ == "__main__"`. When a repo has no entry points at all, the functions nothing else calls become the starting points. Anything else can be declared in `flow.toml`.
+The universal reader needs no grammar. It finds what nearly all languages share: blocks at the left margin, brackets and indentation that keep them open, comments and decorators above them, members of classes at any depth, names followed by `(`, and code inside strings like `${x()}`. Flat code with no layout splits at blank lines, labels and definition keywords. Import lines are read in any language, and a module matches a file by the end of its path, one rule for `./x`, `@/lib/x`, `crate::a::b`, `a.b.c` and `github.com/me/app/x`. A link made by matching a name alone is labelled "linked by name only" and counted in `_index.yaml`.
 
-A grammar reader follows real imports and types. TypeScript and JavaScript have one today, so their journeys are the most precise. Without a grammar, names are linked by matching: a name that exists once in the language links to it, and a name that exists twice links only if one is in the same folder. It can mislink when different things share a name, so treat those journeys as a good map, not proof.
+A grammar reader follows real types and exports. TypeScript and JavaScript have one today. `flow accuracy` scores the universal reader against it on any TypeScript repo. Functions inside functions stay with their parent, because they only run as part of it.
 
-Lockfiles, binaries, generated bundles and files over 1.5MB stay in version control but are not read.
+Generated and minified files are read as one unit. Lockfiles are read for what they mean: which package moved to which version, and which journeys use it. Binaries are tracked by content and taken whole by git. Text files over 30MB are not read.
+
+## Scenarios
+
+A scenario is any command, in any language, that runs a journey and prints what happened, as JSON or text:
+
+```toml
+[[scenario]]
+name = "upgrade"
+journey = "POST /api/upgrade"
+run = "node scenarios/upgrade.mjs"
+```
+
+`flow run` runs them and compares with the recorded outcome; `flow run --record` records it. When a merge meets in a journey, flow checks out four real versions (where the branches split, each side, and the merged tree), runs the scenario on each, and compares every value. It reports values both sides decide, values that appear only when merged, and merges that fail when neither side did. Values that differ between two identical runs, like timestamps, are ignored. A disagreement blocks `flow save` until someone changes the code or runs `flow accept <scenario>`, which records the result so it is checked from then on. A meet with no scenario stays a warning, and flow says so. Installed dependencies are shared into the checkouts; databases and outside services are whatever the scenario sets up.
 
 ## Commands
 
@@ -41,6 +54,9 @@ flow ledger                # files with unplaced lines
 flow ledger lib/mailer.ts  # owner of every line
 flow name                  # Claude proposes plain names into flow.names.json
 flow view                  # open the journeys in the browser
+flow run [name] [--record] # run scenarios, compare with recorded outcomes
+flow accept <scenario>     # accept what a merge does
+flow accuracy              # score the universal reader against the grammar reader
 flow status | save | log | history | explain | merge | resolve   # version control, below
 ```
 
@@ -67,9 +83,9 @@ Merges also handle the cases git handles badly. A function that only one side re
 
 A merge is as repeatable as git's: its result is a git tree that depends only on the commits, so two machines can compare tree ids. Your git settings, and files git ignores, have no say. A merges into B to the same tree as B into A, and `flow merge a b c` gives the same tree in any order. Branches that merged each other have several common ancestors, which are first merged into one virtual ancestor, as git does; anything that ancestor could not settle stays a collision. Several branches at once need no decisions, as with git's octopus merge, so one collision stops the merge before anything is written. Merge those one at a time.
 
-Git writes the result, so binary files, file modes and links come through exactly, and a merge refuses to overwrite a file git does not track. Files in `flows/` are never merged: they are rebuilt from the merged code. In a git repository, `flow lift` reads exactly what a save would record: tracked files plus new files that are not ignored.
+Git writes the result, so binary files, file modes and links come through exactly, and a merge refuses to overwrite a file git does not track. Files in `flows/` are never merged: they are rebuilt from the merged code. In a git repository, `flow lift` reads exactly what a save would record: tracked files plus new files that are not ignored. Line endings count the way git counts them, so a Windows checkout lifts to the same bytes.
 
-Not yet: running scenarios to check what a merged journey actually does, so a meet is still a warning rather than a verdict.
+A file renamed on one side and edited on the other keeps the edit at its new path. `.gitattributes` rules `merge=binary`, `-merge` and `merge=union` are read from the commits being merged. A named merge driver is ignored, because it lives in someone's personal git config and a merge must not depend on that.
 
 ## Plain names
 

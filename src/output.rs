@@ -66,7 +66,10 @@ pub fn render(repo: &Repo, g: &Graph, flows: &[Flow], problems: &[String]) -> Li
         writeln!(o, "id: {}", q(&f.id)).unwrap();
         writeln!(o, "kind: {}", q(f.kind)).unwrap();
         writeln!(o, "entry: {}", q(&repo.sid(f.entry))).unwrap();
-        writeln!(o, "verified: false  # no scenario runs this flow yet").unwrap();
+        match repo.cfg.scenario.iter().find(|s| s.journey.as_deref() == Some(f.id.as_str())) {
+            Some(s) => writeln!(o, "scenario: {}", q(&s.name)).unwrap(),
+            None => writeln!(o, "verified: false  # no scenario runs this flow yet").unwrap(),
+        }
         writeln!(o, "steps:").unwrap();
         for s in &f.steps {
             let sl = repo.slice(s.at);

@@ -198,6 +198,10 @@ impl Vcs {
             if !open.is_empty() {
                 bail!("the merge still has {} collision(s) to decide: {}. Use `flow resolve <step> ours|theirs`", open.len(), open.join(", "));
             }
+            let waiting: Vec<String> = st.checks.iter().filter(|c| !c.clean() && !st.accepted.contains(&c.scenario)).map(|c| c.scenario.clone()).collect();
+            if !waiting.is_empty() {
+                bail!("running the merge gave results nobody has accepted: {}. Change the code, or `flow accept <scenario>`", waiting.join(", "));
+            }
         }
         let report = self.status()?;
         // A change no journey shows, such as a file mode, is still a change to record.
@@ -209,7 +213,7 @@ impl Vcs {
             crate::write(&self.root.join(&self.out), &l.out.files)?;
         }
         git(&self.root, &["add", "-A"])?;
-        let body = format!("{message}\n\n{}\nFlow-Journeys: {}\n", change::render(&report).trim_end(), change::one_line(&report));
+        let body = format!("{message}\n\n{}\nFlow-Journeys: {}\n", change::compact(&report).trim_end(), change::one_line(&report));
         let mut child = Command::new("git").arg("-C").arg(&self.root).args(["commit", "-q", "-F", "-"]).stdin(Stdio::piped()).spawn()?;
         child.stdin.take().unwrap().write_all(body.as_bytes())?;
         if !child.wait()?.success() {

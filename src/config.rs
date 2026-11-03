@@ -18,6 +18,19 @@ pub struct Config {
     pub assign: Vec<AssignCfg>,
     #[serde(default)]
     pub rules: Rules,
+    /// Commands that run a journey for real and print what happened.
+    #[serde(default)]
+    pub scenario: Vec<ScenarioCfg>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct ScenarioCfg {
+    pub name: String,
+    /// The journey it exercises. Left out, it runs for every merge.
+    pub journey: Option<String>,
+    pub run: String,
+    pub timeout: Option<u64>,
 }
 
 #[derive(Deserialize, Debug, Clone)]

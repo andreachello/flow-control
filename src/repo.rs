@@ -189,9 +189,8 @@ impl Repo {
                 }
             }
             for (si, s) in f.slices.iter().enumerate().skip(1) {
-                for nm in &s.names {
-                    names.entry((f.lang.clone(), nm.clone())).or_default().push((fi, si));
-                }
+                // Only top-level names: a method's short name never reaches across files by itself.
+                names.entry((f.lang.clone(), s.name.clone())).or_default().push((fi, si));
             }
             let stem = f.path.rsplit('/').next().unwrap_or(&f.path).split('.').next().unwrap_or("").to_string();
             modules.entry((f.lang.clone(), stem)).or_default().push(fi);
@@ -573,6 +572,26 @@ impl Repo {
         }
     }
 
+    /// A bare name inside a method. In Java, C#, Ruby and the like it may be a sibling method; in
+    /// Python, JavaScript, Rust, Go and Lua methods need `self` or `this`, so it never is one.
+    fn bare_name(&self, fi: usize, name: &str, s: &parse::Slice) -> Res {
+        let f = &self.files[fi];
+        if s.locals.contains(name) {
+            return Res::Local;
+        }
+        if let Some((class, _)) = s.name.rsplit_once('.') {
+            if !matches!(f.lang.as_str(), "py" | "ts" | "rs" | "go" | "lua") {
+                if let Some(&si) = f.by_name.get(&format!("{class}.{name}")) {
+                    return Res::Slice((fi, si));
+                }
+            }
+        }
+        match f.by_name.get(name) {
+            Some(&si) if f.slices[si].name != name => self.from_imports(fi, name).unwrap_or_else(|| self.by_name_in_lang(fi, name)),
+            _ => self.resolve_ident(fi, name, &s.locals),
+        }
+    }
+
     /// A method on a module-level value: the package that made it, or the value itself when the repo
     /// built it (`const logger = createLogger()` leads into createLogger).
     fn on_value(&self, r: SRef) -> Res {
@@ -737,6 +756,7 @@ impl Graph {
                 };
                 for c in &s.calls {
                     let res = match &c.callee {
+                        Callee::Ident(n) if !f.grammar => repo.bare_name(fi, n, s),
                         Callee::Ident(n) => repo.resolve_ident(fi, n, &s.locals),
                         Callee::Member(o, p) if !f.grammar => repo.member_in_lang(fi, o, p),
                         Callee::Member(o, p) => match repo.resolve_ident(fi, o, &BTreeSet::new()) {

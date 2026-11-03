@@ -429,3 +429,93 @@ fn two_processes_produce_the_same_bytes() {
         .collect();
     assert!(sums.iter().all(|s| s == &sums[0]));
 }
+
+#[test]
+fn windows_line_endings_do_not_change_a_lift() {
+    let d = repo("crlf");
+    let lf = "export async function POST() {\n  return 1;\n}\n";
+    write(&d, "app/api/x/route.ts", lf);
+    commit(&d, "base");
+    let head = git(&d, &["rev-parse", "HEAD"]);
+    let rev = flowcontrol::lift_source(&flowcontrol::source::Source::Rev { root: d.clone(), rev: head }, "flows").unwrap().out.files;
+    git(&d, &["config", "core.autocrlf", "true"]);
+    write(&d, "app/api/x/route.ts", &lf.replace('\n', "\r\n"));
+    assert_eq!(rev, flowcontrol::lift(&d, "flows").unwrap().out.files);
+    // Without conversion, CRLF is a real edit that a save would record, so it must show.
+    git(&d, &["config", "core.autocrlf", "false"]);
+    assert_ne!(rev, flowcontrol::lift(&d, "flows").unwrap().out.files);
+}
+
+#[test]
+fn gitattributes_rules_are_honoured_from_the_commit() {
+    let d = repo("attrs");
+    write(&d, ".gitattributes", "changes.txt merge=union\nlocked.txt -merge\ncustom.txt merge=mydriver\n");
+    for f in ["changes.txt", "locked.txt", "custom.txt"] {
+        write(&d, f, "a\nb\nc\n");
+    }
+    write(&d, "lib/m.ts", M);
+    commit(&d, "base");
+    branch(&d, "x", "main");
+    write(&d, "changes.txt", "a\nx\nc\n");
+    write(&d, "locked.txt", "a\nb\nc\nx\n");
+    write(&d, "custom.txt", "a\nb\nc\nx\n");
+    commit(&d, "x");
+    git(&d, &["checkout", "-q", "main"]);
+    write(&d, "changes.txt", "a\ny\nc\n");
+    write(&d, "locked.txt", "y\na\nb\nc\n");
+    write(&d, "custom.txt", "y\na\nb\nc\n");
+    commit(&d, "y");
+    let mut v = open(&d);
+    let p = merge::plan(&mut v, "x").unwrap();
+    let hit: Vec<&str> = p.collisions.iter().map(|c| c.file.as_str()).collect();
+    assert_eq!(hit, ["locked.txt"], "union merges, -merge stops, a named driver changes nothing");
+    let t = p.files["changes.txt"].clone().unwrap();
+    assert!(t.contains('x') && t.contains('y'), "{t}");
+    git(&d, &["checkout", "-q", "x"]);
+    let q = merge::plan(&mut open(&d), "main").unwrap();
+    assert_eq!(q.files["changes.txt"], p.files["changes.txt"], "union lines come out in a fixed order");
+}
+
+#[test]
+fn an_edit_follows_a_renamed_file_either_way_round() {
+    let d = repo("rename");
+    let body = |n: u32| format!("{M}\nexport function c() {{\n  return {n};\n}}\n\nexport function e() {{\n  return 5;\n}}\n");
+    write(&d, "lib/old.ts", &body(1));
+    write(&d, "notes.md", "one\ntwo\nthree\nfour\nfive\n");
+    commit(&d, "base");
+    branch(&d, "mover", "main");
+    git(&d, &["mv", "lib/old.ts", "lib/new.ts"]);
+    git(&d, &["mv", "notes.md", "docs.md"]);
+    commit(&d, "rename");
+    branch(&d, "editor", "main");
+    write(&d, "lib/old.ts", &body(2));
+    write(&d, "notes.md", "one\ntwo\nthree\nfour\nFIVE\n");
+    commit(&d, "edit");
+    let t = tree_of(&d, "mover", "editor");
+    assert_eq!(t, tree_of(&d, "editor", "mover"));
+    assert!(git(&d, &["show", &format!("{t}:lib/new.ts")]).contains("return 2;"));
+    assert!(git(&d, &["show", &format!("{t}:docs.md")]).contains("FIVE"));
+    git(&d, &["checkout", "-q", "--detach", "mover"]);
+    git(&d, &["merge", "-q", "--no-edit", "editor"]);
+    assert_eq!(t, git(&d, &["rev-parse", "HEAD^{tree}"]), "git agrees");
+}
+
+#[test]
+fn resolving_changes_the_named_function_even_with_a_twin() {
+    let d = repo("twin");
+    let src = |a: u32, b: u32| format!("export function twin() {{\n  return {a};\n}}\n\nexport function other() {{\n  return {b};\n}}\n");
+    write(&d, "lib/m.ts", &src(1, 1));
+    commit(&d, "base");
+    branch(&d, "x", "main");
+    write(&d, "lib/m.ts", &src(1, 3));
+    commit(&d, "x");
+    git(&d, &["checkout", "-q", "main"]);
+    write(&d, "lib/m.ts", &src(2, 2));
+    commit(&d, "y");
+    let mut v = open(&d);
+    let p = merge::plan(&mut v, "x").unwrap();
+    assert_eq!(p.collisions.len(), 1);
+    merge::apply(&v, &p, "x").unwrap();
+    merge::resolve(&v, "other", "theirs").unwrap();
+    assert_eq!(std::fs::read_to_string(d.join("lib/m.ts")).unwrap(), src(2, 3));
+}

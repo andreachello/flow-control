@@ -117,6 +117,24 @@ fn saved_files(root: &Path) -> Option<Vec<String>> {
     Some(v)
 }
 
+/// Files git keeps with plain newlines but this folder holds with CRLF. A save would store them
+/// without the CR, so they are read that way, and a folder lifts the same on every system.
+fn line_ending_converted(root: &Path) -> std::collections::BTreeSet<String> {
+    let mut out = std::collections::BTreeSet::new();
+    let Ok(listed) = git(root, &["ls-files", "-z", "--eol", "--cached", "--others", "--exclude-standard"]) else { return out };
+    let auto = git(root, &["config", "--get", "core.autocrlf"]).map(|s| matches!(s.trim(), "true" | "input")).unwrap_or(false);
+    for e in listed.split('\0') {
+        let Some((meta, path)) = e.split_once('\t') else { continue };
+        let m: Vec<&str> = meta.split_whitespace().collect();
+        let (index, work, attr) = (m.first().copied().unwrap_or(""), m.get(1).copied().unwrap_or(""), m.get(2).copied().unwrap_or(""));
+        let on = !attr.contains("-text") && (auto || attr.contains("text") || attr.contains("eol="));
+        if on && matches!(index, "i/lf" | "i/") && matches!(work, "w/crlf" | "w/mixed") {
+            out.insert(path.to_string());
+        }
+    }
+    out
+}
+
 impl Source {
     pub fn root(&self) -> &Path {
         match self {
@@ -158,7 +176,16 @@ impl Source {
 
     pub fn read_many(&self, paths: &[String]) -> Result<Vec<(String, Option<String>)>> {
         match self {
-            Source::Dir(root) => Ok(paths.iter().map(|p| (p.clone(), std::fs::read_to_string(root.join(p)).ok())).collect()),
+            Source::Dir(root) => {
+                let crlf = line_ending_converted(root);
+                Ok(paths
+                    .iter()
+                    .map(|p| {
+                        let text = std::fs::read_to_string(root.join(p)).ok();
+                        (p.clone(), if crlf.contains(p) { text.map(|t| t.replace("\r\n", "\n")) } else { text })
+                    })
+                    .collect())
+            }
             Source::Mem { files, .. } => Ok(paths.iter().map(|p| (p.clone(), files.get(p).cloned())).collect()),
             Source::Rev { root, rev } => {
                 // Every version of a file has an id; read each id from git once and reuse it.

@@ -381,7 +381,7 @@ function plainView() {
     h += `</section>`;
   }
   if (f.unresolved.length) h += `<div class="note bad"><b>This journey may do more than shown here.</b> ${f.unresolved.length} call${f.unresolved.length === 1 ? '' : 's'} could not be followed. <button class="linkish" data-mode="built">See them</button></div>`;
-  h += `<div class="note plain">Read from the code, not run yet. Once a scenario runs this journey, it will show what actually happens.</div>`;
+  h += `<div class="note plain">${f.scenario ? `Scenario <b>${esc(f.scenario)}</b> runs this journey for real: <code>flow run ${esc(f.scenario)}</code>.` : 'Read from the code, not run yet. Add a <code>[[scenario]]</code> to flow.toml to run it for real.'}</div>`;
   $('main').innerHTML = h;
 }
 

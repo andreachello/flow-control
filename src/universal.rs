@@ -322,7 +322,7 @@ const TYPE_WORDS: &[&str] = &["class", "struct", "enum", "interface", "trait", "
 const DATA_WORDS: &[&str] = &["let", "const", "var", "val", "static", "global", "set", "constant"];
 
 /// Name and role of a block from its first lines of code.
-fn name_of(toks: &[Tok], lang: &str, row: usize) -> (String, Role) {
+fn name_of(toks: &[Tok], lang: &str, _row: usize) -> (String, Role) {
     let words: Vec<(usize, &str)> = toks.iter().enumerate().filter_map(|(i, t)| if let Tok::Word(w) = t { Some((i, w.as_str())) } else { None }).collect();
     let next_word = |after: usize| words.iter().find(|(i, _)| *i > after).map(|(_, w)| w.to_string());
     // A value that is a function: `const f = () => ...`, `let g = |x| ...`, `h = lambda x: ...`.
@@ -383,7 +383,7 @@ fn name_of(toks: &[Tok], lang: &str, row: usize) -> (String, Role) {
     }
     match words.first() {
         Some((_, w)) if lang != "prose" => (w.to_string(), Role::Data),
-        _ => (format!("block@{}", row + 1), Role::Data),
+        _ => ("block".to_string(), Role::Data),
     }
 }
 
@@ -713,7 +713,12 @@ pub fn parse(path: &str, src: &str, assigns: &[(String, String)]) -> ParsedFile 
         let head: Vec<Tok> = (s..e).take(3).flat_map(|r| toks_by_line[r].clone()).collect();
         let (mut name, role) = if line0.starts_with("if __name__") { ("__main__".to_string(), Role::Function) } else { name_of(&head, &lang, s) };
         if seen_names.contains_key(&name) {
-            name = format!("{name}@{}", s + 1);
+            // Numbered by order, never by line: adding a line above must not rename anything.
+            let mut k = 2;
+            while seen_names.contains_key(&format!("{name}~{k}")) {
+                k += 1;
+            }
+            name = format!("{name}~{k}");
         }
         let idx = pf.slices.len();
         seen_names.insert(name.clone(), idx);
@@ -726,7 +731,7 @@ pub fn parse(path: &str, src: &str, assigns: &[(String, String)]) -> ParsedFile 
         }
         // Inside a class, each method is its own part, at any depth: `Billing.Cart.total`.
         if role == Role::Class && !plain {
-            let plain_name = name.split('@').next().unwrap_or(&name).to_string();
+            let plain_name = name.split('~').next().unwrap_or(&name).to_string();
             let cx = Carve { lines: &lines, toks: &toks_by_line, code: &code_line, in_comment: &in_comment_before, syn: &syn, lang: &lang };
             cx.carve(s, e, &plain_name, idx, 0, &mut pf, &mut owner, &mut seen_names);
         }
@@ -780,6 +785,11 @@ pub fn parse(path: &str, src: &str, assigns: &[(String, String)]) -> ParsedFile 
             let t: Vec<Tok> = body.iter().flat_map(|&r| toks_by_line[r].clone()).collect();
             let rows: Vec<usize> = body.iter().flat_map(|&r| std::iter::repeat_n(r, toks_by_line[r].len())).collect();
             s.calls = calls_of(&t, &rows);
+            // `def total(` reads like a call to itself: a definition is not a step.
+            let own = s.name.rsplit('.').next().unwrap_or(&s.name).split('~').next().unwrap_or("").to_string();
+            if let Some(i) = s.calls.iter().position(|c| c.kind == CallKind::Call && c.callee == Callee::Ident(own.clone())) {
+                s.calls.remove(i);
+            }
         }
         s.locals = locals_of(&s.lines.iter().flat_map(|&r| toks_by_line[r].clone()).collect::<Vec<_>>());
     }

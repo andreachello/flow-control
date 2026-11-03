@@ -21,6 +21,7 @@ pub mod merge;
 pub mod universal;
 pub mod accuracy;
 pub mod packages;
+pub mod scenario;
 
 use anyhow::Result;
 use std::path::Path;

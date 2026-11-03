@@ -42,6 +42,11 @@ pub struct MergeState {
     pub theirs_name: String,
     pub written: Vec<String>,
     pub collisions: Vec<Collision>,
+    /// Scenario results that need a person's decision before the merge can be saved.
+    #[serde(default)]
+    pub checks: Vec<crate::scenario::Check>,
+    #[serde(default)]
+    pub accepted: Vec<String>,
 }
 
 #[derive(Debug, Default)]
@@ -74,6 +79,8 @@ pub struct Plan {
     pub moved: Vec<(String, String, String)>,
     /// Files that are not code, changed on both sides, merged as text.
     pub text_merged: Vec<String>,
+    /// Ids of the journeys in `meets`, in the same order.
+    pub meet_ids: Vec<String>,
 }
 
 #[derive(Clone, PartialEq)]
@@ -135,6 +142,11 @@ static TMP: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new
 /// Git's own three-way text merge, used only inside one function or one non-code file, and always
 /// reported. None when the two sides edit the same lines.
 pub fn text_merge(base: &str, ours: &str, theirs: &str) -> Result<Option<String>> {
+    run_text_merge(base, ours, theirs, false)
+}
+
+/// `union`: keep both sides' lines instead of calling overlapping edits a collision.
+fn run_text_merge(base: &str, ours: &str, theirs: &str, union: bool) -> Result<Option<String>> {
     // Fixed order, so the result cannot depend on which side is called ours.
     let (ours, theirs) = if ours <= theirs { (ours, theirs) } else { (theirs, ours) };
     // Git will not text-merge binary content: that is a decision for a person, not an error.
@@ -147,7 +159,7 @@ pub fn text_merge(base: &str, ours: &str, theirs: &str) -> Result<Option<String>
     for (name, t) in [("ours", ours), ("base", base), ("theirs", theirs)] {
         std::fs::write(dir.join(name), nl(t))?;
     }
-    let out = std::process::Command::new("git").current_dir(&dir).env("GIT_CONFIG_NOSYSTEM", "1").env("GIT_CONFIG_GLOBAL", "/dev/null").args(["merge-file", "-p", "-q", "ours", "base", "theirs"]).output()?;
+    let out = std::process::Command::new("git").current_dir(&dir).env("GIT_CONFIG_NOSYSTEM", "1").env("GIT_CONFIG_GLOBAL", "/dev/null").args(["merge-file", "-p", "-q"]).args(union.then_some("--union")).args(["ours", "base", "theirs"]).output()?;
     let _ = std::fs::remove_dir_all(&dir);
     match out.status.code() {
         Some(0) => {
@@ -458,7 +470,7 @@ fn write_tree(v: &Vcs, ours: &str, p: &Plan) -> Result<String> {
 
 /// A commit object nothing points at, used as a stepping stone. Its author and date are fixed, so
 /// the same inputs give the same id on every machine.
-fn commit_tree(v: &Vcs, tree: &str, parents: &[&str]) -> Result<String> {
+pub fn commit_tree(v: &Vcs, tree: &str, parents: &[&str]) -> Result<String> {
     let mut args = vec!["commit-tree", tree];
     for p in parents {
         args.extend(["-p", p]);
@@ -503,6 +515,19 @@ fn collision(path: &str, base: Option<String>, ours: Option<String>, theirs: Opt
 fn generated(out: &str, path: &str) -> bool {
     let Some(name) = path.strip_prefix(out).and_then(|p| p.strip_prefix('/')) else { return false };
     !name.contains('/') && (name.ends_with(".flow.yaml") || (name.starts_with('_') && name.ends_with(".yaml")))
+}
+
+/// What a commit's .gitattributes says about merging a path. Read from the commit, never the folder.
+fn merge_attr(root: &std::path::Path, rev: &str, path: &str) -> Result<String> {
+    let s = git(root, &["check-attr", "--source", rev, "merge", "--", path]).context("reading .gitattributes from a commit needs git 2.41 or newer")?;
+    Ok(s.trim().rsplit(": ").next().unwrap_or("unspecified").to_string())
+}
+
+/// old path -> new path, for files a commit renamed since `base`.
+fn renames(root: &std::path::Path, base: &str, rev: &str) -> Result<BTreeMap<String, String>> {
+    let s = git(root, &["diff-tree", "-r", "-z", "-M50%", "-l0", "--name-status", "--diff-filter=R", base, rev])?;
+    let f: Vec<&str> = s.split('\0').collect();
+    Ok(f.chunks_exact(3).map(|c| (c[1].to_string(), c[2].to_string())).collect())
 }
 
 pub fn plan(v: &mut Vcs, theirs_rev: &str) -> Result<Plan> {
@@ -577,9 +602,49 @@ fn step(v: &mut Vcs, ours: &str, theirs: &str, quiet: bool, poison: &mut Poison)
     // A file with a NUL byte is binary, even when it happens to be valid UTF-8.
     let text_of = |r: &str, path: &str, present: bool| if present { rev(r).read(path).filter(|s| !s.contains('\0')) } else { None };
     let regular = |e: Option<&Entry>| e.map(|x| x.0.starts_with("100")).unwrap_or(true);
+    let attrs = bo.keys().chain(bt.keys()).any(|k| k == ".gitattributes" || k.ends_with("/.gitattributes"));
+
+    // A file one side renamed and the other edited: the edit follows the file to its new path. The
+    // two sides stay in order, so this reads the same whichever one did the renaming.
+    let mut followed: BTreeSet<String> = BTreeSet::new();
+    if !base.is_empty() && bb.keys().any(|k| !bo.contains_key(k) || !bt.contains_key(k)) {
+        let (ro, rt) = (renames(&root, &base, ours)?, renames(&root, &base, theirs)?);
+        for (mover, editor, list, kept, mover_tree) in [(ours, theirs, &ro, &bt, &bo), (theirs, ours, &rt, &bo, &bt)] {
+            for (old, new) in list {
+                let (b, e) = (bb.get(old), kept.get(old));
+                let (Some(e), true) = (e, e != b) else { continue };
+                if generated(&out, new) || kept.contains_key(new) || bad.iter().any(|(f, _)| f == old || f == new) || !e.0.starts_with("100") {
+                    continue;
+                }
+                let (Some(tb), Some(tm), Some(te)) = (text_of(&base, old, true), text_of(mover, new, true), text_of(editor, old, true)) else { continue };
+                let (to, tt) = if mover == ours { (&tm, &te) } else { (&te, &tm) };
+                let merged = if is_source(new) && !crate::universal::is_plain(new) {
+                    let m = merge_file_with(new, Some(&tb), to, tt, &BTreeSet::new(), &BTreeSet::new())?;
+                    for c in m.collisions {
+                        p.collisions.push(Collision { name: c.name, ..collision(new, c.base, c.ours, c.theirs) });
+                    }
+                    p.combined.extend(m.combined.into_iter().map(|n| (new.clone(), n)));
+                    m.text
+                } else {
+                    text_merge(&tb, to, tt)?
+                };
+                let Some(text) = merged else { continue };
+                p.files.insert(new.clone(), Some(text));
+                if let Some(e) = mover_tree.get(new) {
+                    p.modes.insert(new.clone(), e.0.clone());
+                }
+                if bo.contains_key(old) {
+                    p.files.insert(old.clone(), None);
+                }
+                followed.extend([old.clone(), new.clone()]);
+                p.moved.push((new.rsplit('/').next().unwrap_or(new).to_string(), old.clone(), new.clone()));
+            }
+        }
+    }
+
     let paths: BTreeSet<&String> = bb.keys().chain(bo.keys()).chain(bt.keys()).collect();
     for path in paths {
-        if generated(&out, path) {
+        if generated(&out, path) || followed.contains(path) {
             continue;
         }
         let (b, o, t) = (bb.get(path), bo.get(path), bt.get(path));
@@ -630,8 +695,17 @@ fn step(v: &mut Vcs, ours: &str, theirs: &str, quiet: bool, poison: &mut Poison)
             mode = Some(m);
         }
         let (tb, to, tt) = (text_of(&base, path, b.is_some()), text_of(ours, path, o.is_some()), text_of(theirs, path, t.is_some()));
-        let readable = b.is_none() || tb.is_some();
-        match (is_source(path) && !crate::universal::is_plain(path), to, tt) {
+        // Only git's built-in rules count. A named driver lives in someone's personal config, and a
+        // merge must not depend on that. If the two sides disagree, nothing is merged automatically.
+        let rule = if attrs {
+            let (a, b) = (merge_attr(&root, ours, path)?, merge_attr(&root, theirs, path)?);
+            if a == b { a } else { "unset".to_string() }
+        } else {
+            "unspecified".to_string()
+        };
+        let union = rule == "union";
+        let readable = (b.is_none() || tb.is_some()) && !matches!(rule.as_str(), "unset" | "binary");
+        match (is_source(path) && !crate::universal::is_plain(path) && !union, to, tt) {
             (true, Some(to), Some(tt)) if readable => {
                 let names: BTreeSet<String> = bad.iter().filter(|(f, _)| f == path).map(|(_, n)| n.clone()).collect();
                 let m = merge_file_with(path, tb.as_deref(), &to, &tt, &names, &BTreeSet::new())?;
@@ -646,7 +720,7 @@ fn step(v: &mut Vcs, ours: &str, theirs: &str, quiet: bool, poison: &mut Poison)
                 }
                 p.files.insert(path.clone(), m.text);
             }
-            (false, Some(to), Some(tt)) if readable => match text_merge(tb.as_deref().unwrap_or(""), &to, &tt)? {
+            (false, Some(to), Some(tt)) if readable => match run_text_merge(tb.as_deref().unwrap_or(""), &to, &tt, union)? {
                 Some(m) => {
                     p.files.insert(path.clone(), Some(m));
                     p.text_merged.push(path.clone());
@@ -764,6 +838,7 @@ fn step(v: &mut Vcs, ours: &str, theirs: &str, quiet: bool, poison: &mut Poison)
         let (so, st): (BTreeSet<String>, BTreeSet<String>) = (sids.intersection(&co).cloned().collect(), sids.intersection(&ct).cloned().collect());
         let (mo, mt): (Vec<String>, Vec<String>) = (so.difference(&st).cloned().collect(), st.difference(&so).cloned().collect());
         if !mo.is_empty() && !mt.is_empty() {
+            p.meet_ids.push(f.id.clone());
             p.meets.push((journey_title(&names, &f.id), mo.iter().map(|s| label_of(&names, s)).collect(), mt.iter().map(|s| label_of(&names, s)).collect()));
         }
     }
@@ -778,6 +853,10 @@ fn step(v: &mut Vcs, ours: &str, theirs: &str, quiet: bool, poison: &mut Poison)
 
 /// Write the merge into the working folder. Collisions keep our version until resolved.
 pub fn apply(v: &Vcs, p: &Plan, theirs_name: &str) -> Result<()> {
+    apply_checked(v, p, theirs_name, vec![])
+}
+
+pub fn apply_checked(v: &Vcs, p: &Plan, theirs_name: &str, checks: Vec<crate::scenario::Check>) -> Result<()> {
     if let Some(h) = &p.blocked {
         bail!("{} cannot merge all at once: {} collides. Merge the branches one at a time, deciding collisions as you go", theirs_name, &h[..8]);
     }
@@ -801,7 +880,7 @@ pub fn apply(v: &Vcs, p: &Plan, theirs_name: &str) -> Result<()> {
     let heads: String = p.heads.iter().map(|h| format!("{h}\n")).collect();
     std::fs::write(v.git_path("MERGE_HEAD"), heads)?;
     std::fs::write(v.git_path("MERGE_MSG"), format!("Merge {theirs_name}\n"))?;
-    let st = MergeState { theirs: p.theirs.clone(), theirs_name: theirs_name.to_string(), written, collisions: p.collisions.clone() };
+    let st = MergeState { theirs: p.theirs.clone(), theirs_name: theirs_name.to_string(), written, collisions: p.collisions.clone(), checks, accepted: vec![] };
     std::fs::write(v.merge_state_path(), serde_json::to_string_pretty(&st)?)?;
     Ok(())
 }
@@ -815,6 +894,20 @@ fn restore(v: &Vcs, rev: &str, paths: &[String]) -> Result<()> {
     let source = format!("--source={rev}");
     run(&v.root, &["--literal-pathspecs", "restore", &source, "--staged", "--worktree", "--pathspec-from-file=-", "--pathspec-file-nul"], &[], Some(&list))?;
     Ok(())
+}
+
+/// Replace or remove one function, found by name. Two functions can have identical text, so
+/// searching for the text could change the wrong one.
+fn swap_unit(path: &str, text: &str, name: &str, with: Option<&str>) -> Option<String> {
+    let us = units(&parse_file(path, text, &[]).ok()?);
+    if !us.iter().any(|u| matches!(u, Unit::Code(n, ..) if n == name)) {
+        return None;
+    }
+    let parts = us.iter().filter_map(|u| match u {
+        Unit::Code(n, ..) if n == name => with.map(str::to_string),
+        Unit::Code(_, t, _) | Unit::Line(t) => Some(t.clone()),
+    });
+    Some(parts.collect::<Vec<_>>().join("\n"))
 }
 
 /// Decide one collision: keep ours, or take theirs.
@@ -844,8 +937,8 @@ pub fn resolve(v: &Vcs, what: &str, side: &str) -> Result<String> {
             let full = v.root.join(&c.file);
             let cur = std::fs::read_to_string(&full)?;
             let next = match (&c.ours, &c.theirs) {
-                (Some(o), Some(t)) => cur.replacen(o.as_str(), t, 1),
-                (Some(o), None) => cur.replacen(o.as_str(), "", 1),
+                (Some(o), Some(t)) => swap_unit(&c.file, &cur, &c.name, Some(t)).unwrap_or_else(|| cur.replacen(o.as_str(), t, 1)),
+                (Some(o), None) => swap_unit(&c.file, &cur, &c.name, None).unwrap_or_else(|| cur.replacen(o.as_str(), "", 1)),
                 (None, Some(t)) => format!("{}\n{t}", cur.trim_end_matches('\n')) + "\n",
                 (None, None) => cur,
             };
@@ -857,6 +950,24 @@ pub fn resolve(v: &Vcs, what: &str, side: &str) -> Result<String> {
     st.collisions[i].resolved = true;
     std::fs::write(&path, serde_json::to_string_pretty(&st)?)?;
     Ok(c.label)
+}
+
+/// A person accepts what the merge does in a scenario. It is recorded and checked from then on.
+pub fn accept(v: &Vcs, name: &str) -> Result<()> {
+    let path = v.merge_state_path();
+    if !path.exists() {
+        bail!("no merge in progress");
+    }
+    let mut st: MergeState = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
+    let Some(c) = st.checks.iter().find(|c| c.scenario == name) else { bail!("no scenario called {name} ran in this merge") };
+    let mut o = c.merged.clone();
+    for k in &c.unstable {
+        o.remove(k);
+    }
+    crate::scenario::record(&v.root, &v.out, name, &o)?;
+    st.accepted.push(name.to_string());
+    std::fs::write(&path, serde_json::to_string_pretty(&st)?)?;
+    Ok(())
 }
 
 pub fn abort(v: &Vcs) -> Result<()> {
