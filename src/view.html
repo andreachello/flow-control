@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flow view</title>
+<style>
+:root{
+  --bg:#f3f4f1;--surface:#ffffff;--surface-2:#eceeea;--ink:#1a2227;--ink-2:#4f5c62;--ink-3:#808c91;
+  --line:#dde1dc;--line-strong:#c3cac5;--accent:#0b6e84;--accent-soft:#dcedf0;--accent-ink:#07495a;
+  --warn-bg:#f6ead0;--bad-bg:#f7e0d9;--good-bg:#dff0e5;
+  --f-body:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --f-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#12181b;--surface:#192125;--surface-2:#222c31;--ink:#e6ebea;--ink-2:#a3b1b5;--ink-3:#75858a;
+  --line:#2a363c;--line-strong:#41525a;--accent:#5cc0d6;--accent-soft:#17353c;--accent-ink:#a9e3ef;
+  --warn-bg:#3b2f14;--bad-bg:#3e1e19;--good-bg:#16352a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.55 var(--f-body)}
+button{font:inherit;color:inherit;cursor:pointer}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+.top{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--surface)}
+.top h1{font-size:17px;margin:0;font-weight:650}
+.top .count{color:var(--ink-2);font-size:13.5px}
+.top .sp{flex:1}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:var(--surface);padding:6px 12px;font-size:13.5px;color:var(--ink-2)}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.tabbtn{border:1px solid var(--line-strong);background:var(--surface);border-radius:8px;padding:6px 12px;font-size:13.5px}
+.tabbtn[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.tl{list-style:none;margin:0;padding:0}
+.tl>li{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:14px 16px;margin-bottom:10px}
+.tl .meta{font-size:12.5px;color:var(--ink-3)}
+.tl .subj{font-weight:600;margin:2px 0 8px}
+.tl .jr{display:block;border:0;background:none;padding:4px 0;text-align:left;font-size:14px;width:100%}
+.tl .jr b{font-weight:600}
+.tl .jr span{color:var(--ink-2)}
+button.jr:hover b{color:var(--accent-ink);text-decoration:underline}
+.hist{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.hist li{padding:10px 16px;border-top:1px solid var(--line);font-size:14px}
+.hist li:first-child{border-top:0}
+.hist .meta{font-size:12.5px;color:var(--ink-3)}
+.issues{border:0;border-radius:8px;padding:6px 11px;font-size:13.5px;background:var(--bad-bg)}
+.layout{display:grid;grid-template-columns:320px 1fr}
+nav{border-right:1px solid var(--line);background:var(--surface);overflow:auto;height:calc(100vh - 58px);position:sticky;top:0}
+.search{position:sticky;top:0;background:var(--surface);padding:12px;border-bottom:1px solid var(--line);z-index:1}
+.search input{width:100%;padding:9px 11px;border-radius:8px;border:1px solid var(--line-strong);background:var(--bg);color:var(--ink);font:inherit;font-size:14px}
+.group{padding:16px 16px 6px;font-size:12px;font-weight:650;color:var(--ink-2)}
+details.area{border-bottom:1px solid var(--line)}
+details.area summary{list-style:none;cursor:pointer;padding:12px 16px;font-weight:600;font-size:14px;display:flex;align-items:center;gap:8px}
+details.area summary::-webkit-details-marker{display:none}
+details.area summary::before{content:"▸";color:var(--ink-3);font-size:11px;width:10px}
+details.area[open] summary::before{content:"▾"}
+details.area summary small{color:var(--ink-3);font-weight:400;margin-left:auto}
+details.area .fl{padding:6px 16px 6px 34px}
+details.area[open]{padding-bottom:6px}
+.navseg{display:flex;margin-bottom:10px}.navseg button{flex:1}
+details.dir summary{list-style:none;cursor:pointer;padding:5px 12px 5px calc(12px + var(--d)*14px);font-size:13.5px;display:flex;gap:6px;align-items:center;color:var(--ink-2)}
+details.dir summary::-webkit-details-marker{display:none}
+details.dir summary::before{content:"▸";font-size:10px;color:var(--ink-3);width:10px}
+details.dir[open]>summary::before{content:"▾"}
+details.dir summary:hover{background:var(--surface-2)}
+.ff{display:flex !important;align-items:center;gap:6px;padding:5px 12px 5px calc(28px + var(--d)*14px) !important;font:400 13px var(--f-mono) !important}
+.ff small{margin-left:auto;font:400 11.5px var(--f-body);color:var(--ink-3);white-space:nowrap}
+.dot{width:7px;height:7px;border-radius:50%;background:#c4452f;flex:none}
+.srow2{display:grid;grid-template-columns:6px 1fr;gap:0 12px;border:0;background:none;text-align:left;width:100%;padding:10px 16px;border-top:1px solid var(--line)}
+.srow2:first-child{border-top:0}
+.srow2:hover,.srow2[aria-pressed="true"]{background:var(--surface-2)}
+.srow2 .bar{border-radius:3px;background:hsl(var(--h) 50% 50%)}
+.srow2 .t{font-weight:600}
+.srow2 .t code{font-weight:400;color:var(--ink-3);margin-left:6px}
+.srow2 .m{font-size:13px;color:var(--ink-2);margin-top:2px}
+.srow2 .m .chip{font-size:12.5px;padding:1px 8px;margin:4px 4px 0 0;display:inline-block}
+.code{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:auto;max-height:75vh}
+.code .ln{display:grid;grid-template-columns:48px 1fr;font:400 12.5px/1.65 var(--f-mono)}
+.code .ln.part code{background:hsl(var(--h) 65% 55% / .13)}
+.code .ln[data-o]{cursor:pointer}
+.code .ln.hot code{background:hsl(var(--h) 65% 55% / .3)}
+.pcard{margin:6px 12px 6px 48px;padding:10px 12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--surface-2);font:400 13.5px/1.5 var(--f-body);white-space:normal}
+.pcard code{color:var(--ink-3)}
+.pcard .chip{font-size:12.5px;padding:1px 8px;margin:2px 4px 2px 0;display:inline-block;cursor:pointer}
+.code .ln .n{color:var(--ink-3);text-align:right;padding-right:10px;user-select:none}
+.code .ln .b{background:hsl(var(--h) 50% 50%)}
+.code .ln.sup .b{background:var(--line)}
+.code .ln.un code{background:var(--bad-bg)}
+.code .ln code{white-space:pre;padding:0 14px 0 12px;font:inherit}
+.code .ln.dim{opacity:.3}
+a.fileln{color:var(--accent-ink);cursor:pointer;text-decoration:underline}
+.hint{margin:12px 16px;font-size:13px;color:var(--ink-3)}
+.group small{font-weight:400;color:var(--ink-3)}
+.fl{display:block;width:100%;text-align:left;border:0;background:none;padding:7px 16px;font-size:14px;color:var(--ink)}
+.fl:hover{background:var(--surface-2)}
+.fl[aria-current="true"]{background:var(--accent-soft);color:var(--accent-ink)}
+.fl .r{display:block;font:400 11.5px var(--f-mono);color:var(--ink-3);overflow-wrap:anywhere}
+main{padding:28px 32px 80px;min-width:0;max-width:880px}
+h2{font-size:26px;line-height:1.2;margin:0;font-weight:650;text-wrap:balance}
+.lede{color:var(--ink-2);margin:6px 0 0;max-width:64ch}
+.where{margin-top:8px;font-size:13px;color:var(--ink-3)}
+section{margin-top:28px}
+h3{font-size:13px;font-weight:650;letter-spacing:.02em;color:var(--ink-2);margin:0 0 10px;text-transform:uppercase}
+ol.steps{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden}
+ol.steps ol.steps{border:0;border-radius:0;background:none;border-left:2px solid var(--line);margin:2px 0 6px 14px}
+.step{border-top:1px solid var(--line)}
+.step:first-child{border-top:0}
+ol.steps ol.steps .step{border-top:0}
+.sb{display:grid;grid-template-columns:28px 1fr auto;gap:2px 10px;width:100%;border:0;background:none;text-align:left;padding:11px 16px;align-items:start}
+.sb:hover{background:var(--surface-2)}
+.sb .num{font:500 12px var(--f-mono);color:var(--ink-3);padding-top:3px}
+.sb .nm{font-weight:600}
+.sb .doc{grid-column:2;color:var(--ink-2);font-size:14px}
+.sb .more{font-size:12.5px;color:var(--ink-3);white-space:nowrap;padding-top:2px}
+.inner{padding:0 16px 12px 54px}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:6px;background:var(--surface-2);color:var(--ink-2);margin:0 4px 4px 0}
+.tag.w{background:var(--warn-bg);color:var(--ink)}
+.tag.acc{background:var(--accent-soft);color:var(--accent-ink)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:5px 11px;font-size:14px}
+button.chip:hover{border-color:var(--ink-3)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.card{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px 14px;text-align:left}
+button.card:hover{border-color:var(--accent)}
+.card b{display:block;font-weight:600}
+.card span{display:block;color:var(--ink-2);font-size:13.5px;margin-top:2px}
+.card .go{color:var(--accent-ink);font-size:13px;margin-top:6px}
+.info{display:grid;grid-template-columns:110px 1fr;gap:8px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);padding:14px 16px}
+.info .k{color:var(--ink-2);font-size:14px}
+.note{border-radius:12px;padding:12px 16px;font-size:14px;margin-top:16px}
+.note.bad{background:var(--bad-bg)}.note.warn{background:var(--warn-bg)}.note.plain{background:var(--surface);border:1px solid var(--line)}
+.helpers{margin-top:8px;font-size:13.5px;color:var(--ink-3)}
+pre{margin:8px 0 0;padding:10px 0;border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow:auto;font:400 12.5px/1.6 var(--f-mono);max-height:420px}
+pre span.ln{display:inline-block;width:44px;padding-right:10px;text-align:right;color:var(--ink-3);user-select:none}
+.linkish{border:0;background:none;padding:0;color:var(--accent-ink);text-decoration:underline;font-size:13.5px}
+.row{padding:8px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}
+/* built view */
+.tree{border:1px solid var(--line);border-radius:12px;background:var(--surface);overflow:hidden;margin-top:12px}
+.tr{border-top:1px solid var(--line)}
+.tr:first-child{border-top:0}
+.th{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;width:100%;border:0;background:none;text-align:left;padding:7px 14px 7px calc(14px + var(--d)*20px);font-size:13.5px}
+.th:hover{background:var(--surface-2)}
+.th .i{font:500 11px var(--f-mono);color:var(--ink-3);min-width:22px}
+.th .n{font-family:var(--f-mono)}
+.th .f{margin-left:auto;font:400 12px var(--f-mono);color:var(--ink-3)}
+.td{padding:4px 14px 12px calc(36px + var(--d)*20px)}
+@media (max-width:760px){.layout{grid-template-columns:1fr}nav{position:static;height:auto;max-height:300px;border-right:0;border-bottom:1px solid var(--line)}main{padding:20px 16px 60px}.info{grid-template-columns:1fr}.sb{grid-template-columns:24px 1fr}.sb .more{grid-column:2}}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1 id="title"></h1><span class="count" id="count"></span>
+  <span class="sp"></span>
+  <span id="issues"></span>
+  <button class="tabbtn" id="changesBtn" data-tab="changes">Changes</button>
+  <div class="seg" role="group" aria-label="View"><button data-mode="plain">Journeys</button><button data-mode="built">Show how it's built</button></div>
+</div>
+<div class="layout">
+  <nav><div class="search"><div class="seg navseg" role="group" aria-label="Browse"><button data-nav="journeys">Journeys</button><button data-nav="files">Files</button></div><input id="q" placeholder="Find a journey" autocomplete="off"></div><div id="list"></div></nav>
+  <main id="main"></main>
+</div>
+<script>
+const D = /*DATA*/null;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+let st = { flow: null, mode: 'plain', tab: 'flow', open: new Set(), code: new Set(), q: '', areas: new Set(), nav: 'journeys', file: null, dirs: new Set(), hl: null };
+const fileIndex = {};
+(D.files || []).forEach((f, i) => (fileIndex[f.path] = i));
+const hueOf = (n) => { let h = 0; for (let i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) % 360; return h; };
+const fileJourneys = (f) => { const s = new Set(); f.slices.forEach((x) => x.journeys.forEach((j) => s.add(j))); return s; };
+
+/* ---------- plain names ---------- */
+function human(n) {
+  if (!n) return '';
+  const words = n.replace(/[_\-.]+/g, ' ').replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/([A-Z]+)([A-Z][a-z])/g, '$1 $2').trim().split(/\s+/);
+  const s = words.map((w) => (w.length > 1 && w === w.toUpperCase() ? w : w.toLowerCase())).join(' ');
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+const keyName = (k) => human(k.split('#').pop().replace(/^S\./, ''));
+function routeOf(f) {
+  const path = f.id.replace(/^(page|api|metadata|GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS) /, '');
+  return path.split('/').filter((s) => s && s !== '[locale]').join('/');
+}
+function title(f) {
+  if (f.title) return f.title;
+  const entry = f.steps[0];
+  if (f.kind === 'action') return human(entry.name);
+  if (f.kind === 'middleware') return 'Before every request';
+  if (f.kind === 'page') {
+    const generic = ['default', 'Page', 'page'].includes(entry.name) || /^anonymous/.test(entry.name);
+    if (!generic) return human(entry.name);
+  }
+  const segs = routeOf(f).split('/').filter((s) => s && s !== 'api' && !s.startsWith('['));
+  const base = segs.length ? human(segs.join(' ')) : 'Home';
+  return f.kind === 'route' ? `${base}` : base;
+}
+function where(f) {
+  const r = '/' + routeOf(f);
+  if (f.kind === 'page') return `A page at ${r}`;
+  if (f.kind === 'action') return `Something a person does, sent from a form or button`;
+  if (f.kind === 'route' || f.kind === 'api') return `${f.id.split(' ')[0]} request to ${r}`;
+  if (f.kind === 'metadata') return `Served to browsers and search engines at ${r}`;
+  if (f.kind === 'middleware') return `Runs before every request reaches a page`;
+  return f.entry;
+}
+const OUTSIDE = { stripe: 'Stripe (payments)', resend: 'Resend (email)', 'drizzle-orm': 'Database queries', '@libsql/client': 'Database', 'next-intl': 'Translations', next: 'Next.js', react: 'React', zod: 'Form checks (zod)', 'node-ical': 'Calendar files', '@vercel/blob': 'File storage', '@vercel/og': 'Image generation', 'react-dom': 'React' };
+const outsideName = (p) => OUTSIDE[p] || p;
+const stepName = (n) => n.label || human(n.name);
+const KIND_AREA = { page: 'Pages', action: 'Things people do' };
+const areaOf = (f) => f.area || KIND_AREA[f.kind] || 'Behind the scenes';
+const named = D.flows.some((f) => f.title);
+
+/* ---------- indexes ---------- */
+const usedBy = {}, entryOf = {}, written = new Set(), indexOf = {};
+D.flows.forEach((f, i) => (indexOf[f.id] = i));
+const H = D.history || [];
+D.flows.forEach((f) => f.steps.forEach((s) => s.changes.forEach((k) => written.add(k.replace(/\.[^.#]*$/, '')).add(k))));
+D.flows.forEach((f, fi) => { entryOf[f.steps[0].sid] = fi; f.steps.forEach((s) => (usedBy[s.sid] = usedBy[s.sid] || new Set()).add(fi)); });
+
+/** Rebuild the tree: each step's children are the steps right below it that are one level deeper. */
+function tree(f) {
+  const nodes = f.steps.map((s, i) => ({ ...s, i, kids: [] })), stack = [];
+  const roots = [];
+  nodes.forEach((n) => {
+    while (stack.length && stack[stack.length - 1].depth >= n.depth) stack.pop();
+    (stack.length ? stack[stack.length - 1].kids : roots).push(n);
+    stack.push(n);
+  });
+  return roots[0];
+}
+const isFramework = (n) => n.via.startsWith('framework');
+const isRender = (n) => n.via === 'render';
+const isPassed = (n) => n.via === 'passed as a value';
+const allChanges = (n) => n.changes.concat(...n.kids.map(allChanges));
+/** A step worth naming: does something, not a tiny formatting helper. */
+function isMain(n) {
+  if (n.role === 'data' || n.role === 'type' || isRender(n) || isPassed(n) || isFramework(n)) return false;
+  return !!n.doc || n.kids.some((k) => isMain(k) || isRender(k)) || n.changes.length > 0 || n.via.startsWith('event');
+}
+
+/* ---------- header and list ---------- */
+function header() {
+  $('title').textContent = D.repo;
+  $('count').textContent = `${D.flows.length} journeys`;
+  const s = D.stats, n = s.unplaced.length + s.unresolved.length + s.parseErrors.length;
+  $('issues').innerHTML = n ? `<button class="issues" data-tab="facts">${n} thing${n === 1 ? '' : 's'} the map could not place</button>` : '';
+  document.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', st.tab !== 'changes' && b.dataset.mode === st.mode));
+  $('changesBtn').hidden = !H.length;
+  $('changesBtn').setAttribute('aria-pressed', st.tab === 'changes');
+}
+
+function fileList() {
+  const q = st.q.toLowerCase();
+  if (q) {
+    const hits = D.files.map((f, i) => i).filter((i) => D.files[i].path.toLowerCase().includes(q));
+    $('list').innerHTML = hits.length ? hits.map((i) => fileBtn(i, 0, D.files[i].path)).join('') : '<p style="padding:16px;color:var(--ink-3)">No file matches.</p>';
+    return;
+  }
+  const root = { dirs: {}, files: [] };
+  D.files.forEach((f, i) => { let n = root; f.path.split('/').slice(0, -1).forEach((p) => (n = n.dirs[p] = n.dirs[p] || { dirs: {}, files: [] })); n.files.push(i); });
+  const cur = st.file !== null ? D.files[st.file].path : '';
+  const count = (n) => n.files.length + Object.values(n.dirs).reduce((a, d) => a + count(d), 0);
+  const walk = (n, prefix, depth) => {
+    let h = '';
+    Object.keys(n.dirs).sort().forEach((d) => {
+      const path = prefix + d + '/', open = st.dirs.has(path) || cur.startsWith(path);
+      h += `<details class="dir" data-dir="${esc(path)}" style="--d:${depth}"${open ? ' open' : ''}><summary>${esc(d)} <small style="margin-left:auto;color:var(--ink-3)">${count(n.dirs[d])}</small></summary>${walk(n.dirs[d], path, depth + 1)}</details>`;
+    });
+    n.files.sort((a, b) => D.files[a].path.localeCompare(D.files[b].path)).forEach((i) => (h += fileBtn(i, depth, D.files[i].path.split('/').pop())));
+    return h;
+  };
+  $('list').innerHTML = walk(root, '', 0);
+}
+
+function fileBtn(i, depth, label) {
+  const f = D.files[i], j = fileJourneys(f).size;
+  return `<button class="fl ff" data-file="${i}" style="--d:${depth}" aria-current="${st.tab === 'file' && st.file === i}">${f.unplaced.length ? '<span class="dot" title="has lines that belong to nothing"></span>' : ''}${esc(label)}<small>${j ? j + ' journey' + (j === 1 ? '' : 's') : ''}</small></button>`;
+}
+
+function list() {
+  document.querySelectorAll('[data-nav]').forEach((b) => b.setAttribute('aria-pressed', b.dataset.nav === st.nav));
+  $('q').placeholder = st.nav === 'files' ? 'Find a file' : 'Find a journey';
+  if (st.nav === 'files') return fileList();
+  const q = st.q.toLowerCase(), groups = {};
+  D.flows.forEach((f, i) => {
+    if (q && !(title(f).toLowerCase().includes(q) || f.id.toLowerCase().includes(q) || (f.summary || '').toLowerCase().includes(q))) return;
+    (groups[areaOf(f)] = groups[areaOf(f)] || []).push(i);
+  });
+  const cur = st.flow !== null ? areaOf(D.flows[st.flow]) : null;
+  let h = '';
+  Object.keys(groups).sort().forEach((a) => {
+    const items = groups[a].sort((x, y) => title(D.flows[x]).localeCompare(title(D.flows[y])));
+    const open = q || a === cur || st.areas.has(a);
+    h += `<details class="area" data-area="${esc(a)}"${open ? ' open' : ''}><summary>${esc(a)} <small>${items.length}</small></summary>`;
+    items.forEach((i) => { h += `<button class="fl" data-flow="${i}" aria-current="${st.tab === 'flow' && st.flow === i}">${esc(title(D.flows[i]))}</button>`; });
+    h += `</details>`;
+  });
+  if (!h) h = '<p style="padding:16px;color:var(--ink-3)">No journey matches.</p>';
+  if (!named) h = `<p class="hint">Names here are guessed from the code. Run <code>flow name</code> to have Claude write plain names.</p>` + h;
+  $('list').innerHTML = h;
+}
+
+/* ---------- the plain journey ---------- */
+function code(sid) {
+  const sl = D.slices[sid];
+  return sl ? '<pre>' + sl.map((l) => `<span class="ln">${l[0]}</span>${esc(l[1]) || ' '}`).join('\n') + '</pre>' : '';
+}
+
+function stepList(nodes, prefix) {
+  let h = '<ol class="steps">', helpers = [];
+  let k = 0;
+  nodes.forEach((n) => {
+    if (!isMain(n)) { if (n.role === 'function' && !isRender(n) && !isPassed(n) && !isFramework(n)) helpers.push(n); return; }
+    k++;
+    const id = prefix + k, open = st.open.has(n.i), sub = n.kids.filter(isMain);
+    const ch = [...new Set(n.changes)];
+    const others = (usedBy[n.sid] ? usedBy[n.sid].size : 1) - 1;
+    h += `<li class="step"><button class="sb" data-open="${n.i}" aria-expanded="${open}"><span class="num">${id}</span><span class="nm">${esc(stepName(n))}${n.labelStale ? ' <span class="tag w">code changed since named</span>' : ''}</span>` +
+      `<span class="more">${n.via.startsWith('event') ? '<span class="tag w">after an event</span>' : ''}${ch.length ? `<span class="tag acc">changes ${esc(ch.map(keyName).join(', ').toLowerCase())}</span>` : ''}${sub.length ? `${sub.length} inside ${open ? '▾' : '▸'}` : open ? '▾' : '▸'}</span>` +
+      (n.doc && (!n.label || open) ? `<span class="doc">${esc(n.doc)}</span>` : '') + `</button>`;
+    if (open) {
+      h += `<div class="inner">`;
+      if (sub.length) h += stepList(n.kids, id + '.');
+      if (n.reads.length) h += `<div class="helpers">Looks at: ${esc([...new Set(n.reads.map(keyName))].join(', ').toLowerCase())}</div>`;
+      if (others) h += `<div class="helpers">Also part of ${others} other journey${others === 1 ? '' : 's'}.</div>`;
+      h += `<div style="margin-top:6px"><button class="linkish" data-code="${n.i}">${st.code.has(n.i) ? 'Hide' : 'Show'} the code</button> <a class="fileln mono" data-file="${fileIndex[n.file]}">${esc(n.file)}</a></div>` + (st.code.has(n.i) ? code(n.sid) : '');
+      h += `</div>`;
+    }
+    h += `</li>`;
+  });
+  h += '</ol>';
+  if (!k) h = '<p class="lede" style="margin:0">Nothing beyond small helpers.</p>';
+  if (helpers.length) h += `<div class="helpers">Small helpers: ${esc([...new Set(helpers.map((n) => stepName(n).toLowerCase()))].join(', '))}</div>`;
+  return h;
+}
+
+function collect(n, pred, out = []) { n.kids.forEach((k) => { if (pred(k)) out.push(k); collect(k, pred, out); }); return out; }
+
+function plainView() {
+  const f = D.flows[st.flow], root = tree(f);
+  const doc = f.summary || root.doc;
+  let h = `<div class="where" style="margin:0 0 6px">${esc(areaOf(f))}</div><h2>${esc(title(f))}</h2>` + (doc ? `<p class="lede">${esc(doc)}</p>` : '') + `<div class="where">${esc(where(f))}` +
+    (f.title ? ` · named by ${f.nameBy === 'person' ? 'a person' : 'Claude, not yet reviewed'}${f.nameStale ? ' · <b>its code changed since</b>' : ''}` : '') + `</div>`;
+
+  const actions = collect(root, (n) => isPassed(n) && entryOf[n.sid] !== undefined && entryOf[n.sid] !== st.flow);
+  const uniq = (arr) => arr.filter((n, i) => arr.findIndex((m) => m.sid === n.sid) === i);
+  const mainKids = root.kids.filter((n) => !isFramework(n));
+
+  h += `<section><h3>What happens, in order</h3>${stepList(mainKids, '')}</section>`;
+
+  const shows = uniq(root.kids.filter(isRender));
+  if (shows.length) h += `<section><h3>What it shows</h3><div class="chips">${shows.map((n) => `<span class="chip">${esc(stepName(n))}</span>`).join('')}</div></section>`;
+
+  const acts = uniq(actions);
+  if (acts.length) h += `<section><h3>What people can do from here</h3><div class="cards">${acts.map((n) => { const g = D.flows[entryOf[n.sid]]; const d = g.summary || tree(g).doc; return `<button class="card" data-flow="${entryOf[n.sid]}"><b>${esc(title(g))}</b>${d ? `<span>${esc(d)}</span>` : ''}<span class="go">Open this journey →</span></button>`; }).join('')}</div></section>`;
+
+  // Only what runs as part of this journey: not the separate journeys it links to.
+  const own = [];
+  (function walk(n) { own.push(n); n.kids.forEach((k) => { if (!(isPassed(k) && entryOf[k.sid] !== undefined)) walk(k); }); })(root);
+  // Information is what the app changes somewhere. Constants and config are never written, so they are left out.
+  const isState = (k) => written.has(k) || written.has(k.replace(/\.[^.#]*$/, ''));
+  const reads = new Set(), changes = new Set();
+  own.forEach((s) => { s.reads.filter(isState).forEach((k) => reads.add(keyName(k))); s.changes.forEach((k) => changes.add(keyName(k))); });
+  changes.forEach((k) => reads.delete(k));
+  const fw = own.filter((s) => s.via === 'framework: layout' || s.via === 'framework: template').map(stepName);
+  if (reads.size || changes.size || f.outside.length || fw.length) {
+    h += `<section><h3>Around it</h3><div class="info">`;
+    if (changes.size) h += `<div class="k">Changes</div><div>${esc([...changes].join(', '))}</div>`;
+    if (reads.size) h += `<div class="k">Looks at</div><div>${esc([...reads].join(', '))}</div>`;
+    const out = [...new Set(f.outside.map(outsideName))];
+    if (out.length) h += `<div class="k">Uses outside services</div><div>${esc(out.join(', '))}</div>`;
+    if (fw.length) h += `<div class="k">Inside</div><div>${esc([...new Set(fw)].join(', '))}</div>`;
+    h += `</div></section>`;
+  }
+  const mine = H.filter((c) => c.journeys.some((j) => j.id === f.id));
+  if (H.length) {
+    h += `<section><h3>History</h3>`;
+    if (!mine.length) h += `<p class="lede" style="margin:0">No saved change touched this journey in the last ${H.length} changes.</p>`;
+    else h += `<ul class="hist">${mine.slice(0, 12).map((c) => { const j = c.journeys.find((x) => x.id === f.id); return `<li><div class="meta">${esc(c.date)} · ${esc(c.id)}${c.merge ? ' · merge' : ''}</div><div><b>${esc(c.subject)}</b></div><div style="color:var(--ink-2)">${esc(what(j))}</div></li>`; }).join('')}</ul>` + (mine.length > 12 ? `<p class="helpers">and ${mine.length - 12} earlier</p>` : '');
+    h += `</section>`;
+  }
+  if (f.unresolved.length) h += `<div class="note bad"><b>This journey may do more than shown here.</b> ${f.unresolved.length} call${f.unresolved.length === 1 ? '' : 's'} could not be followed. <button class="linkish" data-mode="built">See them</button></div>`;
+  h += `<div class="note plain">Read from the code, not run yet. Once a scenario runs this journey, it will show what actually happens.</div>`;
+  $('main').innerHTML = h;
+}
+
+/* ---------- how it's built ---------- */
+function builtView() {
+  const f = D.flows[st.flow], s = D.stats;
+  let h = `<h2 class="mono" style="font-size:20px">${esc(f.id)}</h2><div class="where mono">${esc(f.entry)} · ${f.steps.length} steps · repo ${s.files} files, ${s.lines.toLocaleString()} lines, fingerprint ${esc(D.fingerprint)}</div><div class="tree">`;
+  f.steps.forEach((x, i) => {
+    const open = st.open.has('b' + i);
+    h += `<div class="tr" style="--d:${x.depth}"><button class="th" data-bopen="${i}"><span class="i">${i + 1}</span><span class="n">${esc(x.name)}</span>` +
+      (x.via !== 'call' && x.via !== 'entry' ? `<span class="tag ${x.via.startsWith('event') ? 'w' : ''}">${esc(x.via)}</span>` : '') +
+      (x.role === 'data' ? '<span class="tag">data</span>' : '') + `<span class="f">${esc(x.file)}:${esc(x.lines)}</span></button>`;
+    if (open) h += `<div class="td" style="padding-bottom:0"><a class="fileln mono" data-file="${fileIndex[x.file]}">Open ${esc(x.file)}</a></div>`;
+    if (open) {
+      h += `<div class="td">`;
+      if (x.reads.length) h += `<div class="helpers">reads ${esc(x.reads.join(', '))}</div>`;
+      if (x.changes.length) h += `<div class="helpers">changes ${esc(x.changes.join(', '))}</div>`;
+      h += code(x.sid) + `</div>`;
+    }
+    h += `</div>`;
+  });
+  h += `</div>`;
+  if (f.outside.length) h += `<div class="note plain">Packages: <code>${esc(f.outside.join(', '))}</code></div>`;
+  if (f.unresolved.length) h += `<div class="note bad"><b>Calls not followed</b>` + f.unresolved.map((u) => `<div class="row"><code>${esc(u.at)}</code> <code>${esc(u.code)}</code><div>${esc(u.why)}</div></div>`).join('') + `</div>`;
+  if (f.notFollowed) h += `<div class="note plain">${f.notFollowed} method calls on values (like <code>user.save()</code>) were not followed.</div>`;
+  $('main').innerHTML = h;
+}
+
+function fileView() {
+  const f = D.files[st.file], parts = f.path.split('/');
+  const order = f.slices.map((s, i) => i).filter((i) => f.owner.includes(i)).sort((a, b) => f.owner.indexOf(a) - f.owner.indexOf(b));
+  const code = order.filter((i) => f.slices[i].role !== 'support');
+  const js = fileJourneys(f), un = f.owner.filter((o) => o === -1).length;
+  const isState = (k) => written.has(k) || written.has(k.replace(/\.[^.#]*$/, ''));
+  let h = `<div class="where" style="margin:0 0 6px">${esc(parts.slice(0, -1).join('/') || 'top folder')}</div><h2 class="mono" style="font-size:22px">${esc(parts[parts.length - 1])}</h2>`;
+  h += `<p class="lede">${f.lines.length} lines. ${code.length} part${code.length === 1 ? '' : 's'}${js.size ? `, run by ${js.size} journey${js.size === 1 ? '' : 's'}` : ', and no journey runs any of them'}.${un ? ` <b>${un} line${un === 1 ? '' : 's'} belong${un === 1 ? 's' : ''} to nothing.</b>` : ' Every line has one owner.'}</p>`;
+  if (f.unplaced.length) h += `<div class="note bad">${f.unplaced.map((u) => `<div class="row"><b>Line ${u.line}</b> <code>${esc(u.code)}</code><div>${esc(u.why)}. No journey owns it.</div></div>`).join('')}</div>`;
+  if (f.parseErrors.length) h += `<div class="note warn">The parser could not read line ${f.parseErrors.join(', ')}. Calls near it may be missing.</div>`;
+  h += `<section><div class="code" id="codebox">`;
+  const card = (i) => {
+    const x = f.slices[i];
+    const jl = x.journeys.slice(0, 8).map((k) => `<span class="chip" data-flow="${k}" role="link">${esc(title(D.flows[k]))}</span>`).join('') + (x.journeys.length > 8 ? ` <span class="helpers">and ${x.journeys.length - 8} more</span>` : '');
+    const tags = [];
+    if (x.role === 'data') tags.push('information'); else if (x.role === 'type') tags.push('shape of data');
+    if (x.loose) tags.push('no journey reaches this');
+    if (x.onLoad && !x.journeys.length) tags.push('runs when the file loads');
+    if (x.hand) tags.push('placed by hand');
+    const looks = [...new Set(x.reads.filter(isState).map(keyName))], ch = [...new Set(x.changes.map(keyName))];
+    return `<div class="pcard"><b>${esc(x.label || human(x.name))}</b> <code>${esc(x.name)}</code>${tags.length ? ` <span class="helpers">${esc(tags.join(' · '))}</span>` : ''}` +
+      (x.doc ? `<div class="helpers" style="margin-top:2px">${esc(x.doc)}</div>` : '') +
+      (x.journeys.length ? `<div style="margin-top:6px">${jl}</div>` : `<div class="helpers">No journey runs this.</div>`) +
+      (ch.length ? `<div class="helpers">Changes ${esc(ch.join(', ').toLowerCase())}</div>` : '') +
+      (looks.length ? `<div class="helpers">Looks at ${esc(looks.join(', ').toLowerCase())}</div>` : '') + `</div>`;
+  };
+  // Neighbouring parts get clearly different colours: hues assigned in file order from a spaced set.
+  const HUES = [205, 28, 275, 145, 340, 55, 240, 175, 0, 95], hueAt = {};
+  code.forEach((i, k) => (hueAt[i] = HUES[k % HUES.length]));
+  f.lines.forEach((t, r) => {
+    const o = f.owner[r], x = o >= 0 ? f.slices[o] : null, sup = x && x.role === 'support';
+    if (st.hl !== null && o === st.hl && f.owner.indexOf(o) === r) h += card(o);
+    const part = x && !sup && t.trim() !== '';
+    const cls = o === -1 ? ' un' : part ? ' part' : '';
+    const dim = st.hl !== null && o !== st.hl ? ' dim' : '';
+    h += `<div class="ln${cls}${dim}" data-ln="${r}"${x && !sup ? ` data-o="${o}" title="${esc(x.label || human(x.name))}"` : ''} style="--h:${x ? hueAt[o] ?? 0 : 0}"><span class="n">${r + 1}</span><code>${esc(t) || ' '}</code></div>`;
+  });
+  $('main').innerHTML = h + `</div></section>`;
+}
+
+function what(j) {
+  if (j.state === 'new') return 'This journey first appears.';
+  if (j.state === 'gone') return 'This journey was removed.';
+  const p = [];
+  if (j.edited.length) p.push('changed ' + j.edited.join(', ').toLowerCase());
+  if (j.added.length) p.push('now also ' + j.added.join(', ').toLowerCase());
+  if (j.removed.length) p.push('no longer ' + j.removed.join(', ').toLowerCase());
+  if (j.nowChanges.length) p.push('now changes ' + j.nowChanges.join(', '));
+  const t = p.join('; ');
+  return t.charAt(0).toUpperCase() + t.slice(1) + '.';
+}
+
+function changesView() {
+  let h = `<h2>Changes</h2><p class="lede">The last ${H.length} saved changes, newest first, told by the journeys they changed. Click a journey to open it.</p><section><ul class="tl">`;
+  H.forEach((c) => {
+    h += `<li><div class="meta">${esc(c.date)} · ${esc(c.id)}${c.merge ? ' · merge' : ''}</div><div class="subj">${esc(c.subject)}</div>`;
+    if (!c.journeys.length) h += `<div style="color:var(--ink-2);font-size:14px">No journey changed.${c.code.length ? ' Code no journey runs: ' + esc(c.code.join(', ').toLowerCase()) + '.' : ''}</div>`;
+    const shown = c.journeys.slice(0, 8);
+    shown.forEach((j) => {
+      const i = indexOf[j.id], t = i !== undefined ? title(D.flows[i]) : j.title;
+      const inner = `<b>${esc(t)}</b> <span>${esc(what(j))}</span>`;
+      h += i !== undefined && j.state !== 'gone' ? `<button class="jr" data-flow="${i}">${inner}</button>` : `<div class="jr">${inner}</div>`;
+    });
+    if (c.journeys.length > shown.length) h += `<div class="helpers">and ${c.journeys.length - shown.length} more journeys</div>`;
+    if (c.other.length) h += `<div class="helpers">Other files: ${esc(c.other.slice(0, 6).join(', '))}${c.other.length > 6 ? ' and more' : ''}</div>`;
+    h += `</li>`;
+  });
+  $('main').innerHTML = h + `</ul></section>`;
+}
+
+function factsView() {
+  const s = D.stats;
+  const rows = (v) => v.map((u) => `<div class="row"><code>${esc(u.at)}</code><div><code>${esc(u.code)}</code></div><div style="color:var(--ink-2)">${esc(u.why)}</div></div>`).join('');
+  let h = `<h2>What the map could not place</h2><p class="lede">Every line of code should belong to exactly one journey or helper. These are the places where the lifter could not prove where something belongs, so it says so instead of guessing.</p>`;
+  if (s.unplaced.length) h += `<section><h3>Code that runs on its own</h3><p class="lede" style="margin:0 0 8px">These lines run as soon as a file loads, outside any function, so no journey owns them.</p><div class="note plain" style="margin:0">${rows(s.unplaced)}</div></section>`;
+  if (s.unresolved.length) h += `<section><h3>Calls that could not be followed</h3><div class="note plain" style="margin:0">${rows(s.unresolved)}</div></section>`;
+  if (s.parseErrors.length) h += `<section><h3>Code the parser could not read</h3><div class="note warn" style="margin:0">${s.parseErrors.map((p) => `<div class="row"><code>${esc(p)}</code></div>`).join('')}</div></section>`;
+  if (s.loose.length) h += `<section><h3>Code no journey uses</h3><p class="lede" style="margin:0 0 8px">Nothing runs these, so nothing reviews them.</p><div class="note plain" style="margin:0">${s.loose.map((sid) => `<div class="row"><b>${esc(human(sid.split('#').pop()))}</b> <code style="color:var(--ink-3)">${esc(sid.split('#')[0])}</code></div>`).join('')}</div></section>`;
+  if (!s.unplaced.length && !s.unresolved.length && !s.loose.length && !s.parseErrors.length) h += `<div class="note plain">Everything is accounted for.</div>`;
+  $('main').innerHTML = h;
+}
+
+function render() {
+  header(); list();
+  if (st.tab === 'file' && st.file !== null) fileView();
+  else if (st.tab === 'changes') changesView();
+  else if (st.tab === 'facts' || st.flow === null) factsView();
+  else if (st.mode === 'built') builtView();
+  else plainView();
+}
+
+document.addEventListener('click', (e) => {
+  const t = e.target.closest('[data-flow],[data-open],[data-bopen],[data-code],[data-tab],[data-mode],[data-nav],[data-file],[data-hl],[data-o]');
+  if (!t) return;
+  const d = t.dataset;
+  if (d.nav) { st.nav = d.nav; st.q = ''; $('q').value = ''; list(); return; }
+  if (d.file !== undefined) { st.file = +d.file; st.tab = 'file'; st.nav = 'files'; st.hl = null; location.hash = 'file=' + encodeURIComponent(D.files[st.file].path); render(); window.scrollTo(0, 0); return; }
+  if (d.o !== undefined && d.flow === undefined) { const i = +d.o; const y = t.getBoundingClientRect().top; st.hl = st.hl === i ? null : i; render(); const el = document.querySelector(`[data-ln="${t.dataset.ln}"]`); if (el) window.scrollBy(0, el.getBoundingClientRect().top - y); return; }
+  if (d.hl !== undefined) { const i = +d.hl; st.hl = st.hl === i ? null : i; render(); if (st.hl !== null) { const r = D.files[st.file].owner.indexOf(i); const el = document.querySelector(`[data-ln="${r}"]`); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' }); } return; }
+  if (d.flow !== undefined) { st.flow = +d.flow; st.tab = 'flow'; st.open = new Set(); st.code = new Set(); location.hash = D.flows[st.flow].slug; render(); window.scrollTo(0, 0); }
+  else if (d.open !== undefined) { const i = +d.open; st.open.has(i) ? st.open.delete(i) : st.open.add(i); render(); }
+  else if (d.bopen !== undefined) { const k = 'b' + d.bopen; st.open.has(k) ? st.open.delete(k) : st.open.add(k); render(); }
+  else if (d.code !== undefined) { const i = +d.code; st.code.has(i) ? st.code.delete(i) : st.code.add(i); render(); }
+  else if (d.tab) { st.tab = d.tab; location.hash = d.tab; render(); window.scrollTo(0, 0); }
+  else if (d.mode) { st.mode = d.mode; if (st.tab !== 'flow' && st.flow !== null) st.tab = 'flow'; render(); }
+});
+$('q').addEventListener('input', (e) => { st.q = e.target.value; list(); });
+document.addEventListener('mouseover', (e) => {
+  const l = e.target.closest && e.target.closest('.code .ln');
+  const o = l && l.dataset.o;
+  if (o === st.hot) return;
+  document.querySelectorAll('.code .ln.hot').forEach((x) => x.classList.remove('hot'));
+  st.hot = o;
+  if (o !== undefined && o !== null) document.querySelectorAll(`.code .ln[data-o="${o}"]`).forEach((x) => x.classList.add('hot'));
+});
+document.addEventListener('toggle', (e) => {
+  const ds = e.target.dataset || {};
+  if (ds.area) e.target.open ? st.areas.add(ds.area) : st.areas.delete(ds.area);
+  if (ds.dir) e.target.open ? st.dirs.add(ds.dir) : st.dirs.delete(ds.dir);
+}, true);
+
+const h0 = decodeURIComponent(location.hash.slice(1));
+const i0 = D.flows.findIndex((f) => f.slug === h0);
+if (h0.startsWith('file=') && fileIndex[h0.slice(5)] !== undefined) { st.tab = 'file'; st.nav = 'files'; st.file = fileIndex[h0.slice(5)]; st.flow = 0; }
+else if (h0 === 'facts' || h0 === 'changes') { st.tab = h0; st.flow = D.flows.length ? 0 : null; }
+else st.flow = i0 >= 0 ? i0 : D.flows.length ? 0 : null;
+render();
+</script>
+</body>
+</html>

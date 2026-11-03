@@ -1,0 +1,869 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Flow source</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a working bench. One column, three stages that really depend on each other: parse, trace, review. */
+:root{
+  --bg:#edf0ec; --surface:#fbfbf9; --surface-2:#e3e8e3; --ink:#1a2227; --ink-2:#4a585e; --ink-3:#77858a;
+  --line:#d3d9d3; --line-strong:#b6c0bb;
+  --accent:#0b6e84; --accent-soft:#d4eaee; --accent-ink:#07495a; --on-accent:#ffffff;
+  --good:#1f7a4d; --good-bg:#dcefe3; --warn:#946000; --warn-bg:#f5e6c4; --bad:#b3321f; --bad-bg:#f7ddd6;
+  --bar-l:44%;
+  --f-display:'Familjen Grotesk','Hanken Grotesk',system-ui,sans-serif;
+  --f-body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12181b; --surface:#192125; --surface-2:#222c31; --ink:#e6ebea; --ink-2:#a3b1b5; --ink-3:#75858a;
+    --line:#2d3a40; --line-strong:#41525a;
+    --accent:#5cc0d6; --accent-soft:#17353c; --accent-ink:#a9e3ef; --on-accent:#0a1e24;
+    --good:#5fcb93; --good-bg:#16352a; --warn:#e6b450; --warn-bg:#3b2f14; --bad:#f0897a; --bad-bg:#3e1e19;
+    --bar-l:64%; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12181b; --surface:#192125; --surface-2:#222c31; --ink:#e6ebea; --ink-2:#a3b1b5; --ink-3:#75858a;
+  --line:#2d3a40; --line-strong:#41525a;
+  --accent:#5cc0d6; --accent-soft:#17353c; --accent-ink:#a9e3ef; --on-accent:#0a1e24;
+  --good:#5fcb93; --good-bg:#16352a; --warn:#e6b450; --warn-bg:#3b2f14; --bad:#f0897a; --bad-bg:#3e1e19;
+  --bar-l:64%; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--ink); font:400 15px/1.55 var(--f-body);
+  padding-block:28px 72px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap{max-width:760px;margin:0 auto}
+h1{font:600 38px/1.05 var(--f-display);letter-spacing:-.01em;margin:0 0 10px;text-wrap:balance}
+h2{font:600 22px/1.2 var(--f-display);margin:0;text-wrap:balance}
+h3{font:600 15px/1.3 var(--f-body);margin:0}
+p{margin:0}
+.lede{color:var(--ink-2);max-width:62ch}
+.stage{margin-top:44px}
+.stage-head{display:flex;align-items:center;gap:12px;margin:0 0 8px}
+.num{font:500 13px var(--f-mono);color:var(--accent-ink);background:var(--accent-soft);border-radius:6px;padding:3px 8px}
+.stage .lede{margin:0 0 16px}
+.strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.pill{font:500 13px var(--f-body);padding:6px 11px;border-radius:8px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pill b{color:var(--ink);font-weight:600}
+.pill.good{background:var(--good-bg);border-color:transparent;color:var(--ink)}
+.pill.bad{background:var(--bad-bg);border-color:transparent;color:var(--ink)}
+.pill.warn{background:var(--warn-bg);border-color:transparent;color:var(--ink)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{font:500 14px var(--f-body);padding:9px 14px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.small{padding:6px 11px;font-size:13px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.tab{font:400 12px var(--f-mono);padding:6px 10px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.tab[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.tab .dot{width:7px;height:7px;border-radius:50%;background:var(--bad)}
+.code{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.code-in{min-width:max-content;padding:8px 0}
+.ln{display:grid;grid-template-columns:40px 4px 1fr;font:400 12.5px/1.7 var(--f-mono);transition:opacity .15s}
+.ln .n{color:var(--ink-3);text-align:right;padding-right:10px;user-select:none}
+.ln .bar{background:hsl(var(--h) 55% var(--bar-l))}
+.ln code{display:block;white-space:pre;padding:0 14px 0 12px;background:hsl(var(--h) 60% 50% / .1);font:inherit}
+.ln code em{font:500 11px var(--f-body);font-style:normal;margin-left:12px;color:var(--ink-2)}
+.ln.un .bar{background:var(--bad)}
+.ln.un code{background:var(--bad-bg)}
+.ln.dim{opacity:.28}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.chip{display:inline-flex;align-items:center;gap:7px;font:400 12px var(--f-mono);padding:5px 9px;border:1px solid var(--line);background:var(--surface);border-radius:6px;cursor:pointer;color:var(--ink)}
+.chip i{width:9px;height:9px;border-radius:2px;background:hsl(var(--h) 55% var(--bar-l))}
+.chip small{color:var(--ink-3);font-size:11px}
+.chip[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.chip.un i{background:var(--bad)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px;margin:14px 0 0}
+.m{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px}
+.m b{display:block;font:600 24px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.m span{font-size:12px;color:var(--ink-2)}
+.checks{display:grid;gap:7px;margin:14px 0 0}
+.check{display:flex;gap:9px;align-items:flex-start;font-size:14px}
+.check svg{flex:none;margin-top:2px}
+.callout{border-radius:10px;padding:13px 15px;font-size:14px;margin-top:14px}
+.callout.bad{background:var(--bad-bg)}
+.callout.good{background:var(--good-bg)}
+.callout.warn{background:var(--warn-bg)}
+.callout.plain{background:var(--surface);border:1px solid var(--line)}
+.callout strong{font-weight:600}
+.callout .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.callout code,.mono{font:400 12.5px var(--f-mono)}
+select{font:400 13px var(--f-mono);padding:7px 9px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);max-width:100%}
+.flow{border:1px solid var(--line);background:var(--surface);border-radius:10px;margin-bottom:8px;overflow:hidden}
+.flow-h{display:flex;width:100%;align-items:center;gap:10px;padding:12px 14px;background:none;border:0;text-align:left;cursor:pointer}
+.flow-h .name{font:500 14px var(--f-mono)}
+.flow-h .meta{margin-left:auto;font-size:12px;color:var(--ink-2)}
+.step.plain{font:400 14px var(--f-body)}
+.name.plain{font:500 15px var(--f-body)!important}
+.brow{padding:8px 0;border-top:1px solid var(--line)}
+.brow:first-of-type{border-top:0}
+.brow .k{font-weight:600;font-size:14px}
+.brow .v{font-size:14px;color:var(--ink-2)}
+.brow .v b{color:var(--ink);font-weight:500}
+.chev{width:16px;height:16px;flex:none;color:var(--ink-3);transition:transform .15s}
+.flow-h[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.steps{border-top:1px solid var(--line)}
+.step{display:flex;align-items:center;gap:8px;width:100%;padding:9px 14px 9px calc(14px + var(--d) * 18px);border:0;border-top:1px solid var(--line);background:none;text-align:left;cursor:pointer;font:400 13px var(--f-mono)}
+.step:first-child{border-top:0}
+.step[aria-pressed="true"]{background:var(--accent-soft)}
+.step .idx{color:var(--ink-3);font-size:11px;min-width:18px}
+.tag{font:500 11px var(--f-body);padding:2px 7px;border-radius:5px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.tag.acc{background:var(--accent-soft);color:var(--accent-ink)}
+.tag.warn{background:var(--warn-bg);color:var(--ink)}
+.tag.bad{background:var(--bad-bg);color:var(--ink)}
+.tag.good{background:var(--good-bg);color:var(--ink)}
+.tag.m{font:400 12px var(--f-mono);display:inline-block;margin:0 6px 6px 0;border:0;padding:3px 8px;border-radius:6px}
+.tag.r{background:var(--accent-soft);color:var(--accent-ink)}
+.tag.w{background:var(--bad-bg);color:var(--ink)}
+.detail{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:15px 16px;margin-top:12px}
+.detail .head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.detail .head .f{font:400 12px var(--f-mono);color:var(--ink-3)}
+.src{margin:12px 0;border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow-x:auto}
+.src .code-in{padding:6px 0}
+.lab{font-size:12px;color:var(--ink-2);margin:12px 0 6px}
+.seg{display:inline-grid;grid-template-columns:1fr 1fr;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;max-width:100%}
+.seg button{padding:9px 14px;background:var(--surface);border:0;font:500 14px var(--f-body);color:var(--ink-2);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.card{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.card-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-bottom:8px}
+.card-h .name{font:500 14px var(--f-mono)}
+.diffs{display:grid;gap:10px;margin-top:10px}
+.diff-k{font:500 12px var(--f-mono);margin-bottom:4px}
+.dl{display:block;font:400 12.5px/1.55 var(--f-mono);white-space:pre-wrap;word-break:break-word;padding:2px 9px;border-radius:4px}
+.dl.rm{background:var(--bad-bg)}
+.dl.ad{background:var(--good-bg)}
+.dl.ctx{color:var(--ink-3)}
+.sub{font-size:13px;color:var(--ink-2)}
+.hint{font-size:13px;color:var(--ink-3);margin-top:10px}
+.foot{margin-top:48px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:18px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:480px){h1{font-size:32px}.step{flex-wrap:wrap}}
+</style>
+<style>
+.inp{font:400 15px var(--f-body);width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink)}
+.row2{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+.si{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line);font-size:14px}
+.si:first-child{border-top:0}
+.si .idx{font:500 11px var(--f-mono);color:var(--ink-3);min-width:18px}
+.si .lbl{flex:1;min-width:0}
+.ib{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;color:var(--ink-2);font-size:15px;line-height:1}
+.ib:hover{border-color:var(--ink-3)}
+.ib:disabled{opacity:.35;cursor:default}
+.tr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:9px 14px 9px calc(14px + var(--d) * 20px);border-top:1px solid var(--line);font-size:14px}
+.tr:first-child{border-top:0}
+.tr.cons{color:var(--ink-2)}
+.pal-l{font-size:12px;color:var(--ink-2);margin:14px 0 6px}
+.chip.add{font:500 13px var(--f-body)}
+pre.gen{margin:10px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font:400 12.5px/1.6 var(--f-mono);overflow-x:auto}
+.tag.newfp{background:var(--warn-bg);color:var(--ink)}
+</style>
+<style>.ln.hl code{background:var(--warn-bg)}
+.ta{width:100%;min-height:120px;font:400 12.5px/1.6 var(--f-mono);padding:10px 12px;border:1px solid var(--line-strong);border-radius:8px;background:var(--bg);color:var(--ink);white-space:pre;overflow:auto;resize:vertical}
+select.sel{max-width:100%;font:400 13px var(--f-body)}
+.st{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.lock{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2)}</style>
+
+<div class="wrap">
+  <header>
+    <h1>Flow source</h1>
+    <p class="lede">The flow document is the only thing that is edited. The code files are generated from it and locked. If anyone edits the code directly, a drift check reads it back and stops the change until it is lifted into the flows or thrown away.</p>
+    <div id="strip" class="strip"></div>
+  </header>
+
+  <section class="stage">
+    <div class="stage-head"><span class="num">1</span><h2>The flow document</h2></div>
+    <p class="lede">Journeys are ordered steps. Behaviors hold the logic each step uses. Wiring says which event reaches which handler. Edit any of it and the files below regenerate.</p>
+    <div id="d1"></div>
+  </section>
+
+  <section class="stage">
+    <div class="stage-head"><span class="num">2</span><h2>Generated files</h2></div>
+    <p class="lede">What the machine runs. Read-only. Try editing the code the way a person or an AI agent might, straight in the files.</p>
+    <div id="d2"></div>
+  </section>
+
+  <section class="stage">
+    <div class="stage-head"><span class="num">3</span><h2>Drift check</h2></div>
+    <p class="lede">The lifter reads the files back into a flow document and compares it with the real one. They must match.</p>
+    <div id="d3"></div>
+  </section>
+
+  <div class="foot">
+    <span class="sub">Everything here runs locally. Nothing is sent anywhere.</span>
+    <button class="btn" id="reset">Reset</button>
+  </div>
+</div>
+
+<script>
+var ORDER = ['bus.js', 'flags.js', 'auth.js', 'billing.js', 'mailer.js', 'agent.js', 'ui.js', 'routes.js'];
+
+var SRC = {
+  'bus.js': [
+    '// A tiny event bus. Handlers are looked up by name at runtime.',
+    'const handlers = {};',
+    '',
+    'function on(evt, fn) { handlers[evt] = (handlers[evt] || []).concat([fn]); }',
+    '',
+    'function emit(evt) { (handlers[evt] || []).forEach(function (fn) { fn(); }); }'
+  ].join('\n'),
+  'flags.js': [
+    '// Feature flags live in state.',
+    'function isEnabled(name) { return !!S.flags[name]; }'
+  ].join('\n'),
+  'auth.js': [
+    '// Sign-up and sessions.',
+    'function validateForm(f) {',
+    "  if (f.email.indexOf('@') < 0) { throw new Error('bad email'); }",
+    '  return f;',
+    '}',
+    '',
+    'function createUser(f) {',
+    "  const id = 'u' + (Object.keys(S.users).length + 1);",
+    '  S.users = Object.assign({}, S.users, { [id]: { email: f.email } });',
+    "  S.plans = Object.assign({}, S.plans, { [id]: { plan: 'free', interval: 'month' } });",
+    '  return id;',
+    '}',
+    '',
+    "function issueSid(id) { S.sid = 'sid-' + id; }",
+    '',
+    "function loadSession() { S.user = S.sid.replace('sid-', ''); }"
+  ].join('\n'),
+  'billing.js': [
+    '// Pricing and plan changes.',
+    'function resolvePrice(plan) {',
+    "  const table = isEnabled('newPricing') ? { pro: 24 } : { pro: 20 };",
+    '  return table[plan];',
+    '}',
+    '',
+    'function chargeCard(amount) { S.charged = (S.charged || 0) + amount; }',
+    '',
+    'function applyPlanChange(plan) {',
+    "  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: 'month' } });",
+    "  emit('plan_changed');",
+    '}',
+    '',
+    'function planGuard(action) {',
+    "  if (S.plans[S.user].plan === 'free') { throw new Error('upgrade required for ' + action); }",
+    '}'
+  ].join('\n'),
+  'mailer.js': [
+    '// Email. The plan-changed handler is wired by name.',
+    'function sendEmail(kind) {',
+    '  const u = S.users[S.user];',
+    "  S.outbox = (S.outbox || []).concat([kind + ' -> ' + u.email]);",
+    '}',
+    '',
+    "function onPlanChanged() { sendEmail('plan-changed'); }",
+    '',
+    "on('plan_changed', onPlanChanged);"
+  ].join('\n'),
+  'agent.js': [
+    '// The agent: prompt, tools and reply.',
+    'function buildSystemPrompt() {',
+    "  const base = 'You help a ' + S.plans[S.user].plan + ' user.';",
+    "  S.prompt = isEnabled('betaUi') ? base + ' Beta on.' : base;",
+    '}',
+    '',
+    'function pickTools() {',
+    "  S.tools = S.plans[S.user].plan === 'free' ? ['search'] : ['search', 'code'];",
+    '}',
+    '',
+    "function streamReply() { S.reply = 'ok:' + S.prompt.length + ':' + S.tools.length; }"
+  ].join('\n'),
+  'ui.js': [
+    '// The header badge.',
+    'function renderHeader() { S.header = S.plans[S.user].plan.toUpperCase(); }'
+  ].join('\n'),
+  'routes.js': [
+    '// User actions. Each one is a journey.',
+    'function signUp(f) {',
+    '  validateForm(f);',
+    '  const id = createUser(f);',
+    '  issueSid(id);',
+    '  loadSession();',
+    "  sendEmail('welcome');",
+    '  renderHeader();',
+    '}',
+    '',
+    'function logIn(f) {',
+    '  validateForm(f);',
+    "  issueSid('u1');",
+    '  loadSession();',
+    '  renderHeader();',
+    '}',
+    '',
+    'function upgradePlan(plan) {',
+    '  loadSession();',
+    '  chargeCard(resolvePrice(plan));',
+    '  applyPlanChange(plan);',
+    '  renderHeader();',
+    '}',
+    '',
+    'function askAgent() {',
+    '  loadSession();',
+    "  planGuard('agent');",
+    '  buildSystemPrompt();',
+    '  pickTools();',
+    '  streamReply();',
+    '}',
+    '',
+    'function cancelPlan() {',
+    '  loadSession();',
+    "  applyPlanChange('free');",
+    '  renderHeader();',
+    '}'
+  ].join('\n')
+};
+
+var PATCH = [
+  { file: 'billing.js',
+    find: '  return table[plan];',
+    rep: "  return table[plan] * (S.interval === 'year' ? 10 : 1);" },
+  { file: 'billing.js',
+    find: "  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: 'month' } });",
+    rep: "  const interval = S.interval || 'month';\n  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: interval } });" },
+  { file: 'mailer.js',
+    find: "[kind + ' -> ' + u.email]",
+    rep: "[kind + (S.interval ? ' (' + S.interval + ')' : '') + ' -> ' + u.email]" }
+];
+
+var NEWFILES = {
+  'seed.js': [
+    '// One-off script that seeds annual prices.',
+    'function seedAnnualPrices() {',
+    '  S.annualPrices = { pro: 240 };',
+    '}'
+  ].join('\n')
+};
+
+function base(o) {
+  o = o || {};
+  var s = {
+    users: { u1: { email: 'a@x.com' } },
+    plans: { u1: o.plan || { plan: 'free', interval: 'month' } },
+    sid: 'sid-u1',
+    user: 'u1',
+    flags: { newPricing: true, betaUi: true }
+  };
+  if (o.interval) s.interval = o.interval;
+  return s;
+}
+
+var JOURNEYS = [
+  { id: 'sign-up', entry: 'signUp', args: [{ email: 'new@x.com' }], init: function () { return base(); } },
+  { id: 'log-in', entry: 'logIn', args: [{ email: 'a@x.com' }], init: function () { return base(); } },
+  { id: 'upgrade-plan', entry: 'upgradePlan', args: ['pro'], init: function () { return base({ interval: 'year' }); } },
+  { id: 'ask-the-agent', entry: 'askAgent', args: [], init: function () { return base({ plan: { plan: 'pro', interval: 'month' } }); } },
+  { id: 'cancel-plan', entry: 'cancelPlan', args: [], init: function () { return base({ interval: 'year', plan: { plan: 'pro', interval: 'year' } }); } }
+];
+
+function parseFile(name, src, asg) {
+  var lines = src.split('\n'), spans = [], i, j, k;
+  for (i = 0; i < lines.length; i++) {
+    var m = /^function\s+(\w+)/.exec(lines[i]);
+    if (!m) continue;
+    var depth = 0, started = false;
+    for (j = i; j < lines.length; j++) {
+      var t = lines[j].replace(/\/\/.*$/, '');
+      for (var c = 0; c < t.length; c++) {
+        if (t[c] === '{') { depth++; started = true; }
+        else if (t[c] === '}') depth--;
+      }
+      if (started && depth === 0) break;
+    }
+    spans.push({ name: m[1], start: i, end: j });
+    i = j;
+  }
+  var own = lines.map(function () { return null; });
+  spans.forEach(function (s) { for (var q = s.start; q <= s.end; q++) own[q] = s.name; });
+  spans.forEach(function (s) {
+    var q = s.start - 1;
+    while (q >= 0 && own[q] === null && /^\s*(\/\/.*)?$/.test(lines[q])) { own[q] = s.name; q--; }
+  });
+  var support = name + ' (support)', unplaced = [], hand = {};
+  for (k = 0; k < lines.length; k++) {
+    if (own[k] !== null) continue;
+    if (asg && asg[k]) { own[k] = asg[k]; hand[k] = true; }
+    else if (/^\w+\(.*\);?\s*$/.test(lines[k])) unplaced.push(k);
+    else own[k] = support;
+  }
+  var slices = [], by = {};
+  for (k = 0; k < lines.length; k++) {
+    var n = own[k];
+    if (n === null) continue;
+    if (!by[n]) { by[n] = { name: n, file: name, kind: n === support ? 'support' : 'fn', idx: [], text: [], hand: 0 }; slices.push(by[n]); }
+    by[n].idx.push(k);
+    by[n].text.push(lines[k]);
+    if (hand[k]) by[n].hand++;
+  }
+  slices.forEach(function (s) { s.from = s.idx[0] + 1; s.to = s.idx[s.idx.length - 1] + 1; });
+  return {
+    name: name, src: src, lines: lines, spans: spans, own: own, slices: slices, by: by, support: support,
+    unplaced: unplaced, unplacedText: unplaced.map(function (u) { return lines[u]; }), hand: hand
+  };
+}
+
+function printFile(p) {
+  var out = [];
+  p.slices.forEach(function (s) { s.idx.forEach(function (k, i) { out[k] = s.text[i]; }); });
+  p.unplaced.forEach(function (k, i) { out[k] = p.unplacedText[i]; });
+  return out.join('\n');
+}
+
+function ledger(p) {
+  var placed = 0;
+  p.slices.forEach(function (s) { placed += s.idx.length; });
+  return {
+    total: p.lines.length, placed: placed, unplaced: p.unplaced.length,
+    complete: placed + p.unplaced.length === p.lines.length,
+    roundTrip: printFile(p) === p.src
+  };
+}
+
+function fileOrder(files) {
+  return ORDER.filter(function (n) { return files[n]; }).concat(Object.keys(files).filter(function (n) { return ORDER.indexOf(n) < 0; }));
+}
+
+function parseAll(files, asgAll) {
+  var out = {};
+  fileOrder(files).forEach(function (n) { out[n] = parseFile(n, files[n], (asgAll || {})[n]); });
+  return out;
+}
+
+function inject(p) {
+  var L = p.lines.slice();
+  p.spans.forEach(function (s) {
+    var e = L[s.end], eb = e.lastIndexOf('}');
+    L[s.end] = e.slice(0, eb) + '}finally{__x();}}' + e.slice(eb + 1);
+    var b = L[s.start], sb = b.indexOf('{');
+    L[s.start] = b.slice(0, sb + 1) + '__e("' + s.name + '");try{' + b.slice(sb + 1);
+  });
+  return L.join('\n');
+}
+
+function runJourney(parsed, jr) {
+  var code = Object.keys(parsed).map(function (n) { return inject(parsed[n]); }).join('\n');
+  var trace = [], boot = [], stack = [], foot = {}, booting = true;
+  var raw = jr.init();
+  function rec(kind, key) {
+    var f = stack[stack.length - 1];
+    if (!f) return;
+    var o = foot[f] || (foot[f] = { r: {}, w: {} });
+    o[kind][key] = 1;
+  }
+  var S = new Proxy(raw, {
+    get: function (t, k) { if (typeof k === 'string') rec('r', k); return t[k]; },
+    set: function (t, k, v) { rec('w', k); t[k] = v; return true; }
+  });
+  function __e(n) {
+    var ev = { name: n, depth: stack.length, parent: stack[stack.length - 1] || null };
+    (booting ? boot : trace).push(ev);
+    stack.push(n);
+  }
+  function __x() { stack.pop(); }
+  var names = ['signUp', 'logIn', 'upgradePlan', 'askAgent', 'cancelPlan'];
+  var api = new Function('S', '__e', '__x', code + '\nreturn {' + names.join(',') + '};')(S, __e, __x);
+  booting = false;
+  var err = null, ret = null;
+  try { var r = api[jr.entry].apply(null, jr.args); ret = r === undefined ? null : r; } catch (e) { err = String(e && e.message || e); }
+  var snap = {};
+  Object.keys(raw).sort().forEach(function (k) { snap[k] = JSON.stringify(raw[k]); });
+  return { trace: trace, boot: boot, foot: foot, snap: snap, ret: ret, err: err };
+}
+
+function deriveFlows(parsed) {
+  return JOURNEYS.map(function (jr) {
+    var r = runJourney(parsed, jr), seen = {}, steps = [];
+    r.trace.forEach(function (ev) {
+      if (ev.depth === 0 || seen[ev.name]) return;
+      seen[ev.name] = 1;
+      steps.push({ name: ev.name, depth: ev.depth, parent: ev.parent });
+    });
+    return { id: jr.id, entry: jr.entry, steps: steps, run: r };
+  });
+}
+
+function footprints(flows) {
+  var fp = {};
+  flows.forEach(function (f) {
+    Object.keys(f.run.foot).forEach(function (n) {
+      var o = fp[n] || (fp[n] = { r: {}, w: {} });
+      Object.keys(f.run.foot[n].r).forEach(function (k) { o.r[k] = 1; });
+      Object.keys(f.run.foot[n].w).forEach(function (k) { o.w[k] = 1; });
+    });
+  });
+  return fp;
+}
+
+function coverage(flows) {
+  var c = {};
+  flows.forEach(function (f) {
+    f.run.trace.forEach(function (ev) { c[ev.name] = 1; });
+    f.run.boot.forEach(function (ev) { c[ev.name] = 1; });
+  });
+  return c;
+}
+
+function applyPatch(files) {
+  var out = {};
+  Object.keys(files).forEach(function (k) { out[k] = files[k]; });
+  PATCH.forEach(function (p) {
+    if (out[p.file].indexOf(p.find) < 0) throw new Error('patch target missing in ' + p.file);
+    out[p.file] = out[p.file].split(p.find).join(p.rep);
+  });
+  Object.keys(NEWFILES).forEach(function (k) { out[k] = NEWFILES[k]; });
+  return out;
+}
+
+function sliceMap(parsed) {
+  var m = {};
+  Object.keys(parsed).forEach(function (f) { parsed[f].slices.forEach(function (s) { m[s.name] = s; }); });
+  return m;
+}
+
+function lineDiff(a, b) {
+  return {
+    removed: a.filter(function (l) { return b.indexOf(l) < 0; }),
+    added: b.filter(function (l) { return a.indexOf(l) < 0; })
+  };
+}
+
+function changedSlices(baseParsed, newParsed) {
+  var bm = sliceMap(baseParsed), nm = sliceMap(newParsed), out = [];
+  Object.keys(nm).forEach(function (n) {
+    var s = nm[n];
+    if (s.kind === 'support') return;
+    var b = bm[n];
+    if (!b) { out.push({ name: n, file: s.file, isNew: true, removed: [], added: s.text }); return; }
+    if (b.text.join('\n') !== s.text.join('\n')) {
+      var d = lineDiff(b.text, s.text);
+      out.push({ name: n, file: s.file, isNew: false, removed: d.removed, added: d.added });
+    }
+  });
+  return out;
+}
+
+function behaviorDiff(a, b) {
+  var keys = {}, out = [];
+  Object.keys(a.snap).forEach(function (k) { keys[k] = 1; });
+  Object.keys(b.snap).forEach(function (k) { keys[k] = 1; });
+  Object.keys(keys).sort().forEach(function (k) {
+    if (a.snap[k] !== b.snap[k]) out.push({ key: k, before: a.snap[k], after: b.snap[k] });
+  });
+  if (a.err !== b.err) out.push({ key: 'error', before: String(a.err), after: String(b.err) });
+  return out;
+}
+
+function review(baseParsed, patchedParsed, baseFlows, changed, forkOnly, intended) {
+  var names = {};
+  changed.forEach(function (c) { names[c.name] = 1; });
+  return JOURNEYS.map(function (jr, i) {
+    var useNew = forkOnly === null || forkOnly === jr.id;
+    var bf = baseFlows[i];
+    var run = runJourney(useNew ? patchedParsed : baseParsed, jr);
+    var touched = useNew ? bf.steps.map(function (s) { return s.name; }).concat([bf.entry]).filter(function (n) { return names[n]; }) : [];
+    var beh = behaviorDiff(bf.run, run);
+    var widened = [];
+    touched.forEach(function (n) {
+      var o = run.foot[n], p = bf.run.foot[n] || { r: {}, w: {} };
+      if (!o) return;
+      Object.keys(o.r).forEach(function (k) { if (!p.r[k]) widened.push({ slice: n, kind: 'reads', key: k }); });
+      Object.keys(o.w).forEach(function (k) { if (!p.w[k]) widened.push({ slice: n, kind: 'changes', key: k }); });
+    });
+    var status;
+    if (!touched.length) status = 'untouched';
+    else if (beh.length && intended.indexOf(jr.id) < 0) status = 'unexpected';
+    else if (beh.length) status = 'intended';
+    else status = 'identical';
+    return { id: jr.id, status: status, touched: touched, behavior: beh, widened: widened, run: run };
+  });
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { SRC: SRC, PATCH: PATCH, NEWFILES: NEWFILES, JOURNEYS: JOURNEYS, parseFile: parseFile, parseAll: parseAll, printFile: printFile, ledger: ledger, deriveFlows: deriveFlows, footprints: footprints, coverage: coverage, applyPatch: applyPatch, sliceMap: sliceMap, changedSlices: changedSlices, review: review, runJourney: runJourney, inject: inject };
+}
+
+/* ---------- Flow source UI ---------- */
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  var PLAIN = {
+    signUp: 'Person fills in the sign-up form', logIn: 'Person logs in', upgradePlan: 'Person upgrades to Pro', askAgent: 'Person asks the agent a question',
+    cancelPlan: 'Person cancels their plan', validateForm: 'Check the email looks valid', createUser: 'Create the account on the free plan',
+    issueSid: 'Start a login session', loadSession: 'Work out who is signed in', sendEmail: 'Send an email', renderHeader: 'Show the plan badge in the header',
+    resolvePrice: 'Look up the price', chargeCard: 'Charge their card', applyPlanChange: 'Switch their plan', emit: 'Announce that the plan changed',
+    onPlanChanged: 'Send the plan-changed email', planGuard: 'Check their plan allows the agent', buildSystemPrompt: 'Write the agent’s instructions',
+    pickTools: 'Choose the agent’s tools', streamReply: 'Send the agent’s reply', isEnabled: 'Check a feature switch', on: 'Register a listener', renderFooter: 'Show the footer'
+  };
+  var SL = { users: 'Account list', plans: 'Their plan', sid: 'Login session', user: 'Who is signed in', flags: 'Feature switches', outbox: 'Emails sent', charged: 'Money charged', prompt: 'Agent instructions', tools: 'Agent tools', reply: 'Agent reply', header: 'Header badge', interval: 'Billing period', footer: 'Footer' };
+  function P(n) { return PLAIN[n] || n; }
+  function lab(k) { return SL[k] || k; }
+  function fmt(key, j) {
+    if (j === undefined) return 'nothing';
+    var v; try { v = JSON.parse(j); } catch (e) { return j; }
+    if (key === 'plans') return Object.keys(v).map(function (u) { return v[u].plan + ' plan, billed ' + (v[u].interval === 'year' ? 'yearly' : 'monthly'); }).join('; ');
+    if (key === 'charged') return v === null ? 'an invalid amount' : '$' + v;
+    if (key === 'outbox') return v.length ? v.map(function (x) { return '“' + x + '”'; }).join(', ') : 'none';
+    if (Array.isArray(v)) return v.join(', ');
+    if (typeof v === 'object' && v) return JSON.stringify(v);
+    return String(v);
+  }
+  var OK = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--good)" stroke-width="2" aria-hidden="true" style="flex:none;margin-top:2px"><path d="M3 8.5l3 3 7-7"/></svg>';
+  var NO = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--bad)" stroke-width="2" aria-hidden="true" style="flex:none;margin-top:2px"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+  var LOCK = '<svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="7" width="10" height="7" rx="1.5"/><path d="M5 7V5a3 3 0 0 1 6 0v2"/></svg>';
+
+  /* ---- lift: files -> flow document (deterministic) ---- */
+  var WIRE = /^on\('(\w+)',\s*(\w+)\);\s*$/, HEAD = /^function\s+(\w+)\(([^)]*)\)\s*\{\s*$/;
+  function lift(files) {
+    var doc = { fileOrder: fileOrder(files), files: {}, slices: {}, journeys: {} };
+    doc.fileOrder.forEach(function (f) {
+      var p = parseFile(f, files[f], null), segs = [], k = 0, n = p.lines.length;
+      while (k < n) {
+        var key = p.own[k];
+        if (key === null) {
+          var wm = WIRE.exec(p.lines[k]);
+          segs.push(wm ? { t: 'wire', evt: wm[1], fn: wm[2] } : { t: 'raw', text: p.lines[k] });
+          k++; continue;
+        }
+        var j = k; while (j + 1 < n && p.own[j + 1] === key) j++;
+        var lines = p.lines.slice(k, j + 1);
+        if (/ \(support\)$/.test(key) || doc.slices[key] || doc.journeys[key]) segs.push({ t: 'raw', text: lines.join('\n') });
+        else {
+          var hi = -1; lines.forEach(function (l, i) { if (hi < 0 && /^function\s/.test(l)) hi = i; });
+          var hm = hi >= 0 && HEAD.exec(lines[hi]);
+          if (f === 'routes.js' && hm && lines[lines.length - 1] === '}' && hi < lines.length - 1) {
+            doc.journeys[key] = { lead: lines.slice(0, hi), header: lines[hi], steps: lines.slice(hi + 1, lines.length - 1) };
+            segs.push({ t: 'journey', name: key });
+          } else { doc.slices[key] = { text: lines.join('\n'), file: f }; segs.push({ t: 'slice', name: key }); }
+        }
+        k = j + 1;
+      }
+      doc.files[f] = segs;
+    });
+    return doc;
+  }
+  /* ---- generate: flow document -> files ---- */
+  function generate(doc) {
+    var out = {};
+    doc.fileOrder.forEach(function (f) {
+      out[f] = doc.files[f].map(function (s) {
+        if (s.t === 'raw') return s.text;
+        if (s.t === 'wire') return "on('" + s.evt + "', " + s.fn + ');';
+        if (s.t === 'slice') return doc.slices[s.name].text;
+        var J = doc.journeys[s.name];
+        return J.lead.concat([J.header]).concat(J.steps).concat(['}']).join('\n');
+      }).join('\n');
+    });
+    return out;
+  }
+  function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+  function sig(doc, f) { return doc.files[f].map(function (s) { return s.t + ':' + (s.name || s.evt || ''); }).join('|'); }
+
+  function diffDocs(a, b) {
+    var items = [];
+    var names = {}; Object.keys(a.slices).concat(Object.keys(b.slices)).forEach(function (n) { names[n] = 1; });
+    Object.keys(names).forEach(function (n) {
+      var x = a.slices[n], y = b.slices[n];
+      if (x && y && x.text !== y.text) { var d = lineDiff(x.text.split('\n'), y.text.split('\n')); items.push({ kind: 'slice', name: n, tag: 'edited in code', removed: d.removed, added: d.added }); }
+      else if (!x) items.push({ kind: 'slice', name: n, tag: 'new in code', removed: [], added: y.text.split('\n') });
+      else if (!y) items.push({ kind: 'slice', name: n, tag: 'deleted in code', removed: x.text.split('\n'), added: [] });
+    });
+    var jn = {}; Object.keys(a.journeys).concat(Object.keys(b.journeys)).forEach(function (n) { jn[n] = 1; });
+    Object.keys(jn).forEach(function (n) {
+      var x = a.journeys[n], y = b.journeys[n];
+      if (x && y) {
+        if (x.header !== y.header || !same(x.lead, y.lead)) items.push({ kind: 'journey', name: n, tag: 'signature changed in code', removed: [x.header], added: [y.header] });
+        if (!same(x.steps, y.steps)) {
+          var d2 = lineDiff(x.steps, y.steps);
+          items.push({ kind: 'journey', name: n, tag: d2.removed.length || d2.added.length ? 'steps changed in code' : 'steps reordered in code', removed: d2.removed, added: d2.added });
+        }
+      } else items.push({ kind: 'journey', name: n, tag: x ? 'deleted in code' : 'new in code', removed: [], added: [] });
+    });
+    a.fileOrder.forEach(function (f) {
+      var ra = a.files[f].filter(function (s) { return s.t === 'raw' || s.t === 'wire'; }), rb = (b.files[f] || []).filter(function (s) { return s.t === 'raw' || s.t === 'wire'; });
+      if (!same(ra, rb)) items.push({ kind: 'raw', name: f, tag: 'wiring or loose lines changed', removed: [], added: [] });
+    });
+    if (!items.length) a.fileOrder.forEach(function (f) { if (b.files[f] && sig(a, f) !== sig(b, f)) items.push({ kind: 'layout', name: f, tag: 'order changed in code', removed: [], added: [] }); });
+    return items;
+  }
+
+  /* ---- state ---- */
+  var ORIG = SRC, ROUND = null;
+  function fresh() { return { doc: lift(SRC), working: null, file: 'billing.js', edit: null, note: '' }; }
+  var st = fresh(), M = {};
+  function locked() { return !!st.working; }
+
+  var EDITS = {
+    price: { label: 'Change the Pro price to $22 in billing.js', run: function (f) { return rep(f, 'billing.js', '{ pro: 24 }', '{ pro: 22 }'); } },
+    survey: { label: 'Add a survey email to cancelPlan in routes.js', run: function (f) { return rep(f, 'routes.js', "  applyPlanChange('free');\n  renderHeader();\n}", "  applyPlanChange('free');\n  sendEmail('survey');\n  renderHeader();\n}"); } },
+    footer: { label: 'Paste in a new renderFooter function in ui.js', run: function (f) { f['ui.js'] += "\n\nfunction renderFooter() { S.footer = 'hello'; }"; return true; } }
+  };
+  function rep(f, file, a, b) { if (f[file].indexOf(a) < 0) return false; f[file] = f[file].replace(a, b); return true; }
+
+  var STMTS = [
+    ['loadSession();', 'Work out who is signed in'], ['renderHeader();', 'Show the plan badge'], ["sendEmail('welcome');", 'Send the welcome email'],
+    ["sendEmail('survey');", 'Send a survey email'], ["planGuard('agent');", 'Check their plan allows the agent'], ["applyPlanChange('free');", 'Switch them to Free'],
+    ['buildSystemPrompt();', 'Write the agent’s instructions'], ['pickTools();', 'Choose the agent’s tools'], ['streamReply();', 'Send the agent’s reply']
+  ];
+  function gloss(stmt) {
+    var out = [], re = /(\w+)\(/g, m;
+    while ((m = re.exec(stmt))) if (PLAIN[m[1]]) out.push(P(m[1]));
+    return out.join(', using ');
+  }
+
+  function compute() {
+    M.gen = generate(st.doc);
+    M.files = st.working || M.gen;
+    M.drift = []; M.beh = null; M.runErr = null; M.ok = 0; M.total = 0;
+    try { var fl = deriveFlows(parseAll(M.gen)); M.total = fl.length; M.ok = fl.filter(function (f) { return !f.run.err; }).length; }
+    catch (e) { M.runErr = String(e && e.message || e); }
+    if (st.working) {
+      M.drift = diffDocs(st.doc, lift(st.working));
+      try {
+        var pb = parseAll(M.gen), pw = parseAll(st.working), bf = deriveFlows(pb);
+        M.beh = review(pb, pw, bf, changedSlices(pb, pw), null, []);
+      } catch (e) { M.behErr = String(e && e.message || e); }
+    }
+  }
+
+  function codeView(f) {
+    var lines = M.files[f].split('\n'), gl = {};
+    M.gen[f].split('\n').forEach(function (l) { gl[l] = 1; });
+    var h = '<div class="code-in">';
+    lines.forEach(function (l, i) {
+      var hl = st.working && !gl[l];
+      h += '<div class="ln' + (hl ? ' hl' : '') + '" style="--h:210"><span class="n">' + (i + 1) + '</span><span class="bar"></span><code>' + esc(l || ' ') + (hl ? '<em>hand-edited</em>' : '') + '</code></div>';
+    });
+    return h + '</div>';
+  }
+
+  function d1() {
+    var dis = locked() ? ' disabled' : '', h = '', jn = [];
+    st.doc.files['routes.js'].forEach(function (s) { if (s.t === 'journey') jn.push(s.name); });
+    h += '<div class="lab" style="margin-top:0">Journeys</div>';
+    jn.forEach(function (n) {
+      var J = st.doc.journeys[n];
+      h += '<div class="flow"><div class="flow-h" style="cursor:default"><span class="name plain" style="font:500 15px var(--f-body)">' + esc(P(n)) + '</span><span class="meta mono" style="font-family:var(--f-mono)">' + n + '</span></div><div class="steps">';
+      J.steps.forEach(function (ln, i) {
+        var s = ln.trim();
+        h += '<div class="si"><span class="idx">' + (i + 1) + '</span><span class="lbl"><code>' + esc(s) + '</code><div class="sub">' + esc(gloss(s)) + '</div></span>' +
+          '<button class="ib" data-act="up" data-j="' + n + '" data-i="' + i + '" aria-label="Move up"' + (i === 0 || locked() ? ' disabled' : '') + '>&uarr;</button>' +
+          '<button class="ib" data-act="down" data-j="' + n + '" data-i="' + i + '" aria-label="Move down"' + (i === J.steps.length - 1 || locked() ? ' disabled' : '') + '>&darr;</button>' +
+          '<button class="ib" data-act="del" data-j="' + n + '" data-i="' + i + '" aria-label="Remove"' + dis + '>&times;</button></div>';
+      });
+      h += '<div class="si"><select class="sel" id="add-' + n + '"' + dis + '>' + STMTS.map(function (x) { return '<option value="' + esc(x[0]) + '">' + esc(x[1]) + '</option>'; }).join('') + '</select><button class="btn small" data-act="add" data-j="' + n + '"' + dis + '>Add step</button></div>';
+      h += '</div></div>';
+    });
+    h += '<div class="lab">Behaviors</div><div class="flow">';
+    Object.keys(st.doc.slices).forEach(function (n) {
+      var s = st.doc.slices[n], open = st.edit === n;
+      h += '<div class="si" style="flex-wrap:wrap"><span class="lbl">' + esc(P(n)) + ' <span class="tag" style="font-family:var(--f-mono)">' + n + '</span> <span class="tag">' + s.file + '</span></span><button class="btn small" data-act="edit" data-v="' + n + '">' + (open ? 'Close' : 'Edit') + '</button>' +
+        (open ? '<textarea class="ta" id="ta" spellcheck="false" style="flex-basis:100%"' + (locked() ? ' readonly' : '') + '>' + esc(s.text) + '</textarea>' : '') + '</div>';
+    });
+    h += '</div><div class="lab">Wiring</div><div class="flow">';
+    var any = false;
+    st.doc.fileOrder.forEach(function (f) { st.doc.files[f].forEach(function (s) { if (s.t === 'wire') { any = true; h += '<div class="si"><span class="lbl">When “' + esc(s.evt) + '” is announced, <b>' + esc(P(s.fn)) + '</b> runs</span><span class="tag">event rule</span></div>'; } }); });
+    if (!any) h += '<div class="si"><span class="sub">None.</span></div>';
+    h += '</div><div class="check" style="margin-top:14px">' + (ROUND ? OK : NO) + '<span>' + (ROUND ? 'Lifted from the original 8 files and regenerated: the result is byte-for-byte identical, so the document loses nothing.' : 'Regenerating the original files did not reproduce them exactly.') + '</span></div>';
+    if (locked()) h += '<div class="callout warn">Editing is paused because the generated files have been changed by hand. Resolve the drift below first.</div>';
+    $('d1').innerHTML = h;
+  }
+
+  function d2() {
+    var h = '<div class="tabs" role="group" aria-label="Files">';
+    st.doc.fileOrder.forEach(function (f) {
+      var dirty = st.working && st.working[f] !== M.gen[f];
+      h += '<button class="tab" data-act="file" data-v="' + f + '" aria-pressed="' + (f === st.file) + '">' + f + (dirty ? '<span class="dot"></span>' : '') + '</button>';
+    });
+    h += '</div><div class="lock" style="margin-bottom:8px">' + LOCK + ' Generated from the flow document. Read-only.</div><div class="code">' + codeView(st.file) + '</div>';
+    h += '<div class="lab">Someone edits the code directly</div><div class="chips" style="margin:0">' + Object.keys(EDITS).map(function (k) {
+      return '<button class="chip add" data-act="hand" data-v="' + k + '"' + (locked() ? ' disabled' : '') + '>' + esc(EDITS[k].label) + '</button>';
+    }).join('') + '</div>';
+    if (st.note) h += '<p class="hint">' + esc(st.note) + '</p>';
+    $('d2').innerHTML = h;
+  }
+
+  function d3() {
+    var h = '';
+    if (!st.working) {
+      h = '<div class="callout good"><strong>In sync.</strong> Reading the files back gives exactly the flow document. Nothing exists in the code that the flows do not describe.</div>';
+    } else {
+      h += '<div class="callout bad"><strong>Drift: the code no longer matches the flows.</strong> ' + M.drift.length + ' difference' + (M.drift.length === 1 ? '' : 's') + ' found. Until this is resolved, the change cannot be merged and the flow document cannot be edited.</div>';
+      M.drift.forEach(function (d) {
+        var title = d.kind === 'raw' || d.kind === 'layout' ? d.name : P(d.name);
+        h += '<div class="card"><div class="card-h"><span class="name plain" style="font:500 15px var(--f-body)">' + esc(title) + '</span><span class="tag warn">' + d.tag + '</span></div>' +
+          d.removed.map(function (l) { return '<span class="dl rm">- ' + esc(l.trim() === '' ? '(blank line)' : l) + '</span>'; }).join('') +
+          d.added.map(function (l) { return '<span class="dl ad">+ ' + esc(l.trim() === '' ? '(blank line)' : l) + '</span>'; }).join('') + '</div>';
+      });
+      h += '<div class="lab">If you lift these edits into the flows, here is what changes for people</div>';
+      var changed = (M.beh || []).filter(function (r) { return r.behavior.length; });
+      if (M.behErr) h += '<div class="callout warn">' + esc(M.behErr) + '</div>';
+      else if (!changed.length) h += '<p class="sub">No journey ends up in a different place. The edit is still drift, but it changes nothing a person would notice yet.</p>';
+      changed.forEach(function (r) {
+        h += '<div class="card"><div class="card-h"><span class="name plain" style="font:500 15px var(--f-body)">' + esc(P({ 'sign-up': 'signUp', 'log-in': 'logIn', 'upgrade-plan': 'upgradePlan', 'ask-the-agent': 'askAgent', 'cancel-plan': 'cancelPlan' }[r.id])) + '</span><span class="tag bad">Behaves differently</span></div>' +
+          r.behavior.map(function (b) { return '<div class="brow"><div class="k">' + esc(lab(b.key)) + '</div><div class="v">was <b>' + esc(fmt(b.key, b.before)) + '</b>, now <b>' + esc(fmt(b.key, b.after)) + '</b></div></div>'; }).join('') + '</div>';
+      });
+      h += '<div class="row2"><button class="btn primary" data-act="liftall">Lift the edits into the flows</button><button class="btn" data-act="discard">Discard the hand edits</button></div>' +
+        '<p class="hint">Lifting rewrites the flow document so it describes the edited code, and the diff of that document is what gets reviewed. Discarding regenerates the files and the hand edits are gone.</p>';
+    }
+    $('d3').innerHTML = h;
+  }
+
+  function strip() {
+    $('strip').innerHTML = '<span class="pill"><b>' + Object.keys(st.doc.journeys).length + '</b> journeys</span><span class="pill"><b>' + Object.keys(st.doc.slices).length + '</b> behaviors</span>' +
+      (M.runErr ? '<span class="pill bad">Does not run</span>' : '<span class="pill ' + (M.ok === M.total ? 'good' : 'warn') + '"><b>' + M.ok + '</b> of ' + M.total + ' journeys run clean</span>') +
+      '<span class="pill ' + (st.working ? 'bad' : 'good') + '">' + (st.working ? 'Drift' : 'In sync') + '</span>';
+  }
+  function runBanner() {
+    var el = $('d1').querySelector('.rb'); if (el) el.remove();
+    if (M.runErr) { var d = document.createElement('div'); d.className = 'callout bad rb'; d.textContent = 'The generated code does not run: ' + M.runErr; $('d1').insertBefore(d, $('d1').firstChild); }
+  }
+  function render() { compute(); strip(); d1(); runBanner(); d2(); d3(); }
+  function renderRest() { compute(); strip(); runBanner(); d2(); d3(); }
+
+  document.querySelector('.wrap').addEventListener('click', function (e) {
+    var t = e.target.closest('[data-act]'); if (!t || t.disabled) return;
+    var a = t.getAttribute('data-act'), v = t.getAttribute('data-v'), jn = t.getAttribute('data-j'), i = +t.getAttribute('data-i');
+    if (a === 'file') { st.file = v; d2(); }
+    else if (a === 'edit') { st.edit = st.edit === v ? null : v; d1(); runBanner(); }
+    else if (a === 'up' || a === 'down' || a === 'del' || a === 'add') {
+      var S2 = st.doc.journeys[jn].steps;
+      if (a === 'up') { var x = S2.splice(i, 1)[0]; S2.splice(i - 1, 0, x); }
+      else if (a === 'down') { var y = S2.splice(i, 1)[0]; S2.splice(i + 1, 0, y); }
+      else if (a === 'del') S2.splice(i, 1);
+      else S2.push('  ' + $('add-' + jn).value);
+      st.note = ''; render();
+    }
+    else if (a === 'hand') {
+      var f = {}; Object.keys(M.gen).forEach(function (k) { f[k] = M.gen[k]; });
+      if (EDITS[v].run(f)) { st.working = f; st.note = ''; if (v === 'price') st.file = 'billing.js'; if (v === 'survey') st.file = 'routes.js'; if (v === 'footer') st.file = 'ui.js'; }
+      else st.note = 'That spot in the generated code no longer exists, so this hand edit could not be applied.';
+      render();
+    }
+    else if (a === 'liftall') { st.doc = lift(st.working); st.working = null; st.note = 'Lifted. The flow document now describes the edited code.'; render(); }
+    else if (a === 'discard') { st.working = null; st.note = 'Discarded. The files were regenerated from the flow document.'; render(); }
+  });
+  document.querySelector('.wrap').addEventListener('input', function (e) {
+    if (e.target.id === 'ta' && st.edit && !locked()) { st.doc.slices[st.edit].text = e.target.value; renderRest(); }
+  });
+  $('reset').addEventListener('click', function () { st = fresh(); render(); });
+
+  try {
+    new Function('return 1')();
+    var d0 = lift(SRC), g0 = generate(d0);
+    ROUND = Object.keys(SRC).every(function (k) { return g0[k] === SRC[k]; });
+    render();
+  } catch (err) {
+    ['d1', 'd2', 'd3'].forEach(function (id) { $(id).innerHTML = '<div class="callout warn">This page checks the flow document by running the example code, and this viewer blocks running generated code. Open it in a regular browser tab to see it work.</div>'; });
+  }
+})();
+</script>
+
+</body></html>

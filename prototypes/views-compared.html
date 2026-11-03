@@ -1,0 +1,1445 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flow control views</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --a:#2563eb; --b:#9333ea; --ok-soft:#ecf8f1; --warn-soft:#fdf6e3; --paper:#f7f7f8; --sheet:#ffffff; --sheet-2:#f4f4f5; --ink:#18181b; --ink-2:#52525b; --ink-3:#71717a; --rule:#e4e4e7;
+  --signal:#c62a1f; --signal-soft:#fbeae7;
+  --add:#ecf6ef; --add-ink:#1d6b41; --add-mark:#cfe9d8; --del:#fbeef0; --del-ink:#9b2c43; --del-mark:#f1d3d9;
+  --hover:#e9eef2;
+  --l-li:#7b5ea7; --l-su:#1e7fc8; --l-ca:#00965e; --l-up:#e8a200; --l-ag:#d6457b; --l-pl:#8c9aa5;
+  --k:#6a3fa8; --s:#8a4b12; --n:var(--ink); --f:var(--ink); --c:#7a848b; --p:var(--ink-2);
+  --f-ui:'Geist',ui-sans-serif,system-ui,-apple-system,sans-serif; --f-code:'Geist Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --a:#60a5fa; --b:#c084fc; --ok-soft:#17291f; --warn-soft:#2f2813; --paper:#16191c; --sheet:#1d2125; --sheet-2:#24292e; --ink:#eef1f3; --ink-2:#c5ccd2; --ink-3:#97a2ab; --rule:#343b42;
+    --signal:#ff6b5f; --signal-soft:#3a2321;
+    --add:#1a2b22; --add-ink:#8fdcb0; --add-mark:#25402f; --del:#2f1f23; --del-ink:#f2a5b4; --del-mark:#4a2a32;
+    --hover:#2a3138;
+    --l-li:#a387d4; --l-su:#4ea7ec; --l-ca:#2fc488; --l-up:#ffbf2e; --l-ag:#f2709f; --l-pl:#8b9aa6;
+    --k:#c7a8f5; --s:#e5b07e; --n:var(--ink); --f:var(--ink); --c:#8c979f; --p:var(--ink-2);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#16191c; --sheet:#1d2125; --sheet-2:#24292e; --ink:#eef1f3; --ink-2:#c5ccd2; --ink-3:#97a2ab; --rule:#343b42;
+  --signal:#ff6b5f; --signal-soft:#3a2321;
+  --add:#1a2b22; --add-ink:#8fdcb0; --add-mark:#25402f; --del:#2f1f23; --del-ink:#f2a5b4; --del-mark:#4a2a32;
+  --hover:#2a3138;
+  --l-li:#a387d4; --l-su:#4ea7ec; --l-ca:#2fc488; --l-up:#ffbf2e; --l-ag:#f2709f; --l-pl:#8b9aa6;
+  --k:#c7a8f5; --s:#e5b07e; --n:var(--ink); --f:var(--ink); --c:#8c979f; --p:var(--ink-2);
+}
+*{box-sizing:border-box}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 var(--f-ui)}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--l-su);outline-offset:2px}
+.wrap{max-width:1320px;margin:0 auto;padding:0 16px 72px}
+
+/* nav: a signage strip */
+nav{background:var(--ink);color:var(--paper)}
+nav .in{max-width:1320px;margin:0 auto;padding:0 16px;display:flex;align-items:stretch;gap:24px;min-height:52px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px;letter-spacing:-.01em;white-space:nowrap}
+.brand svg{width:22px;height:22px}
+.tabs{display:flex;margin-left:auto;overflow-x:auto}
+.tabs a{display:flex;align-items:center;padding:0 14px;color:color-mix(in srgb,var(--paper) 70%,transparent);text-decoration:none;font-weight:500;font-size:15px;border-bottom:3px solid transparent;white-space:nowrap}
+.tabs a:hover{color:var(--paper)}
+.tabs a.on{color:var(--paper);border-bottom-color:var(--l-up)}
+
+
+.page{display:none}.page.on{display:block}
+.head{padding:40px 0 24px;max-width:760px}
+h1{font-weight:800;font-size:40px;line-height:1.05;letter-spacing:-.025em;margin:0}
+.head p{margin:10px 0 0;color:var(--ink-2);font-size:17px}
+h2{font-weight:800;font-size:20px;letter-spacing:-.01em;margin:0}
+h3{font-weight:600;font-size:15px;margin:0}
+
+.sheet{background:var(--sheet);border:1px solid var(--rule);border-radius:6px;min-width:0}
+.sh{display:flex;align-items:baseline;gap:12px;padding:14px 18px;border-bottom:1px solid var(--rule)}
+.sh .meta{margin-left:auto;color:var(--ink-3);font-size:14px;white-space:nowrap}
+.sh small{color:var(--ink-2);font-size:14px}
+
+/* overview */
+.ov{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:16px;align-items:start}
+.stack{display:grid;gap:16px}
+.mapbox{overflow-x:auto;padding:8px 6px 12px}
+.mapbox svg{display:block;margin:0 auto;max-width:100%;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;padding:12px 18px;border-top:1px solid var(--rule);font-size:14px;color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:16px;height:5px;border-radius:3px;display:inline-block}
+.legend .ed{width:14px;height:14px;border-radius:50%;border:3px solid var(--signal);background:var(--sheet)}
+
+/* code */
+.code{font:13px/1.75 var(--f-code);font-variant-ligatures:none;overflow-x:auto;padding:6px 0 10px}
+.row{display:grid;grid-template-columns:46px 30px 18px minmax(0,1fr);white-space:pre;border-left:3px solid transparent;padding-right:16px}
+.row .dots{display:flex;gap:2px;align-items:center;padding-left:8px}
+.row .dots i{width:7px;height:7px;border-radius:50%}
+.row .ln{color:var(--ink-3);text-align:right;padding-right:4px;user-select:none}
+.row .mk{text-align:center;user-select:none;color:var(--ink-3)}
+.row.own{display:block;font:600 12.5px var(--f-ui);color:var(--ink-3);padding:12px 16px 0 97px;white-space:normal}
+.row.ed{background:var(--signal-soft);border-left-color:var(--signal)}
+.row.hover{background:var(--hover)}
+.row.add{background:var(--add)} .row.add .mk{color:var(--add-ink)}
+.row.del{background:var(--del)} .row.del .mk{color:var(--del-ink)}
+.row.add mark{background:var(--add-mark);color:inherit;border-radius:2px}
+.row.del mark{background:var(--del-mark);color:inherit;border-radius:2px}
+.row.hunk{grid-template-columns:1fr;padding:4px 16px 4px 84px;color:var(--ink-3);background:var(--sheet-2);font-size:12px}
+.row.cm{color:var(--signal);font-weight:600;background:var(--signal-soft)}
+.row.unpl{background:color-mix(in srgb,var(--l-up) 14%,transparent)}
+.wrapcode .row{white-space:pre-wrap;word-break:break-word}
+.t-k{color:var(--k)} .t-s{color:var(--s)} .t-n{color:var(--n)} .t-f{color:var(--f)} .t-c{color:var(--c);font-style:italic} .t-p{color:var(--p)}
+
+.ftabs{display:flex;flex-wrap:wrap;gap:0;border-bottom:1px solid var(--rule);padding:0 10px}
+.ftabs button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 10px 8px;font:500 14px var(--f-code);color:var(--ink-2)}
+.ftabs button.on{color:var(--ink);border-bottom-color:var(--ink)}
+.solo{max-width:960px}
+
+/* flow page */
+.fl{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:16px;align-items:start}
+.insp{position:sticky;top:16px}
+.insp .body{padding:16px 18px}
+.insp .fn{font:600 20px var(--f-code);letter-spacing:-.01em;word-break:break-all}
+.insp .where{color:var(--ink-2);font-size:14px;margin-top:2px}
+.kv{display:grid;grid-template-columns:84px 1fr;gap:6px 10px;margin-top:14px;font-size:14px}
+.kv dt{color:var(--ink-3)} .kv dd{margin:0}
+.jl{display:flex;flex-direction:column;gap:4px}
+.jl span{display:flex;align-items:center;gap:8px}
+.jl i{width:14px;height:5px;border-radius:3px}
+.st{font:13px var(--f-code)}
+.hint{color:var(--ink-3);font-size:14px;padding:16px 18px}
+
+/* merge */
+.scen{display:flex;gap:0;border-bottom:1px solid var(--rule);overflow-x:auto;margin-bottom:20px}
+.scen button{background:none;border:0;border-bottom:3px solid transparent;padding:10px 18px 10px 0;margin-right:22px;text-align:left;white-space:nowrap}
+.scen button b{display:block;font-weight:600;font-size:16px}
+.scen button span{font-size:13px;color:var(--ink-3)}
+.scen button.on{border-bottom-color:var(--ink)}
+.scen button.on span{color:var(--ink-2)}
+
+.bar{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:20px;align-items:center;margin-bottom:16px}
+.graph svg{display:block;width:100%;max-width:720px;height:auto}
+.go{background:var(--ink);color:var(--sheet);border:0;border-radius:4px;padding:12px 22px;font-weight:600;font-size:16px}
+.go.ghost{background:none;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+
+.mg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:16px;align-items:start}
+.colh{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--rule)}
+.colh .logo{width:26px;height:26px;border-radius:4px;display:grid;place-items:center;font:800 13px var(--f-ui);flex:none}
+.colh .logo.git{background:var(--sheet-2);color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--rule)}
+.colh .logo.flow{background:var(--ink);color:var(--sheet)}
+.brn{display:flex;align-items:center;gap:8px;padding:12px 18px 4px;font-size:14px;color:var(--ink-2)}
+.brn b{color:var(--ink);font-weight:600}
+.rd{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;font:800 11px var(--f-ui);flex:none}
+.rd.A{background:var(--ink);color:var(--sheet)}
+.rd.B{background:var(--sheet);color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink)}
+.file{font:13px var(--f-code);color:var(--ink-3)}
+
+.verdict{display:flex;gap:12px;align-items:flex-start;padding:14px 18px;border-top:1px solid var(--rule)}
+.verdict .sig{width:22px;height:22px;border-radius:50%;flex:none;margin-top:1px;display:grid;place-items:center;color:#fff;font:800 13px var(--f-ui)}
+.verdict.ok .sig{background:var(--l-ca)} .verdict.bad .sig{background:var(--signal)} .verdict.warn .sig{background:var(--l-up);color:#1c2b39} .verdict.wait .sig{background:var(--rule)}
+.verdict b{font-weight:600;display:block}
+.verdict span{color:var(--ink-2);font-size:14.5px}
+.reveal{animation:rise .35s ease-out both}
+.reveal.late{animation-delay:.55s}
+@keyframes rise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.reveal{animation:none}}
+
+table.imp{width:100%;border-collapse:collapse;font-size:14.5px}
+.imp th,.imp td{text-align:left;padding:8px 18px;border-top:1px solid var(--rule);vertical-align:top}
+.imp th{font-weight:600;color:var(--ink-3);font-size:13px;border-top:0;padding-top:12px}
+.imp td.j{white-space:nowrap}
+.imp td.j i{display:inline-block;width:14px;height:5px;border-radius:3px;margin-right:8px;vertical-align:middle}
+.imp tr.both td{background:var(--signal-soft)}
+.imp .c{text-align:center;width:44px}
+.imp .dim{color:var(--ink-3)}
+.ok-t{color:var(--add-ink);font-weight:600} .bad-t{color:var(--signal);font-weight:600}
+
+.resolve{margin-top:16px}
+.opts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-bottom:1px solid var(--rule)}
+.opts button{background:none;border:0;border-right:1px solid var(--rule);padding:14px 18px;text-align:left}
+.opts button:last-child{border-right:0}
+.opts button b{display:block;font-weight:600}
+.opts button span{font-size:13.5px;color:var(--ink-2)}
+.opts button.on{background:var(--sheet-2);box-shadow:inset 0 -3px 0 var(--ink)}
+.rg{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)}
+.rg > div{min-width:0}
+.rg > div:first-child{border-right:1px solid var(--rule)}
+.sub{padding:12px 18px 0;font-size:14px;color:var(--ink-3);display:flex;align-items:center;gap:8px}
+.out{font:13px var(--f-code)}
+
+.run{margin-top:16px}
+.run .cols{display:grid;grid-template-columns:repeat(4,minmax(0,1fr))}
+.run .c{padding:14px 18px;border-right:1px solid var(--rule)}
+.run .c:last-child{border-right:0;background:var(--signal-soft)}
+.run .c small{display:block;color:var(--ink-3);font-size:13px;margin-bottom:4px}
+.run .c code{font:600 16px var(--f-code)}
+.run .c:last-child code{color:var(--signal)}
+
+@media (max-width:1080px){ .ov,.fl,.mg{grid-template-columns:1fr} .insp{position:static} }
+@media (max-width:720px){
+  h1{font-size:30px}
+  .bar{grid-template-columns:1fr}
+  .opts{grid-template-columns:1fr} .opts button{border-right:0;border-bottom:1px solid var(--rule)}
+  .rg{grid-template-columns:1fr} .rg > div:first-child{border-right:0;border-bottom:1px solid var(--rule)}
+  .run .cols{grid-template-columns:1fr 1fr}
+  .imp th,.imp td{padding:8px 10px}
+}
+
+/* player */
+.player{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px 20px;align-items:center;background:var(--sheet);border:1px solid var(--rule);border-radius:6px;padding:14px 18px 12px;margin-bottom:16px}
+.player .cap{min-height:50px}
+.player .sn{display:block;font-size:13px;color:var(--ink-3)}
+.player .cap b{display:block;font-weight:800;font-size:22px;letter-spacing:-.015em;line-height:1.2}
+.player .ctl{display:flex;gap:8px}
+.player .ctl button{background:none;border:0;box-shadow:inset 0 0 0 1.5px var(--rule);border-radius:4px;padding:9px 14px;font-weight:600;font-size:15px}
+.player .ctl button.pri{background:var(--ink);color:var(--sheet);box-shadow:none;min-width:92px}
+.player .ctl button[disabled]{opacity:.35;cursor:default}
+.track{grid-column:1/-1;display:flex;gap:4px}
+.track button{flex:1;background:none;border:0;padding:0;text-align:left;font-size:13px;color:var(--ink-3);position:relative;min-width:0}
+.track button::before{content:"";display:block;height:4px;border-radius:2px;background:var(--rule);margin-bottom:6px}
+.track button.done::before,.track button.on::before{background:var(--ink)}
+.track button.on.run::before{background:var(--rule)}
+.track button.on{color:var(--ink);font-weight:600}
+.track button .fill{position:absolute;left:0;top:0;height:4px;border-radius:2px;background:var(--ink);width:0}
+.track button .fill.run{animation:fillbar var(--dur) linear forwards}
+.track button span{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@keyframes fillbar{to{width:100%}}
+.sheet.focus{box-shadow:0 0 0 2px var(--ink);transition:box-shadow .3s}
+.graphbox{padding:8px 18px;margin-bottom:16px}
+
+/* motion */
+.draw{stroke-dasharray:1;stroke-dashoffset:1;animation:draw var(--d,1.6s) cubic-bezier(.45,0,.35,1) forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+.train{animation:train 1.6s cubic-bezier(.45,0,.35,1) forwards}
+@keyframes train{0%{transform:translateY(0);opacity:1}94%{opacity:1}100%{transform:translateY(var(--dy));opacity:0}}
+.ping{transform-box:fill-box;transform-origin:center;animation:ping .6s ease-out both}
+@keyframes ping{0%{transform:scale(1)}35%{transform:scale(1.4)}100%{transform:scale(1)}}
+.drop{animation:drop .65s cubic-bezier(.3,1.5,.5,1) both}
+@keyframes drop{from{transform:translateY(-26px);opacity:0}}
+.pop{transform-box:fill-box;transform-origin:center;animation:pop .5s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes pop{from{transform:scale(0)}}
+.fade{animation:fade .6s ease both}
+@keyframes fade{from{opacity:0}}
+.shake{animation:shake .55s ease both}
+@keyframes shake{20%{transform:translateX(-6px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+.enter{animation:rise .4s ease-out both}
+.flash-add{animation:flashA 1.6s ease both}
+@keyframes flashA{0%,35%{background:var(--add-mark)}}
+.flash-del{animation:flashD 1.6s ease both}
+@keyframes flashD{0%,35%{background:var(--del-mark)}}
+.flash-bad{animation:flashB 1.6s ease both}
+@keyframes flashB{0%{background:var(--signal-soft)}15%{background:var(--signal);color:#fff}30%{background:var(--signal-soft)}45%{background:var(--signal);color:#fff}100%{background:var(--signal-soft)}}
+.glow{animation:glow 1s ease both}
+@keyframes glow{from{background:transparent;border-left-color:transparent}}
+.sweep{animation:sweep 1s ease both}
+@keyframes sweep{0%{background:var(--hover)}40%{background:var(--add-mark)}}
+.mini{position:relative;height:18px;margin:12px 8px 10px}
+.mini .rail{position:absolute;left:0;right:0;top:7px;height:4px;border-radius:2px;background:var(--l-ca)}
+.mini i{position:absolute;top:3px;width:12px;height:12px;margin-left:-6px;border-radius:50%;background:var(--sheet);border:2.5px solid var(--l-ca);box-sizing:border-box}
+.mini .rider{position:absolute;top:1px;left:100%;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:var(--ink)}
+.mini .rider.ride{animation:ride 1.8s cubic-bezier(.45,0,.35,1) both}
+@keyframes ride{from{left:0}to{left:100%}}
+.vals{font-size:13px;color:var(--ink-3);display:grid;gap:2px}
+.vals code{font:600 14px var(--f-code);color:var(--ink)}
+.run .c.bad .vals code{color:var(--signal)}
+.run .c.bad{background:var(--signal-soft)}
+.run .cols .c:last-child{background:none}
+.run .cols .c.bad:last-child{background:var(--signal-soft)}
+.wait{padding:22px 18px;color:var(--ink-3);font-size:14.5px}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:1ms!important;animation-delay:0ms!important}}
+@media (max-width:720px){ .player{grid-template-columns:1fr} .player .cap b{font-size:19px} .track button span{font-size:11px} }
+
+.explain{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px 28px;border-top:1px solid var(--rule);padding-top:12px}
+.explain h4{margin:0 0 2px;font-weight:600;font-size:14px;color:var(--ink-3)}
+.explain p{margin:0;font-size:15.5px;line-height:1.55;color:var(--ink);max-width:68ch}
+.explain p code{font:600 13.5px var(--f-code);background:var(--sheet-2);padding:1px 5px;border-radius:3px}
+@media (max-width:720px){ .explain{grid-template-columns:1fr} }
+.xbox{padding:14px 18px;margin-bottom:16px}
+.xbox .explain{border-top:0;padding-top:0}
+.xbox.solo{max-width:960px}
+.insp .explain{grid-template-columns:1fr;border-top:1px solid var(--rule);padding:14px 18px;gap:12px}
+.insp .explain p{font-size:14.5px}
+.tw{width:100%;border-collapse:collapse;font-size:14px;table-layout:fixed}
+.tw th:nth-child(1){width:22%}.tw th:nth-child(2),.tw th:nth-child(3),.tw th:nth-child(4){width:20%}.tw th:nth-child(5){width:18%}
+.tw td.cd.mainc{color:var(--ink-3)}
+.tw th{font-weight:600;color:var(--ink-3);font-size:13px;text-align:left;padding:10px 12px 6px}
+.tw td{padding:8px 12px;border-top:1px solid var(--rule);vertical-align:top}
+.tw td.cd{font:12.5px/1.5 var(--f-code);font-variant-ligatures:none;word-break:break-word}
+.tw td.cd.ch{background:var(--add)}
+.tw td.cd.no{color:var(--ink-3);font-family:var(--f-ui);font-size:13px;white-space:nowrap}
+.tw td.where{color:var(--ink-2)}
+.tw tr.cf td{background:var(--signal-soft)}
+.tw tr.cf td.cd.ch{background:color-mix(in srgb,var(--signal) 22%,var(--sheet))}
+.tw .res{font-weight:600;white-space:nowrap}
+.rule{padding:12px 18px 4px;font-size:14.5px;color:var(--ink-2);max-width:72ch}
+.rule b{color:var(--ink)}
+.term{margin:4px 18px 14px;background:#0f161d;color:#c9d4dc;border-radius:4px;padding:10px 12px;font:12.5px/1.6 var(--f-code);white-space:pre-wrap}
+.term .bad{color:#ff7b70}
+.term .ok{color:#7fd6a5}
+.term .pr{color:#7c8a95}
+.player.sticky{position:sticky;top:0;z-index:4;box-shadow:0 10px 18px -14px rgba(0,0,0,.45)}
+.scene{max-width:980px;margin:0 auto;display:grid;gap:16px}
+.scard .sh{align-items:center}
+.logo{width:26px;height:26px;border-radius:4px;display:grid;place-items:center;font:800 13px var(--f-ui);flex:none}
+.logo.git{background:var(--sheet-2);color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--rule)}
+.logo.flow{background:var(--ink);color:var(--sheet)}
+.scard .graph{padding:8px 18px}
+.scard .graph svg{max-width:760px}
+.owners{padding:12px 18px 16px;display:grid;gap:12px}
+.own-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:15px}
+.arrowto{color:var(--ink-3)}
+.own-row .st{font:600 14px var(--f-code);background:var(--sheet-2);color:var(--ink);box-shadow:inset 0 0 0 1px var(--rule);padding:2px 8px;border-radius:4px}
+.dimt{color:var(--ink-3)}
+.steps-v{margin:0;padding:12px 18px 12px 40px;display:grid;gap:8px;font-size:15px}
+.steps-v b{font-weight:600}
+.opts-v{display:grid;gap:12px;padding:4px 18px 18px}
+.opt{border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+.opt.on{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.opt-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--rule)}
+.opt-h b{font-weight:800;font-size:16px}
+.opt-h span{color:var(--ink-2);font-size:14px}
+.opt-h .rec{background:var(--add);color:var(--add-ink);font-weight:600;padding:1px 8px;border-radius:999px;font-size:13px}
+.opt-h .go{margin-left:auto;padding:7px 14px;font-size:14px}
+.res{list-style:none;margin:0;padding:8px 14px;display:grid;gap:4px}
+.res li{display:grid;grid-template-columns:14px minmax(0,1fr) auto;gap:10px;align-items:center;font-size:14.5px}
+.res li i{width:14px;height:5px;border-radius:3px}
+.opt-f{padding:8px 14px 10px;border-top:1px solid var(--rule);font-size:14px}
+.runrow{display:grid;grid-template-columns:140px minmax(0,1fr) 210px;gap:20px;align-items:center;padding:10px 18px;border-top:1px solid var(--rule)}
+.runrow.bad{background:var(--signal-soft)}
+.runrow .rl{font-weight:600}
+.runrow.bad .vals code{color:var(--signal)}
+.jc{display:inline-flex;gap:6px;align-items:center}
+@media (max-width:720px){ .runrow{grid-template-columns:1fr;gap:6px} .player.sticky{position:static} }
+.player{display:block}
+.ptop{display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.ptop .sn{font-size:14px;color:var(--ink-2);font-weight:600}
+.ptop .ctl{margin-left:auto}
+.say{margin:8px 0 12px;font-weight:600;font-size:20px;line-height:1.4;letter-spacing:-.01em;max-width:72ch}
+.nums{display:flex;flex-wrap:wrap;gap:6px}
+.nums button{display:inline-flex;align-items:center;gap:8px;background:none;border:0;box-shadow:inset 0 0 0 1px var(--rule);border-radius:999px;padding:4px 12px 4px 4px;font-size:13.5px;color:var(--ink-2)}
+.nums button b{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;font:600 12px var(--f-ui);background:var(--sheet-2);color:var(--ink-2)}
+.nums button.done b{background:var(--ink-3);color:var(--sheet)}
+.nums button.on{box-shadow:inset 0 0 0 1.5px var(--ink);color:var(--ink);font-weight:600}
+.nums button.on b{background:var(--ink);color:var(--sheet)}
+.scene.wide{max-width:none;margin-top:16px}
+@media (max-width:720px){ .say{font-size:17px} }
+#scen{margin-bottom:20px}
+#scen .scen{margin-bottom:6px}
+.gl{font-size:13px;font-weight:600;color:var(--ink-3);margin:6px 0 0}
+.verdict.warn .sig{background:var(--l-up);color:#1c2b39}
+.how{padding:12px 18px;border-top:1px solid var(--rule)}
+.how h3{font-weight:700;font-size:15px;margin:0 0 4px}
+.how p{margin:0;font-size:14.5px;color:var(--ink-2);max-width:68ch}
+.rtable{overflow-x:auto}
+.rtable .imp th,.rtable .imp td{padding:8px 10px}
+.rtable th.pk,.rtable td.pk{background:var(--sheet-2)}
+.pickb{background:none;border:0;padding:0;font:700 14px var(--f-ui);color:var(--ink);text-decoration:underline;text-underline-offset:3px}
+.pickb.on{text-decoration:none}
+.rtable th small{display:block;font-weight:400;color:var(--ink-3);font-size:12px}
+.rtable th.recd small{color:var(--add-ink);font-weight:600}
+.rtable tr.tot td{font-weight:600}
+#scen{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 16px}
+#scen .gl{font-size:13px;color:var(--ink-3);font-weight:600;margin:0 4px 0 0}
+#scen .gl:not(:first-child){margin-left:14px}
+.pill{background:none;border:0;box-shadow:inset 0 0 0 1px var(--rule);border-radius:999px;padding:6px 14px;font-size:14px;font-weight:500;color:var(--ink-2)}
+.pill.on{background:var(--ink);color:var(--sheet);box-shadow:none;font-weight:600}
+#p-merge .head{padding:28px 0 16px}
+#p-merge .head h1{font-size:32px}
+.say{font-size:18px}
+.nums button{font-size:12.5px;padding:3px 10px 3px 3px}
+.nums button b{width:20px;height:20px}
+.story{padding:14px 18px;margin-bottom:12px}
+.story .q{margin:0;font-size:17px;line-height:1.5;max-width:80ch}
+.story .key{margin:8px 0 0;font-size:13.5px;color:var(--ink-3)}
+.story .key b{color:var(--ink-2);font-weight:600}
+.theme{order:3;align-self:center;background:none;border:1px solid color-mix(in srgb,var(--paper) 35%,transparent);color:inherit;border-radius:4px;padding:5px 10px;font-size:13px;font-weight:600;margin-left:12px}
+nav .in .tabs{order:2}
+nav{background:#1b1f23;color:#eef1f3}
+nav .tabs a{color:#aeb7be}
+nav .tabs a.on,nav .tabs a:hover{color:#fff}
+.theme{border-color:#4a5259}
+#p-merge{padding-top:20px}
+.combo{margin-bottom:16px}
+.combo .story{padding:16px 18px 12px;margin:0;border-bottom:1px solid var(--rule)}
+.combo .player{border:0;background:none;margin:0;border-radius:0}
+/* merge layout: scenario list beside a focused stage */
+#p-merge{padding-top:24px}
+.mlayout{display:grid;grid-template-columns:232px minmax(0,1fr);gap:24px;align-items:start}
+#scen{position:sticky;top:16px;display:flex;flex-direction:column;gap:2px;margin:0;flex-wrap:nowrap}
+#scen .gl{margin:16px 0 6px 10px;font-size:12.5px;font-weight:600;color:var(--ink-3)}
+#scen .gl:first-child{margin-top:0}
+.sc-item{text-align:left;background:none;border:0;border-radius:6px;padding:8px 10px}
+.sc-item b{display:block;font-weight:600;font-size:14.5px;color:var(--ink)}
+.sc-item span{display:block;font-size:12.5px;color:var(--ink-3);line-height:1.35;margin-top:1px}
+.sc-item:hover{background:var(--sheet-2)}
+.sc-item.on{background:var(--sheet);box-shadow:inset 0 0 0 1px var(--rule),inset 3px 0 0 var(--ink)}
+.combo .story{padding:16px 20px 12px}
+.combo .story .q{font-size:17px;font-weight:500}
+.key{margin-top:6px}
+.key summary{cursor:pointer;color:var(--ink-3);font-size:13.5px;width:max-content}
+.key p{margin:6px 0 0;font-size:13.5px;color:var(--ink-2);max-width:80ch}
+.combo .player{padding:16px 20px 16px}
+.pbar{display:flex;align-items:center;gap:24px}
+.stepper{list-style:none;margin:0;padding:0;display:flex;flex:1;min-width:0}
+.stepper li{flex:1;position:relative;min-width:0}
+.stepper li::before{content:"";position:absolute;top:13px;left:-50%;right:50%;height:2px;background:var(--rule)}
+.stepper li:first-child::before{display:none}
+.stepper li.done::before,.stepper li.on::before{background:var(--ink)}
+.stepper button{position:relative;z-index:1;width:100%;background:none;border:0;padding:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.stepper .dot{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font:600 13px var(--f-ui);background:var(--sheet);box-shadow:inset 0 0 0 2px var(--rule);color:var(--ink-3);transition:box-shadow .2s,background .2s}
+.stepper li.done .dot{background:var(--ink);color:var(--sheet);box-shadow:none}
+.stepper li.on .dot{color:var(--ink);box-shadow:inset 0 0 0 2px var(--ink),0 0 0 4px color-mix(in srgb,var(--ink) 12%,transparent)}
+.stepper .lb{font-size:12.5px;color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;padding:0 4px}
+.stepper li.on .lb{color:var(--ink);font-weight:600}
+.player .say{margin:16px 0 0;font-size:18px;font-weight:600;line-height:1.4;max-width:75ch}
+.stage{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;align-items:start;margin-top:16px}
+.pane{min-width:0}
+.pane .colh small{font-weight:400;margin-left:6px}
+@media (max-width:1000px){ .mlayout{grid-template-columns:1fr} #scen{position:static;flex-direction:row;overflow-x:auto;gap:6px} #scen .gl{display:none} .sc-item{white-space:nowrap;box-shadow:inset 0 0 0 1px var(--rule)} .sc-item span{display:none} .stage{grid-template-columns:1fr} }
+@media (max-width:640px){ .pbar{flex-direction:column;align-items:stretch;gap:12px} .stepper .lb{display:none} }
+#scen{align-items:stretch}
+.stage.mapr{grid-template-columns:minmax(0,.72fr) minmax(0,1.28fr)}
+@media (max-width:1000px){ .stage.mapr{grid-template-columns:1fr} }
+.pane > .imp td:last-child{white-space:nowrap}
+/* restyle: soft, rounded, quiet */
+body{font-size:15px;line-height:1.55;letter-spacing:-.006em;-webkit-font-smoothing:antialiased}
+h1{font-weight:600;font-size:30px;letter-spacing:-.022em}
+h2{font-weight:600;font-size:16px;letter-spacing:-.012em}
+.head{padding:32px 0 20px}
+.head p{font-size:16px}
+.sheet{border-radius:16px;border:1px solid var(--rule);box-shadow:0 1px 2px rgba(24,24,27,.04),0 6px 20px -8px rgba(24,24,27,.06);overflow:hidden}
+.sheet.focus{box-shadow:0 0 0 2px var(--ink),0 6px 20px -8px rgba(24,24,27,.12)}
+.sh,.colh{border-bottom-color:var(--rule);padding:14px 20px}
+.combo .player,.combo .story{padding-left:22px;padding-right:22px}
+.code{font-size:12.5px;line-height:1.7}
+.term{border-radius:12px}
+nav{position:sticky;top:0;z-index:10;background:color-mix(in srgb,var(--paper) 82%,transparent);backdrop-filter:saturate(160%) blur(12px);-webkit-backdrop-filter:saturate(160%) blur(12px);color:var(--ink);border-bottom:1px solid var(--rule)}
+nav .in{min-height:56px;align-items:center}
+.brand{font-weight:600;font-size:15px;letter-spacing:-.012em}
+nav .tabs{gap:2px;padding:3px;background:var(--sheet-2);border-radius:12px;align-self:center}
+nav .tabs a{color:var(--ink-2);border-bottom:0;padding:6px 14px;border-radius:9px;font-size:14px}
+nav .tabs a:hover{color:var(--ink)}
+nav .tabs a.on{color:var(--ink);background:var(--sheet);box-shadow:0 1px 2px rgba(24,24,27,.08)}
+.theme{border:1px solid var(--rule);border-radius:10px;padding:6px 12px;background:var(--sheet);color:var(--ink-2);font-weight:500}
+.ctl button,.player .ctl button{border-radius:10px;padding:8px 14px;font-weight:500;font-size:14px}
+.player .ctl button.pri{border-radius:10px;min-width:84px}
+.go{border-radius:10px}
+.pickb{font-weight:600}
+.logo{border-radius:8px}
+.logo.flow{background:var(--ink)}
+.rd{font-weight:600}
+.sc-item{border-radius:12px;padding:9px 12px}
+.sc-item.on{background:var(--sheet);box-shadow:0 1px 2px rgba(24,24,27,.06),0 0 0 1px var(--rule)}
+.sc-item b{font-weight:500}
+.sc-item.on b{font-weight:600}
+.story .q,.combo .story .q{font-size:16px;font-weight:500;line-height:1.5}
+.player .say{font-size:17px;font-weight:600;letter-spacing:-.012em}
+.stepper .dot{font-weight:500}
+.stepper li.done .dot{font-size:12px}
+.own-row .st{border-radius:8px;font-weight:500;font-size:13px}
+.imp th{font-weight:500}
+.tw th{font-weight:500}
+.tw .res{font-weight:500}
+.bad-t,.ok-t{font-weight:500}
+.how h3{font-weight:600}
+.verdict b{font-weight:600}
+.opt{border-radius:12px}
+.ftabs button{font-family:var(--f-code);font-size:13px;font-weight:500}
+.insp .fn{font-weight:500}
+.mini .rail{border-radius:3px}
+.mapbox{padding:12px 10px 14px}
+.pane > .imp th,.pane > .imp td{padding:9px 12px}
+.pane > .imp .c{width:34px;padding-left:4px;padding-right:4px}
+.pane > .imp th:first-child,.pane > .imp td:first-child{padding-left:20px}
+/* polish */
+.who{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;font-size:12px;font-weight:600;flex:none}
+.who.git{background:var(--sheet-2);color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--rule)}
+.who.flow{background:var(--ink);color:var(--sheet)}
+.rd{width:22px;height:22px;font-size:11.5px;font-weight:600;color:#fff;box-shadow:none}
+.rd.A{background:var(--a);color:#fff}
+.rd.B{background:var(--b);color:#fff;box-shadow:none}
+.colh{gap:10px}
+.colh h2{font-size:15px}
+.pane .colh small{color:var(--ink-3);font-size:12.5px}
+
+/* controls */
+button{transition:background .15s,box-shadow .15s,color .15s,transform .08s}
+button:active:not([disabled]){transform:scale(.97)}
+.ctl{align-items:center}
+.ctl button.ic{width:38px;height:38px;padding:0;display:grid;place-items:center;border-radius:12px;background:var(--sheet);box-shadow:inset 0 0 0 1px var(--rule);color:var(--ink)}
+.ctl button.ic:hover:not([disabled]){background:var(--sheet-2)}
+.player .ctl button.pri,.ctl button.pri{display:inline-flex;align-items:center;gap:4px;height:38px;min-width:0;padding:0 12px 0 16px;border-radius:12px;background:var(--ink);color:var(--sheet);box-shadow:0 1px 2px rgba(24,24,27,.2)}
+.ctl button.pri:hover:not([disabled]){opacity:.88}
+.ctl button[disabled]{opacity:.35;cursor:default}
+
+/* stepper */
+.stepper .dot{width:26px;height:26px;font-size:12.5px}
+.stepper li::before{top:12px;height:1.5px}
+.stepper li.on .dot{box-shadow:inset 0 0 0 1.5px var(--ink),0 0 0 4px color-mix(in srgb,var(--ink) 9%,transparent)}
+.stepper li:not(.on) button:hover .lb{color:var(--ink)}
+
+/* code: no wasted gutter in diffs */
+.pane .row{grid-template-columns:8px 30px 18px minmax(0,1fr);padding-right:18px;border-left:0}
+.pane .row.hunk{grid-template-columns:1fr;padding:5px 18px;font-size:11.5px;margin:0}
+.pane .code{padding:0 0 8px}
+.row.add mark,.row.del mark{border-radius:4px;padding:1px 2px}
+.sub{font-size:13px;padding:14px 20px 6px}
+.rule{padding:14px 20px 6px;font-size:14px}
+.term{margin:6px 20px 16px;padding:12px 14px;background:#111114;color:#d4d4d8;box-shadow:inset 0 0 0 1px #27272a}
+
+/* verdicts become soft banners */
+.verdict{margin:14px 20px 18px;padding:12px 14px;border:0;border-radius:12px;align-items:center;gap:12px}
+.verdict.ok{background:var(--ok-soft)}
+.verdict.bad{background:var(--signal-soft)}
+.verdict.warn{background:var(--warn-soft)}
+.verdict.wait{background:var(--sheet-2)}
+.verdict .sig{width:26px;height:26px;margin:0}
+.verdict.wait .sig{display:none}
+.verdict b{font-size:14.5px;line-height:1.35}
+.verdict span{font-size:13.5px;line-height:1.45}
+.stage.big .verdict{margin:18px 20px 20px;padding:18px}
+.stage.big .verdict b{font-size:17px;letter-spacing:-.012em}
+.stage.big .verdict span{font-size:14.5px}
+
+/* tables */
+.imp tr:not(.both):hover td{background:color-mix(in srgb,var(--sheet-2) 60%,transparent)}
+.imp th,.tw th{font-size:12.5px;color:var(--ink-3)}
+.tw th:first-child,.tw td:first-child{padding-left:20px}
+.how{padding:14px 20px}
+.owners{padding:16px 20px;gap:14px}
+
+/* motion */
+@keyframes paneIn{from{opacity:0;transform:translateY(6px)}}
+.stage.in .pane:not(.enter){animation:paneIn .28s ease-out both}
+.player .say{animation:fade .3s ease both}
+.sc-item{transition:background .15s,box-shadow .15s}
+.key summary{list-style:none;display:inline-flex;align-items:center;gap:6px}
+.key summary::-webkit-details-marker{display:none}
+.key summary::before{content:"?";width:16px;height:16px;border-radius:50%;display:inline-grid;place-items:center;font-size:11px;font-weight:600;background:var(--sheet-2);color:var(--ink-2)}
+.key summary:hover{color:var(--ink)}
+.tw td.where{overflow-wrap:anywhere;font-size:13.5px}
+.tw td.res{display:table-cell;padding:8px 12px;white-space:nowrap}
+</style>
+</head>
+<body>
+<nav><div class="in">
+  <div class="brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v18M12 3v8a4 4 0 0 0 4 4h3" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="12" cy="11" r="3" fill="#e8a200"/></svg>Flow control</div>
+  <button class="theme" id="theme" aria-label="Switch light or dark">Light</button><div class="tabs" id="tabs"><a href="#overview">Overview</a><a href="#file">File</a><a href="#diff">Diff</a><a href="#flow">Flow</a><a href="#merge">Merge</a></div>
+</div></nav>
+
+<div class="wrap">
+
+<section class="page" id="p-overview">
+  <div class="head"><h1>One edit, three views</h1><p>Plan changes now keep the user's billing interval. Git sees one line. Flow sees two journeys.</p></div>
+  <div class="player" id="ov-player"></div>
+  <div class="ov">
+    <div class="sheet" id="ov-s-flow"><div class="sh"><h2>Flow</h2><small>Journeys as lines, functions as stops</small><span class="meta" id="ov-meta">6 journeys</span></div>
+      <div class="mapbox" id="ov-map"></div>
+      <div class="legend" id="ov-legend"></div></div>
+    <div class="stack">
+      <div class="sheet" id="ov-s-diff"><div class="sh"><h2>Diff</h2><small>lib/billing.ts</small><span class="meta"><span class="ok-t">+1</span> <span class="bad-t">−1</span></span></div><div class="code wrapcode" id="ov-diff"></div></div>
+      <div class="sheet" id="ov-s-file"><div class="sh"><h2>File</h2><small>lib/billing.ts</small><span class="meta">24 lines</span></div><div class="code" id="ov-file"></div></div>
+    </div>
+  </div>
+</section>
+
+<section class="page" id="p-file">
+  <div class="head"><h1>File view</h1><p>Every line has one owner. The dots show which journeys run it.</p></div>
+  <div class="sheet xbox solo" id="fx"></div>
+  <div class="sheet solo"><div class="ftabs" id="ftabs"></div><div class="code" id="fv"></div></div>
+</section>
+
+<section class="page" id="p-diff">
+  <div class="head"><h1>Diff view</h1><p>What git shows, and what it can't: who runs the changed code.</p></div>
+  <div class="sheet xbox solo" id="dx"></div>
+  <div class="sheet solo"><div class="sh"><h2>lib/billing.ts</h2><span class="meta"><span class="ok-t">+1</span> <span class="bad-t">−1</span></span></div>
+    <div class="code wrapcode" id="dv"></div><div class="legend" id="dv-runs"></div></div>
+</section>
+
+<section class="page" id="p-flow">
+  <div class="head"><h1>Flow view</h1><p>Pick a stop to see its code, the journeys that run it, and the state it touches.</p></div>
+  <div class="sheet xbox" id="flx"></div>
+  <div class="fl">
+    <div class="sheet"><div class="mapbox" id="fl-map"></div><div class="legend" id="fl-legend"></div></div>
+    <div class="sheet insp" id="insp"></div>
+  </div>
+</section>
+
+<section class="page" id="p-merge"><div class="mlayout">
+  <aside id="scen" aria-label="Scenarios"></aside>
+  <div class="mmain">
+    <div class="sheet combo"><div class="story" id="story"></div><div class="player" id="m-player"></div></div>
+    <div class="stage" id="stage"></div>
+  </div>
+</div></section>
+</div>
+
+<script>
+/* ---------------- highlighting ---------------- */
+const KW = new Set("export function return if throw const let import from new await async".split(" "));
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+function hl(src){
+  const re = /(\/\/.*$)|("(?:[^"\\]|\\.)*"|`[^`]*`)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_$][\w$]*)(?=\s*\()|([A-Za-z_$][\w$]*)|([{}()[\];,.:?=+*<>!|&…-]+)/g;
+  let out = "", last = 0, m;
+  while ((m = re.exec(src))) {
+    out += esc(src.slice(last, m.index)); const t = m[0];
+    if (m[1]) out += `<span class="t-c">${esc(t)}</span>`;
+    else if (m[2]) out += `<span class="t-s">${esc(t)}</span>`;
+    else if (m[3]) out += `<span class="t-n">${t}</span>`;
+    else if (m[4]) out += `<span class="${KW.has(t)?'t-k':'t-f'}">${t}</span>`;
+    else if (m[5]) out += KW.has(t) ? `<span class="t-k">${t}</span>` : t;
+    else out += `<span class="t-p">${esc(t)}</span>`;
+    last = re.lastIndex;
+  }
+  return out + esc(src.slice(last));
+}
+const hlMark = (src, part) => { const i = part ? src.indexOf(part) : -1; return i < 0 ? hl(src) : hl(src.slice(0,i)) + "<mark>" + hl(part) + "</mark>" + hl(src.slice(i+part.length)); };
+
+/* ---------------- the demo repo (real output of flow show / flow ledger) ---------------- */
+const LINES = [
+  { id:"li", name:"Log in",         route:"POST /api/login",   stops:["validateForm","issueSid","loadSession","renderHeader"] },
+  { id:"su", name:"Sign up",        route:"POST /api/signup",  stops:["validateForm","createUser","issueSid","loadSession","sendEmail","renderHeader"] },
+  { id:"ca", name:"Cancel plan",    route:"POST /api/cancel",  stops:["loadSession","applyPlanChange","emit","onPlanChanged","sendEmail","renderHeader"] },
+  { id:"up", name:"Upgrade to Pro", route:"POST /api/upgrade", stops:["loadSession","resolvePrice","isEnabled","chargeCard","applyPlanChange","emit","onPlanChanged","sendEmail","renderHeader"] },
+  { id:"ag", name:"Ask the agent",  route:"POST /api/agent",   stops:["loadSession","planGuard","buildSystemPrompt","isEnabled","pickTools","streamReply"] },
+  { id:"pl", name:"Load a plugin",  route:"GET /api/plugin",   stops:["runPlugin","plugins"] },
+];
+const LBY = Object.fromEntries(LINES.map(l => [l.id, l]));
+const runsIn = fn => LINES.filter(l => l.stops.includes(fn)).map(l => l.id);
+
+const SRC = {
+"lib/billing.ts": { lines:`// Pricing and plan changes.
+import { S } from "./state";
+import { isEnabled } from "./flags";
+import { emit } from "./bus";
+
+export function resolvePrice(plan: string) {
+  const table: Record<string, number> = isEnabled("newPricing") ? { pro: 24 } : { pro: 20 };
+  return table[plan];
+}
+
+export function chargeCard(amount: number) {
+  S.charged = (S.charged ?? 0) + amount;
+}
+
+export function applyPlanChange(plan: "free" | "pro") {
+  S.plans = { ...S.plans, [S.user]: { plan, interval: S.interval ?? "month" } };
+  emit("plan_changed");
+}
+
+export function planGuard(action: string) {
+  if (S.plans[S.user].plan === "free") {
+    throw new Error("upgrade required for " + action);
+  }
+}`, own:[[1,4],[5,9,"resolvePrice"],[10,13,"chargeCard"],[14,18,"applyPlanChange"],[19,24,"planGuard"]] },
+"lib/auth.ts": { lines:`// Sign-up and sessions.
+import { S } from "./state";
+
+export function validateForm(f: { email: string }) {
+  if (f.email.indexOf("@") < 0) {
+    throw new Error("bad email");
+  }
+  return f;
+}
+
+export function createUser(f: { email: string }) {
+  const id = "u" + (Object.keys(S.users).length + 1);
+  S.users = { ...S.users, [id]: { email: f.email } };
+  S.plans = { ...S.plans, [id]: { plan: "free", interval: "month" } };
+  return id;
+}
+
+export function issueSid(id: string) {
+  S.sid = "sid-" + id;
+}
+
+export function loadSession() {
+  S.user = S.sid.replace("sid-", "");
+}`, own:[[1,2],[3,9,"validateForm"],[10,16,"createUser"],[17,20,"issueSid"],[21,24,"loadSession"]] },
+"lib/ui.ts": { lines:`import { S } from "./state";
+
+// The header badge.
+export function renderHeader() {
+  S.header = S.plans[S.user].plan.toUpperCase();
+}`, own:[[1,1],[2,6,"renderHeader"]] },
+"lib/mailer.ts": { lines:`// Email. The plan-changed handler is wired by name.
+import { S } from "./state";
+import { on } from "./bus";
+
+export function sendEmail(kind: string) {
+  const u = S.users[S.user];
+  S.outbox = [...(S.outbox ?? []), \`\${kind} -> \${u.email}\`];
+}
+
+function onPlanChanged() {
+  sendEmail("plan-changed");
+}
+
+on("plan_changed", onPlanChanged);`, own:[[1,3],[4,8,"sendEmail"],[9,12,"onPlanChanged"],[13,13],[14,14,"unplaced"]] },
+"lib/bus.ts": { lines:`// A tiny event bus. Handlers are looked up by name at runtime.
+const handlers: Record<string, Array<() => void>> = {};
+
+export function on(evt: string, fn: () => void) {
+  handlers[evt] = [...(handlers[evt] ?? []), fn];
+}
+
+export function emit(evt: string) {
+  (handlers[evt] ?? []).forEach((fn) => fn());
+}`, own:[[1,2,"handlers"],[3,6,"on"],[7,10,"emit"]] },
+"lib/flags.ts": { lines:`import { S } from "./state";
+
+// Feature flags live in state.
+export function isEnabled(name: string) {
+  return !!S.flags[name];
+}`, own:[[1,1],[2,6,"isEnabled"]] },
+"lib/agent.ts": { lines:`// The agent: prompt, tools and reply.
+import { S } from "./state";
+import { isEnabled } from "./flags";
+
+export function buildSystemPrompt() {
+  const base = "You help a " + S.plans[S.user].plan + " user.";
+  S.prompt = isEnabled("betaUi") ? base + " Beta on." : base;
+}
+
+export function pickTools() {
+  S.tools = S.plans[S.user].plan === "free" ? ["search"] : ["search", "code"];
+}
+
+export function streamReply() {
+  S.reply = "ok:" + S.prompt!.length + ":" + S.tools!.length;
+}`, own:[[1,3],[4,8,"buildSystemPrompt"],[9,12,"pickTools"],[13,16,"streamReply"]] },
+"lib/plugins.ts": { lines:`// Plugins are looked up by name, so no line of code says which one runs.
+const plugins: Record<string, () => string> = {
+  summarize: () => "summary",
+  translate: () => "translation",
+};
+
+export function runPlugin(name: string) {
+  return plugins[name]();
+}
+
+// Nothing calls this any more.
+export function legacyExport() {
+  return Object.keys(plugins);
+}`, own:[[1,5,"plugins"],[6,9,"runPlugin"],[10,14,"legacyExport"]] },
+};
+for (const f of Object.values(SRC)) f.lines = f.lines.split("\n");
+const STN = {};
+for (const [path,f] of Object.entries(SRC)) for (const [a,b,n] of f.own) if (n && n!=="unplaced") STN[n] = { file:path, a, b };
+const STATE = {
+  validateForm:{}, createUser:{w:["S.users","S.plans"]}, issueSid:{w:["S.sid"]}, loadSession:{r:["S.sid"],w:["S.user"]},
+  resolvePrice:{}, isEnabled:{r:["S.flags"]}, chargeCard:{r:["S.charged"],w:["S.charged"]},
+  applyPlanChange:{r:["S.interval","S.plans","S.user"],w:["S.plans"]}, planGuard:{r:["S.plans","S.user"]},
+  emit:{r:["handlers"]}, onPlanChanged:{}, sendEmail:{r:["S.outbox","S.user","S.users"],w:["S.outbox"]},
+  renderHeader:{r:["S.plans","S.user"],w:["S.header"]}, buildSystemPrompt:{r:["S.plans","S.user"],w:["S.prompt"]},
+  pickTools:{r:["S.plans","S.user"],w:["S.tools"]}, streamReply:{r:["S.prompt","S.tools"],w:["S.reply"]}, runPlugin:{}, plugins:{},
+};
+
+/* ---------------- the transit map ---------------- */
+// Stops sit on rows by longest path, so every journey reads top to bottom in call order.
+const LAYER = {};
+(function(){ let changed = true; for (const l of LINES) LAYER[l.stops[0]] = Math.max(LAYER[l.stops[0]]||1, 1);
+  while (changed) { changed = false; for (const l of LINES) for (let i=1;i<l.stops.length;i++) { const need = LAYER[l.stops[i-1]] + 1; if ((LAYER[l.stops[i]]||0) < need) { LAYER[l.stops[i]] = need; changed = true; } } } })();
+let CW = 132; const RH = 40, PADL = 62, TOP = 70, DUR = 1.6;
+const colX = id => PADL + LINES.findIndex(l => l.id===id) * CW;
+const rowY = fn => TOP + (LAYER[fn]-1) * RH + 22;
+const MAXL = Math.max(...Object.values(LAYER));
+const Y1 = TOP - 26;
+
+// o.lines: {id: "on"|"both"|"dim"|"idle"}; missing ids fall back to o.base (default "on", or "dim" when o.lines is given).
+// o.anim: { draw:[line ids] (color runs down the line with a train), drop:true (A/B markers fall onto stops), ping:fn }
+function mapSVG(o = {}){
+  const st = o.lines || {}, ed = o.edited || {}, marks = o.marks || {}, sel = o.selected, an = o.anim || {};
+  const base = o.base || (o.lines ? "dim" : "on");
+  CW = o.only ? 104 : 132;
+  const hw = CW - 14;
+  const W = PADL + (LINES.length-1)*CW + (o.only ? 170 : 210), H = TOP + MAXL*RH + 28;
+  const state = id => st[id] || base;
+  const drawing = id => (an.draw || []).includes(id);
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="${W}" role="img" aria-label="Journeys drawn as lines, with functions as stops">`;
+  for (const l of LINES) {
+    const x = colX(l.id), k = state(l.id), op = k==="dim" ? .35 : k==="idle" ? .5 : 1;
+    s += `<g opacity="${op}" data-line="${l.id}" style="cursor:${o.onLine?'pointer':'default'};transition:opacity .3s"><rect x="${x-hw/2}" y="9" width="${hw}" height="28" rx="14" fill="${k==='idle'?'var(--sheet-2)':`var(--l-${l.id})`}" fill-opacity="${k==='idle'?1:.14}"/>
+      <text x="${x}" y="27.5" text-anchor="middle" font-family="Geist, system-ui, sans-serif" font-weight="500" font-size="${o.only?12:13}" fill="${k==='idle'?'var(--ink-3)':'var(--ink)'}">${l.name}</text></g>`;
+  }
+  for (const l of LINES) if (state(l.id)==="both") {
+    const x = colX(l.id);
+    s += `<path d="M${x} ${Y1} V${rowY(l.stops.at(-1))}" stroke="var(--signal)" stroke-width="15" stroke-linecap="round" opacity=".13" fill="none" class="${drawing(l.id)?'fade':''}" style="animation-delay:${DUR}s"/>`;
+  }
+  for (const l of LINES) {
+    const x = colX(l.id), y2 = rowY(l.stops.at(-1)), k = state(l.id);
+    const col = k==="idle" ? "var(--rule)" : `var(--l-${l.id})`;
+    const op = k==="dim" ? .18 : 1;
+    s += `<g opacity="${op}">`;
+    if (drawing(l.id)) s += `<path d="M${x} ${Y1} V${y2+10}" stroke="var(--rule)" stroke-width="5" stroke-linecap="round" fill="none"/>`;
+    s += `<path d="M${x} ${Y1} V${y2+10}" stroke="${col}" stroke-width="5" stroke-linecap="round" fill="none" pathLength="1" class="${drawing(l.id)?'draw':''}"/>`;
+    s += `<line x1="${x-7}" y1="${y2+10}" x2="${x+7}" y2="${y2+10}" stroke="${col}" stroke-width="3.5" stroke-linecap="round" class="${drawing(l.id)?'fade':''}" style="animation-delay:${DUR*.9}s"/>`;
+    if (drawing(l.id)) s += `<circle cx="${x}" cy="${Y1}" r="6.5" fill="var(--ink)" stroke="var(--sheet)" stroke-width="2.5" class="train" style="--dy:${y2+10-Y1}px"/>`;
+    s += `</g>`;
+  }
+  for (const fn of Object.keys(LAYER)) {
+    const cols = runsIn(fn), xs = cols.map(colX), x1 = Math.min(...xs), x2 = Math.max(...xs), y = rowY(fn);
+    const alive = cols.some(c => state(c)!=="dim"), isEd = ed[fn], isSel = sel===fn;
+    if (o.only && !o.only.includes(fn)) {
+      s += `<g opacity="${alive?.55:.25}">${xs.map(x => `<circle cx="${x}" cy="${y}" r="3.5" fill="var(--sheet)" stroke="var(--ink-3)" stroke-width="1.5"/>`).join("")}</g>`;
+      continue;
+    }
+    // When a train passes this stop, it pings.
+    const passing = cols.filter(drawing).map(c => DUR * (y - Y1) / (rowY(LBY[c].stops.at(-1)) + 10 - Y1));
+    const pingCls = passing.length ? "ping" : an.ping===fn ? "ping" : "";
+    const pingDelay = passing.length ? Math.min(...passing) - .12 : .1;
+    const stroke = isEd ? "var(--signal)" : "var(--ink)";
+    s += `<g class="stop" data-fn="${fn}" opacity="${alive?1:.3}" style="cursor:pointer">`;
+    if (isSel) s += `<rect x="${x1-15}" y="${y-15}" width="${x2-x1+30}" height="30" rx="15" fill="var(--l-su)" opacity=".18"/>`;
+    if (isEd) s += `<rect x="${x1-15}" y="${y-15}" width="${x2-x1+30}" height="30" rx="15" fill="var(--signal)" opacity=".2" class="${an.drop||an.ping===fn?'fade':''}" style="animation-delay:.35s"/>`;
+    const shapeAttr = `class="${pingCls}" style="animation-delay:${pingDelay}s"`;
+    if (cols.length > 1) s += `<rect x="${x1-8}" y="${y-7}" width="${x2-x1+16}" height="14" rx="7" fill="var(--sheet)" stroke="${stroke}" stroke-width="${isEd?2.5:1.75}" ${shapeAttr}/>`;
+    else s += `<circle cx="${x1}" cy="${y}" r="6" fill="var(--sheet)" stroke="${isEd?'var(--signal)':state(cols[0])==='idle'?'var(--ink-3)':`var(--l-${cols[0]})`}" stroke-width="${isEd?2.5:2.25}" ${shapeAttr}/>`;
+    // Flip the label to the left when the next stop on this row would cover it.
+    const tw = fn.length * 7.6, right = Object.keys(LAYER).filter(g => g!==fn && LAYER[g]===LAYER[fn]).map(g => Math.min(...runsIn(g).map(colX))).filter(gx => gx > x2);
+    const left = right.length && Math.min(...right) - x2 < tw + 30;
+    s += `<text x="${left ? x1-16 : x2+16}" y="${y+4.5}" text-anchor="${left?'end':'start'}" font-family="Geist, system-ui, sans-serif" font-size="13.5" font-weight="${isEd||isSel?700:500}" fill="${isEd?'var(--signal)':'var(--ink)'}" stroke="var(--sheet)" stroke-width="5" paint-order="stroke" stroke-linejoin="round">${fn}</text>`;
+    (marks[fn]||[]).forEach((m,i) => {
+      const cx = left ? x2 + 24 + i*24 : x2 + 30 + tw + i*24;
+      const g = `<circle cx="${cx}" cy="${y}" r="10" fill="var(--${m.toLowerCase()})"/><text x="${cx}" y="${y+4.2}" text-anchor="middle" font-family="Geist, system-ui, sans-serif" font-weight="600" font-size="11.5" fill="#fff">${m}</text>`;
+      s += `<g class="${an.drop?'drop':''}" style="animation-delay:${i*.18}s">${g}</g>`;
+    });
+    s += `</g>`;
+  }
+  return s + `</svg>`;
+}
+const legendHTML = (ids, extra="") => LINES.filter(l => !ids || ids.includes(l.id)).map(l => `<span><i style="background:var(--l-${l.id})"></i>${l.name}</span>`).join("") + extra;
+const dots = fn => runsIn(fn).map(id => `<i style="background:var(--l-${id})" title="${LBY[id].name}"></i>`).join("");
+const allIdle = () => Object.fromEntries(LINES.map(l => [l.id, "idle"]));
+
+/* ---------------- player ---------------- */
+// Steps with a caption, Back / Play / Next, and a track you can click.
+function makePlayer(el, getSteps, render, ms = 3000){
+  let i = 0, playing = false, t = null;
+  const last = () => getSteps().length - 1;
+  function ui(){
+    const S = getSteps();
+    el.innerHTML = `<div class="pbar"><ol class="stepper">${S.map((s,k) => `<li class="${k<i?'done':''} ${k===i?'on':''}"><button data-k="${k}" aria-label="Step ${k+1}: ${s.label}"><span class="dot">${k<i?'✓':k+1}</span><span class="lb">${s.label}</span></button></li>`).join("")}</ol>
+      <div class="ctl"><button class="ic" data-a="back" aria-label="Back" title="Back" ${i===0?'disabled':''}><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3 5 8l5 5"/></svg></button><button class="ic" data-a="play" aria-label="${playing?'Pause':i===last()?'Replay':'Play'}" title="${playing?'Pause':i===last()?'Replay':'Play all steps'}">${playing?'<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><rect x="3.5" y="2.5" width="3.2" height="11" rx="1"/><rect x="9.3" y="2.5" width="3.2" height="11" rx="1"/></svg>':i===last()?'<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8a5 5 0 1 1-1.5-3.5"/><path d="M13 2.5V5h-2.5"/></svg>':'<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M4.5 2.8v10.4c0 .5.5.8 1 .5l8-5.2c.4-.3.4-.8 0-1.1l-8-5.2c-.5-.2-1 .1-1 .6Z"/></svg>'}</button><button class="pri" data-a="next" ${i===last()?'disabled':''}>Next<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="m6 3 5 5-5 5"/></svg></button></div></div>
+      <p class="say" aria-live="polite">${S[i].say}</p>`;
+    el.querySelector('[data-a=back]').onclick = () => { stop(); go(i-1); };
+    el.querySelector('[data-a=next]').onclick = () => { stop(); go(i+1); };
+    el.querySelector('[data-a=play]').onclick = () => playing ? stop() : play();
+    el.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { stop(); go(+b.dataset.k); });
+  }
+  function go(n, anim = true){ i = Math.max(0, Math.min(last(), n)); render(i, anim); ui(); }
+  function tick(){ clearTimeout(t); t = setTimeout(() => { if (!playing) return; if (i < last()) { go(i+1); if (i < last()) tick(); else { playing = false; ui(); } } }, ms); }
+  function play(){ playing = true; go(i >= last() ? 0 : i); tick(); }
+  function stop(){ playing = false; clearTimeout(t); ui(); }
+  return { go, play, stop, get i(){ return i; }, reset(){ playing = false; clearTimeout(t); i = 0; } };
+}
+const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/* ---------------- code blocks ---------------- */
+function fileHTML(path, o = {}){
+  const f = SRC[path]; let h = "", gi = 0;
+  f.lines.forEach((t, i) => {
+    const n = i+1, w = f.own.find(([a,b]) => n>=a && n<=b) || [n,n]; const fn = w[2];
+    let first = w[0]; while (first < w[1] && !f.lines[first-1].trim()) first++;
+    if (n===w[0] && fn && o.owners) h += `<div class="row own" ${fn!=="unplaced"?`data-fn="${fn}"`:''}>${fn==="unplaced"?"No owner: runs when the file loads":fn}</div>`;
+    const isEd = o.edited && fn===o.edited;
+    const cls = ["row", isEd ? "ed":"", isEd && o.glow ? "glow":"", fn==="unplaced"?"unpl":""].join(" ");
+    const chg = o.changed && o.changed[n];
+    h += `<div class="${cls}" ${isEd&&o.glow?`style="animation-delay:${(gi++)*.07}s"`:''} ${fn&&fn!=="unplaced"?`data-fn="${fn}"`:''}><span class="dots">${n===first&&fn&&LAYER[fn]?dots(fn):""}</span><span class="ln">${n}</span><span class="mk">${chg?`<span style="color:var(--signal);display:inline-block" class="${o.glow?'pop':''}">●</span>`:''}</span><span>${hl(t)||" "}</span></div>`;
+  });
+  return h;
+}
+// rows: [sign, oldNo, newNo, text, markedPart]. o.flash flashes changed rows; o.enter slides rows in from o.delay.
+function diffHTML(rows, fn, o = {}){
+  return rows.map((r, idx) => {
+    const ent = o.enter ? ` enter" style="animation-delay:${(o.delay||0) + idx*.05}s` : "";
+    if (r[0]==="@") return `<div class="row hunk${ent}">${esc(r[1])}</div>`;
+    const [s,a,b,t,part] = r, cls = s==="+"?"add":s==="-"?"del":"";
+    const fl = o.flash && s==="+" ? " flash-add" : o.flash && s==="-" ? " flash-del" : "";
+    return `<div class="row ${cls}${fl}${ent}" ${fn?`data-fn="${fn}"`:''}><span class="dots"></span><span class="ln">${s==="+"?(b??""):a}</span><span class="mk">${s==="-"?"−":s==="+"?"+":""}</span><span>${hlMark(t,part)}</span></div>`;
+  }).join("");
+}
+function linkHover(root){
+  root.querySelectorAll("[data-fn]").forEach(el => {
+    const fn = el.dataset.fn;
+    el.addEventListener("mouseenter", () => root.querySelectorAll(`.row[data-fn="${fn}"]`).forEach(x => x.classList.add("hover")));
+    el.addEventListener("mouseleave", () => root.querySelectorAll(`.row[data-fn="${fn}"]`).forEach(x => x.classList.remove("hover")));
+  });
+}
+
+/* ---------------- overview ---------------- */
+const EDIT_DIFF = [
+  ["@","@@ -14,5 +14,5 @@ export function chargeCard(amount: number) {"],
+  [" ",15,15,'export function applyPlanChange(plan: "free" | "pro") {'],
+  ["-",16,"",'  S.plans = { ...S.plans, [S.user]: { plan, interval: "month" } };','"month"'],
+  ["+","",16,'  S.plans = { ...S.plans, [S.user]: { plan, interval: S.interval ?? "month" } };','S.interval ?? "month"'],
+  [" ",17,17,'  emit("plan_changed");'],[" ",18,18,"}"],
+];
+const OV_STEPS = [
+  { label:"Diff", say:"Git shows that one line in lib/billing.ts changed, but not who runs it.", cap:"",
+    happen:"Git compares <code>lib/billing.ts</code> before and after the edit. Line 16 changed: <code>\"month\"</code> became <code>S.interval ?? \"month\"</code>.",
+    why:"That is everything git knows: which text changed. It doesn't know which code calls this line or which users it affects." },
+  { label:"File", say:"Flow's ledger says that line belongs to applyPlanChange, which owns lines 14 to 18.", cap:"",
+    happen:"Flow's ledger gives lines 14 to 18 to <code>applyPlanChange</code>, so the changed line 16 belongs to it too.",
+    why:"Every line has exactly one owner, so any edit lands on exactly one function. Functions are the stops journeys are made of." },
+  { label:"Stop", say:"applyPlanChange is a stop on the journey map, which flow built by following every call.", cap:"",
+    happen:"Flow finds <code>applyPlanChange</code> on the map of every journey in the app.",
+    why:"The map is built by following calls from each entry point, including calls from other files that the diff never shows." },
+  { label:"Journeys", say:"Only Cancel plan and Upgrade to Pro pass through that stop, so those are the two journeys to review.", cap:"",
+    happen:"Cancel plan and Upgrade to Pro both pass through <code>applyPlanChange</code>. The other four journeys never call it.",
+    why:"Only those two journeys can behave differently after this edit. Reviewing them replaces reading every file the change touches." },
+];
+function renderOverview(i, anim){
+  const p = document.getElementById("p-overview"), E = k => anim && i===k;
+  ["diff","file","flow"].forEach((k, n) => document.getElementById("ov-s-"+k).classList.toggle("focus", (i===0&&k==="diff")||(i===1&&k==="file")||(i>=2&&k==="flow")));
+  document.getElementById("ov-diff").innerHTML = diffHTML(EDIT_DIFF, "applyPlanChange", { flash:E(0) });
+  document.getElementById("ov-file").innerHTML = fileHTML("lib/billing.ts", i>=1 ? { edited:"applyPlanChange", changed:{16:1}, glow:E(1) } : {});
+  const map = i < 2 ? { lines:allIdle() } : i === 2 ? { lines:allIdle(), edited:{applyPlanChange:true}, anim:{ping:E(2)?"applyPlanChange":null} } : { lines:{up:"on",ca:"on"}, edited:{applyPlanChange:true}, anim:{draw:E(3)?["ca","up"]:[]} };
+  document.getElementById("ov-map").innerHTML = mapSVG(map);
+  document.getElementById("ov-meta").textContent = i >= 3 ? "2 of 6 changed" : "6 journeys";
+  document.getElementById("ov-legend").innerHTML = i >= 3 ? legendHTML(["ca","up"], `<span><i class="ed"></i>Edited stop</span><span style="color:var(--ink-3)">Faded lines didn't change</span>`)
+    : i === 2 ? `<span><i class="ed"></i>Edited stop</span>` : `<span style="color:var(--ink-3)">Every journey in the app, before flow looks at the change</span>`;
+  linkHover(p);
+}
+let OVP = null;
+
+/* ---------------- explanations ---------------- */
+const xbox = (h1, p1, h2, p2) => `<div class="explain"><div><h4>${h1}</h4><p>${p1}</p></div><div><h4>${h2}</h4><p>${p2}</p></div></div>`;
+const FILE_NOTES = {
+  "lib/billing.ts": "Line 16 is the edit. It sits in <code>applyPlanChange</code>, which runs in Cancel plan and Upgrade to Pro. Each of the other three functions runs in only one journey, so an edit to any of them would reach only that journey.",
+  "lib/auth.ts": "<code>loadSession</code> runs in five of the six journeys, so it's the riskiest function in the app to change. <code>validateForm</code> and <code>issueSid</code> run in Sign up and Log in. <code>createUser</code> runs only in Sign up.",
+  "lib/ui.ts": "<code>renderHeader</code> runs in four journeys. Any change to the header changes all four, even though it's one small function in one file.",
+  "lib/mailer.ts": "Line 14 has no owner. It runs when the file loads, outside any function, and wires <code>onPlanChanged</code> to the <code>plan_changed</code> event. Flow won't guess which journey that line belongs to and reports it instead. The event rule in <code>flow.toml</code> is what lets flow follow <code>emit</code> to <code>onPlanChanged</code>.",
+  "lib/bus.ts": "<code>emit</code> runs in Cancel plan and Upgrade to Pro. <code>on</code> and <code>handlers</code> have no journey dots: <code>on</code> is only called at load time from <code>mailer.ts</code> line 14, and <code>handlers</code> is data, not a function any journey calls.",
+  "lib/flags.ts": "<code>isEnabled</code> runs in Upgrade to Pro and Ask the agent, through two different callers: <code>resolvePrice</code> and <code>buildSystemPrompt</code>. A flag change here reaches both journeys.",
+  "lib/agent.ts": "All three functions run only in Ask the agent. <code>buildSystemPrompt</code> calls <code>isEnabled</code> in <code>lib/flags.ts</code>, which is the one stop Ask the agent shares with Upgrade to Pro.",
+  "lib/plugins.ts": "<code>runPlugin</code> calls <code>plugins[name]()</code> with a name from the request. The name is unknown, but it can only pick from the <code>plugins</code> table, so flow puts the table on the Load a plugin journey. If the table could change while the app runs, flow would keep warning. <code>legacyExport</code> has no dots because nothing calls it.",
+};
+const writersOf = key => Object.keys(STATE).filter(f => (STATE[f].w||[]).includes(key));
+const readersOf = key => Object.keys(STATE).filter(f => (STATE[f].r||[]).includes(key));
+const names = a => a.map(x => `<code>${x}</code>`).join(", ").replace(/, ([^,]*)$/, " and $1");
+const jnames = ids => ids.map(id => LBY[id].name).join(", ").replace(/, ([^,]*)$/, " and $1");
+function stopNote(fn){
+  const ids = runsIn(fn), st = STATE[fn] || {}, s = STN[fn];
+  const happen = `<code>${fn}</code> owns lines ${s.a} to ${s.b} of <code>${s.file}</code>. ${ids.length > 1 ? `It's an interchange: ${ids.length} journeys pass through it (${jnames(ids)}).` : `Only ${LBY[ids[0]].name} runs it.`}`;
+  let why = ids.length > 1 ? `A change here reaches ${ids.length===2?'both':'all '+ids.length} journeys at once, so each one needs a look.` : `A change here can only affect ${LBY[ids[0]].name}.`;
+  const downstream = [...new Set((st.w||[]).flatMap(k => readersOf(k)).filter(f => f!==fn))];
+  if ((st.w||[]).length) why += ` It changes ${names(st.w)}${downstream.length ? `, which ${names(downstream)} read. Those stops can behave differently after an edit here even though their own code didn't change.` : `.`}`;
+  else if ((st.r||[]).length) why += ` It only reads state (${names(st.r)}), so it can be affected by stops that change those values, like ${names([...new Set(st.r.flatMap(writersOf))].filter(f=>f!==fn)) || "the session"}.`;
+  return { happen, why };
+}
+
+/* ---------------- file & diff ---------------- */
+let curFile = "lib/billing.ts";
+function renderFile(){
+  document.getElementById("ftabs").innerHTML = Object.keys(SRC).map(p => `<button class="${p===curFile?'on':''}" data-p="${p}">${p.replace("lib/","")}</button>`).join("");
+  document.querySelectorAll("#ftabs button").forEach(b => b.onclick = () => { curFile = b.dataset.p; renderFile(); });
+  document.getElementById("fx").innerHTML = xbox("How to read it", "Each function owns its lines, including the blank line and comments just above it. Imports and the file's opening comment belong to the file, not to a journey. The colored dots beside a function are the journeys that run it.", "In this file", FILE_NOTES[curFile]);
+  document.getElementById("fv").innerHTML = fileHTML(curFile, { owners:true, edited: curFile==="lib/billing.ts" ? "applyPlanChange" : null, changed: curFile==="lib/billing.ts" ? {16:1} : null });
+  linkHover(document.getElementById("p-file"));
+}
+function renderDiff(){
+  document.getElementById("dx").innerHTML = xbox("What git shows", "The text that changed in <code>lib/billing.ts</code>: line 16 removed and replaced, with a few unchanged lines around it for context. The header <code>@@ -14,5 +14,5 @@</code> says the hunk starts at line 14 and covers 5 lines before and after.",
+    "What git can't show", "Who runs this code. <code>applyPlanChange</code> is called from <code>app/api/cancel/route.ts</code> and <code>app/api/upgrade/route.ts</code>, files this diff never opens. Flow reads those calls, which is how it lists the two journeys below. On a big change, the diff grows with every line touched; the journey list only grows with what behaves differently.");
+  document.getElementById("dv").innerHTML = diffHTML(EDIT_DIFF, "applyPlanChange");
+  document.getElementById("dv-runs").innerHTML = `<span style="color:var(--ink)">applyPlanChange runs in</span>` + legendHTML(runsIn("applyPlanChange")) + `<span style="color:var(--ink-3)">Git can't show this: the callers live in other files.</span>`;
+}
+
+/* ---------------- flow page ---------------- */
+let selFn = "applyPlanChange", selLine = null;
+function renderFlow(){
+  const lines = selLine ? { [selLine]:"on" } : null;
+  document.getElementById("fl-map").innerHTML = mapSVG({ lines, edited:{applyPlanChange:true}, selected:selFn });
+  document.getElementById("fl-legend").innerHTML = LINES.map(l => `<span style="cursor:pointer" data-l="${l.id}"><i style="background:var(--l-${l.id})"></i>${selLine===l.id?`<b>${l.name}</b>`:l.name}</span>`).join("") + (selLine?`<span style="cursor:pointer;color:var(--ink-3)" data-l="">Show all</span>`:"");
+  document.querySelectorAll("#fl-map .stop").forEach(g => g.onclick = () => { selFn = g.dataset.fn; renderFlow(); });
+  document.querySelectorAll("#fl-map [data-line], #fl-legend [data-l]").forEach(g => g.onclick = () => { const id = g.dataset.line ?? g.dataset.l; selLine = (id && selLine!==id) ? id : null; renderFlow(); });
+  document.getElementById("flx").innerHTML = xbox("How to read the map", "Each colored line is a journey. It starts at its entry point at the top and runs down through the functions it calls, in call order. A white capsule is a function several journeys share. The red ring marks the function the edit changed.",
+    selLine ? `Showing ${LBY[selLine].name}` : "What to try", selLine ? `${LBY[selLine].stops.length} stops, from <code>${LBY[selLine].route}</code> down to <code>${LBY[selLine].stops.at(-1)}</code>. Faded stops belong to other journeys. Click the name again, or Show all, to bring them back.` : "Click a stop to see its code and what changing it would affect. Click a journey's name to show only that journey.");
+  const note = stopNote(selFn);
+  const s = STN[selFn], st = STATE[selFn] || {}, f = SRC[s.file];
+  document.getElementById("insp").innerHTML = `<div class="body"><div class="fn">${selFn}</div><div class="where">${s.file}, lines ${s.a} to ${s.b}</div>
+    <dl class="kv"><dt>Runs in</dt><dd class="jl">${runsIn(selFn).map(id => `<span><i style="background:var(--l-${id})"></i>${LBY[id].name}</span>`).join("")}</dd>
+    <dt>Reads</dt><dd class="st">${(st.r||[]).join(", ") || '<span style="color:var(--ink-3)">nothing</span>'}</dd>
+    <dt>Changes</dt><dd class="st">${(st.w||[]).join(", ") || '<span style="color:var(--ink-3)">nothing</span>'}</dd></dl></div>
+    <div class="explain"><div><h4>What it is</h4><p>${note.happen}</p></div><div><h4>Why it matters</h4><p>${note.why}</p></div></div>
+    <div class="code wrapcode" style="border-top:1px solid var(--rule)">${f.lines.slice(s.a-1, s.b).map((t,i) => `<div class="row ${selFn==='applyPlanChange'?'ed':''}"><span class="dots"></span><span class="ln">${s.a+i}</span><span class="mk"></span><span>${hl(t)||" "}</span></div>`).join("")}</div>`;
+}
+
+/* ---------------- merge ---------------- */
+const SC = [
+ { group:"Common", title:"Unrelated changes", sub:"Different code, different journeys",
+   A:{ msg:"Loyalty discount", file:"lib/billing.ts", fn:["chargeCard"], diff:[["@","@@ -10,4 +10,4 @@"],[" ",11,11,"export function chargeCard(amount: number) {"],["-",12,"","  S.charged = (S.charged ?? 0) + amount;","amount;"],["+","",12,"  S.charged = (S.charged ?? 0) + amount * 0.8;","amount * 0.8;"],[" ",13,13,"}"]] },
+   B:{ msg:"Stricter email check", file:"lib/auth.ts", fn:["validateForm"], diff:[["@","@@ -3,6 +3,6 @@"],[" ",4,4,"export function validateForm(f: { email: string }) {"],["-",5,"",'  if (f.email.indexOf("@") < 0) {','f.email.indexOf("@") < 0'],["+","",5,"  if (!isEmail(f.email)) {","!isEmail(f.email)"],[" ",6,6,'    throw new Error("bad email");']] },
+   git:{ v:"ok", t:"Merged automatically", d:"2 files changed. Without more information, CI runs every test." },
+   flow:{ v:"ok", t:"No journey is changed by both", d:"Merge both at once. Test only the 3 journeys they touch." } },
+ { group:"Common", title:"Conflict in imports", sub:"Git stops, but no journey is at risk",
+   A:{ msg:"Log every charge", file:"lib/billing.ts", fn:["chargeCard"], diff:[["@","@@ -2,3 +2,4 @@"],[" ",2,2,'import { S } from "./state";'],["+","",3,'import { log } from "./log";'],[" ",3,4,'import { isEnabled } from "./flags";'],["@","@@ -11,2 +12,3 @@"],[" ",11,12,"export function chargeCard(amount: number) {"],["+","",13,'  log("charge", amount);']] },
+   B:{ msg:"Audit guarded actions", file:"lib/billing.ts", fn:["planGuard"], diff:[["@","@@ -2,3 +2,4 @@"],[" ",2,2,'import { S } from "./state";'],["+","",3,'import { audit } from "./audit";'],[" ",3,4,'import { isEnabled } from "./flags";'],["@","@@ -20,2 +21,3 @@"],[" ",20,21,"export function planGuard(action: string) {"],["+","",22,"  audit(action);"]] },
+   git:{ v:"bad", t:"Conflict in lib/billing.ts", d:"Both branches added a different line after line 2. Someone has to pick." },
+   conflict:{ file:"lib/billing.ts", before:['import { S } from "./state";'], ours:['import { log } from "./log";'], theirs:['import { audit } from "./audit";'], after:['import { isEnabled } from "./flags";'] },
+   flow:{ v:"ok", t:"The conflict is in lines no journey owns", d:"Imports belong to the file, and A and B change different journeys. Keep both." },
+   opts:[
+     { id:"a", name:"Keep A", note:"Drop B's import", code:['import { log } from "./log";'], out:{ up:[1,"runs as on A"], ag:[0,"fails: audit is not defined"] } },
+     { id:"b", name:"Keep B", note:"Drop A's import", code:['import { audit } from "./audit";'], out:{ up:[0,"fails: log is not defined"], ag:[1,"runs as on B"] } },
+     { id:"ab", name:"Keep both", note:"Flow's pick", code:['import { log } from "./log";','import { audit } from "./audit";'], out:{ up:[1,"runs as on A"], ag:[1,"runs as on B"] } } ], pick:"ab" },
+ { group:"Common", title:"Same line, two intents", sub:"A real conflict, judged by outcome",
+   A:{ msg:"Keep the billing interval", file:"lib/billing.ts", fn:["applyPlanChange"], diff:[["@","@@ -15,3 +15,3 @@"],[" ",15,15,'export function applyPlanChange(plan: "free" | "pro") {'],["-",16,"",'  S.plans = { ...S.plans, [S.user]: { plan, interval: "month" } };','"month"'],["+","",16,'  S.plans = { ...S.plans, [S.user]: { plan, interval: S.interval ?? "month" } };','S.interval ?? "month"']] },
+   B:{ msg:"New Pro plans bill yearly", file:"lib/billing.ts", fn:["applyPlanChange"], diff:[["@","@@ -15,3 +15,3 @@"],[" ",15,15,'export function applyPlanChange(plan: "free" | "pro") {'],["-",16,"",'  S.plans = { ...S.plans, [S.user]: { plan, interval: "month" } };','"month"'],["+","",16,'  S.plans = { ...S.plans, [S.user]: { plan, interval: plan === "pro" ? "year" : "month" } };','plan === "pro" ? "year" : "month"']] },
+   git:{ v:"bad", t:"Conflict in lib/billing.ts", d:"Both branches changed line 16. Git shows two lines of text and asks you to pick." },
+   conflict:{ file:"lib/billing.ts", before:['export function applyPlanChange(plan: "free" | "pro") {'], ours:['  S.plans = { ...S.plans, [S.user]: { plan, interval: S.interval ?? "month" } };'], theirs:['  S.plans = { ...S.plans, [S.user]: { plan, interval: plan === "pro" ? "year" : "month" } };'], after:['  emit("plan_changed");'] },
+   flow:{ v:"bad", t:"Both change Upgrade to Pro and Cancel plan", d:"Same stop, two behaviors. Compare what each resolution does to the journeys, then pick." },
+   cases:[["up","A monthly user upgrades"],["up","A new user upgrades"],["ca","A yearly user cancels"]],
+   opts:[
+     { id:"a", name:"Keep A", note:"Interval always kept", code:['  S.plans = { ...S.plans, [S.user]: { plan, interval: S.interval ?? "month" } };'], res:[[1,"Pro, monthly"],[0,"Pro, monthly"],[0,"Free, yearly"]] },
+     { id:"b", name:"Keep B", note:"Pro is always yearly", code:['  S.plans = { ...S.plans, [S.user]: { plan, interval: plan === "pro" ? "year" : "month" } };'], res:[[0,"Pro, yearly"],[1,"Pro, yearly"],[1,"Free, monthly"]] },
+     { id:"ab", name:"Combine", note:"Keep a choice, default yearly", code:['  S.plans = { ...S.plans, [S.user]: { plan, interval: plan === "pro" ? S.interval ?? "year" : "month" } };'], res:[[1,"Pro, monthly"],[1,"Pro, yearly"],[1,"Free, monthly"]] } ], pick:"ab" },
+ { group:"Common", title:"Hidden collision", sub:"Git merges it, a user finds the bug",
+   A:{ msg:"Keep the billing interval", file:"lib/billing.ts", fn:["applyPlanChange"], diff:[["@","@@ -15,3 +15,3 @@"],[" ",15,15,'export function applyPlanChange(plan: "free" | "pro") {'],["-",16,"",'  S.plans = { ...S.plans, [S.user]: { plan, interval: "month" } };','"month"'],["+","",16,'  S.plans = { ...S.plans, [S.user]: { plan, interval: S.interval ?? "month" } };','S.interval ?? "month"']] },
+   B:{ msg:"Show the interval in the header", file:"lib/ui.ts", fn:["renderHeader"], diff:[["@","@@ -4,3 +4,4 @@"],[" ",4,4,"export function renderHeader() {"],["-",5,"","  S.header = S.plans[S.user].plan.toUpperCase();"],["+","",5,"  const p = S.plans[S.user];"],["+","",6,'  S.header = p.plan.toUpperCase() + (p.interval === "year" ? " YEARLY" : "");']] },
+   git:{ v:"ok", t:"Merged automatically", d:"Different files, no overlapping lines. Nothing for a person to look at." },
+   flow:{ v:"bad", t:"Both change Upgrade to Pro and Cancel plan", d:"A changes what S.plans holds and B now displays it. Run the shared journeys on the merge before shipping." },
+   run:{ line:"ca", who:"A yearly Pro user cancels their plan", note:"The dot is the user moving through the journey's stops, from loadSession to renderHeader. A free plan shouldn't show a billing interval, and only the merged version does.",
+     rows:[["main",[["interval","month"],["header","FREE"]],0],["A alone",[["interval","year"],["header","FREE"]],0],["B alone",[["interval","month"],["header","FREE"]],0],["A and B merged",[["interval","year"],["header","FREE YEARLY"]],1]] } },
+ { group:"Edge cases", title:"Renamed function", sub:"One side renames, the other edits",
+   A:{ msg:"Rename applyPlanChange to updatePlan", file:"3 files", fn:["applyPlanChange"], diff:[["@","lib/billing.ts @@ -15,2 +15,2 @@"],["-",15,"",'export function applyPlanChange(plan: "free" | "pro") {','applyPlanChange'],["+","",15,'export function updatePlan(plan: "free" | "pro") {','updatePlan'],[" ",16,16,'  S.plans = { ...S.plans, [S.user]: { plan, interval: "month" } };'],["@","app/api/cancel/route.ts, plus its import"],["-",8,"",'  applyPlanChange("free");','applyPlanChange'],["+","",8,'  updatePlan("free");','updatePlan'],["@","app/api/upgrade/route.ts, plus its import"],["-",10,"","  applyPlanChange(plan);","applyPlanChange"],["+","",10,"  updatePlan(plan);","updatePlan"]] },
+   B:{ msg:"Keep the billing interval", file:"lib/billing.ts", fn:["applyPlanChange"], diff:[["@","@@ -15,3 +15,3 @@"],[" ",15,15,'export function applyPlanChange(plan: "free" | "pro") {'],["-",16,"",'  S.plans = { ...S.plans, [S.user]: { plan, interval: "month" } };','"month"'],["+","",16,'  S.plans = { ...S.plans, [S.user]: { plan, interval: S.interval ?? "month" } };','S.interval ?? "month"']] },
+   git:{ v:"bad", t:"Conflict in lib/billing.ts", d:"A changed line 15 and B changed line 16. Git treats changes on touching lines as one region." },
+   conflict:{ file:"lib/billing.ts", before:["}",""], ours:['export function updatePlan(plan: "free" | "pro") {','  S.plans = { ...S.plans, [S.user]: { plan, interval: "month" } };'], theirs:['export function applyPlanChange(plan: "free" | "pro") {','  S.plans = { ...S.plans, [S.user]: { plan, interval: S.interval ?? "month" } };'], after:['  emit("plan_changed");','}'] },
+   flow:{ v:"bad", t:"Both change Upgrade to Pro and Cancel plan", d:"A renames the stop and B edits it. Flow matches stops by name today, so it sees A remove applyPlanChange and add updatePlan." },
+   opts:[
+     { id:"a", name:"Keep A", note:"New name, old body", code:['export function updatePlan(plan: "free" | "pro") {','  S.plans = { ...S.plans, [S.user]: { plan, interval: "month" } };'], out:{ up:[0,"works, but B's bug fix is lost"], ca:[0,"works, but B's bug fix is lost"] } },
+     { id:"b", name:"Keep B", note:"Old name, new body", code:['export function applyPlanChange(plan: "free" | "pro") {','  S.plans = { ...S.plans, [S.user]: { plan, interval: S.interval ?? "month" } };'], out:{ up:[0,"crashes: the page calls updatePlan, which no longer exists"], ca:[0,"crashes: the page calls updatePlan, which no longer exists"] } },
+     { id:"ab", name:"Combine", note:"A's name, B's body", code:['export function updatePlan(plan: "free" | "pro") {','  S.plans = { ...S.plans, [S.user]: { plan, interval: S.interval ?? "month" } };'], out:{ up:[1,"works, with B's fix"], ca:[1,"works, with B's fix"] } } ], pick:"ab" },
+ { group:"Edge cases", title:"Deleted vs edited", sub:"Git conflict in code no one runs",
+   A:{ msg:"Delete dead code", file:"lib/plugins.ts", fn:["legacyExport"], diff:[["@","@@ -9,6 +9,1 @@"],[" ",9,9,"}"],["-",10,"",""],["-",11,"","// Nothing calls this any more."],["-",12,"","export function legacyExport() {"],["-",13,"","  return Object.keys(plugins);"],["-",14,"","}"]] },
+   B:{ msg:"Sort the export", file:"lib/plugins.ts", fn:["legacyExport"], diff:[["@","@@ -12,3 +12,3 @@"],[" ",12,12,"export function legacyExport() {"],["-",13,"","  return Object.keys(plugins);"],["+","",13,"  return Object.keys(plugins).sort();",".sort()"],[" ",14,14,"}"]] },
+   git:{ v:"bad", t:"Conflict in lib/plugins.ts", d:"A deleted the lines B edited. Git can't both delete and keep them." },
+   conflict:{ file:"lib/plugins.ts", before:["  return plugins[name]();","}"], ours:[], theirs:["","// Nothing calls this any more.","export function legacyExport() {","  return Object.keys(plugins).sort();","}"], after:[] },
+   flow:{ v:"ok", t:"No journey runs this code", d:"legacyExport was dead code before either change, so either choice leaves every journey unchanged. Take the delete." },
+   opts:[
+     { id:"a", name:"Keep A", note:"Delete it", code:["// legacyExport removed"], out:{ all:[1,"unchanged: no journey runs legacyExport"] } },
+     { id:"b", name:"Keep B", note:"Keep the edited function", code:["export function legacyExport() {","  return Object.keys(plugins).sort();","}"], out:{ all:[1,"unchanged: no journey runs legacyExport"] } } ], pick:"a" },
+ { group:"Edge cases", title:"Event wiring", sub:"A line no function owns",
+   A:{ msg:"Rename the plan event", file:"lib/mailer.ts", fn:["onPlanChanged"], diff:[["@","@@ -14 +14 @@"],["-",14,"",'on("plan_changed", onPlanChanged);','plan_changed'],["+","",14,'on("plan_updated", onPlanChanged);','plan_updated']] },
+   B:{ msg:"New plan email", file:"lib/mailer.ts", fn:["sendEmail","onPlanChanged"], diff:[["@","@@ -5,3 +5,3 @@"],[" ",5,5,"export function sendEmail(kind: string) {"],["-",6,"","  const u = S.users[S.user];"],["+","",6,"  const u = S.users[S.user]; if (!u) return;","if (!u) return;"],["@","@@ -11 +11 @@"],["-",11,"",'  sendEmail("plan-changed");','"plan-changed"'],["+","",11,'  sendEmail("plan-changed-v2");','"plan-changed-v2"']] },
+   git:{ v:"ok", t:"Merged automatically", d:"Three edits on three different lines of mailer.ts. Nothing for a person to look at." },
+   flow:{ v:"bad", t:"Cancel plan and Upgrade to Pro stop sending email", d:"applyPlanChange still emits plan_changed, but after A nothing listens for it. B's new email can never be sent from those journeys." },
+   run:{ line:"ca", who:"A Pro user cancels their plan", note:"A alone already loses the email, and flow flags it on A's branch. On the merge, B's new email is unreachable too: its author would think it ships, but no cancel or upgrade ever sends it.",
+     rows:[["main",[["handler","runs"],["email sent","plan-changed"]],0],["A alone",[["handler","never runs"],["email sent","none"]],1],["B alone",[["handler","runs"],["email sent","plan-changed-v2"]],0],["A and B merged",[["handler","never runs"],["email sent","none"]],1]] } },
+ { group:"Edge cases", title:"Dynamic call", sub:"Code picked by name at runtime",
+   A:{ msg:"Add a CSV export plugin", file:"lib/plugins.ts", fn:["plugins"], diff:[["@","@@ -4,2 +4,3 @@"],[" ",4,4,'  translate: () => "translation",'],["+","",5,'  export: () => "csv",']] },
+   B:{ msg:"Ignore case in plugin names", file:"lib/plugins.ts", fn:["runPlugin"], diff:[["@","@@ -7,3 +8,3 @@"],[" ",7,7,"export function runPlugin(name: string) {"],["-",8,"","  return plugins[name]();","plugins[name]()"],["+","",8,"  return plugins[name.toLowerCase()]();","plugins[name.toLowerCase()]()"]] },
+   git:{ v:"ok", t:"Merged automatically", d:"Different lines of plugins.ts. Nothing for a person to look at." },
+   flow:{ v:"bad", t:"Both change Load a plugin", d:"plugins[name]() can only pick from the plugins table, so flow reads the table. A's new plugin and B's change meet in Load a plugin. Test it on the merge." } },
+];
+let sc = 0, pick = null, pickAnim = false;
+const RUNV = [["main","month","FREE"],["A alone","year","FREE"],["B alone","month","FREE"],["A and B merged","year","FREE YEARLY"]];
+
+// How git's three-way merge decided, region by region: [where, main, A, B, conflict?, result]
+const REGIONS = [
+  { out:["$ git merge B","Auto-merging lib/billing.ts","Auto-merging lib/auth.ts","Merge made by the 'ort' strategy."], ok:true,
+    rows:[["billing.ts line 12", "+ amount", "+ amount * 0.8", null, 0, "Take A"], ["auth.ts line 5", 'indexOf("@") < 0', null, "!isEmail(f.email)", 0, "Take B"]] },
+  { out:["$ git merge B","Auto-merging lib/billing.ts","CONFLICT (content): Merge conflict in lib/billing.ts","Automatic merge failed; fix conflicts and then commit the result."], ok:false,
+    rows:[["After line 2", "nothing", 'import { log } from "./log";', 'import { audit } from "./audit";', 1, "Conflict"],
+          ["chargeCard, line 13", "nothing", 'log("charge", amount);', null, 0, "Take A"],
+          ["planGuard, line 22", "nothing", null, "audit(action);", 0, "Take B"]] },
+  { out:["$ git merge B","Auto-merging lib/billing.ts","CONFLICT (content): Merge conflict in lib/billing.ts","Automatic merge failed; fix conflicts and then commit the result."], ok:false,
+    rows:[["applyPlanChange, line 16", 'interval: "month"', 'interval: S.interval ?? "month"', 'interval: plan === "pro" ? "year" : "month"', 1, "Conflict"]] },
+  { out:["$ git merge B","Auto-merging lib/billing.ts","Auto-merging lib/ui.ts","Merge made by the 'ort' strategy."], ok:true,
+    rows:[["billing.ts line 16", 'interval: "month"', 'interval: S.interval ?? "month"', null, 0, "Take A"], ["ui.ts lines 5 to 6", "plan.toUpperCase()", null, 'p.plan.toUpperCase() + (… " YEARLY" …)', 0, "Take B"]] },
+];
+function regionsHTML(E){
+  const R = REGIONS[sc];
+  const cell = (v, changed) => v===null ? `<td class="cd no">unchanged</td>` : `<td class="cd ${changed?'ch':''}">${changed?'':''}${esc(v)}</td>`;
+  return `<div class="rule ${E?'enter':''}" style="animation-delay:.3s"><b>How git decides:</b> if only one branch changed a region, git takes it. If both changed it, git stops.</div>
+    <table class="tw ${E?'enter':''}" style="animation-delay:.45s"><tr><th>Region</th><th>main</th><th>A</th><th>B</th><th>Git</th></tr>${R.rows.map(([w,m,a,b,cf,res], i) =>
+      `<tr class="${cf?'cf':''} ${E?'enter':''}" style="animation-delay:${.6+i*.25}s"><td class="where">${w}</td><td class="cd mainc">${esc(m)}</td>${cell(a, true)}${cell(b, true)}<td class="res ${cf?'bad-t':'ok-t'}">${cf?'✕ ':'✓ '}${res}</td></tr>`).join("")}</table>
+    <div class="sub">Real output from running the merge on these two branches</div>
+    <div class="term ${E?'enter':''}" style="animation-delay:${.8+R.rows.length*.25}s">${R.out.map(l => l.startsWith("$") ? `<span class="pr">${esc(l)}</span>` : l.startsWith("CONFLICT")||l.startsWith("Automatic") ? `<span class="bad">${esc(l)}</span>` : l.startsWith("Merge made") ? `<span class="ok">${esc(l)}</span>` : esc(l)).join("\n")}</div>`;
+}
+REGIONS.push(
+  { out:["$ git merge B","Auto-merging lib/billing.ts","CONFLICT (content): Merge conflict in lib/billing.ts","Automatic merge failed; fix conflicts and then commit the result."], ok:false,
+    rows:[["applyPlanChange, lines 15 to 16", "applyPlanChange, \"month\"", "updatePlan, \"month\"", "applyPlanChange, S.interval", 1, "Conflict"], ["Callers in two routes", "applyPlanChange(…)", "updatePlan(…)", null, 0, "Take A"]] },
+  { out:["$ git merge B","Auto-merging lib/plugins.ts","CONFLICT (content): Merge conflict in lib/plugins.ts","Automatic merge failed; fix conflicts and then commit the result."], ok:false,
+    rows:[["legacyExport, lines 10 to 14", "the function", "deleted", "line 13 edited", 1, "Conflict"]] },
+  { out:["$ git merge B","Auto-merging lib/mailer.ts","Merge made by the 'ort' strategy."], ok:true,
+    rows:[["Line 14, the event wiring", 'on("plan_changed", …)', 'on("plan_updated", …)', null, 0, "Take A"], ["sendEmail, line 6", "const u = …", null, "… if (!u) return;", 0, "Take B"], ["onPlanChanged, line 11", '"plan-changed"', null, '"plan-changed-v2"', 0, "Take B"]] },
+  { out:["$ git merge B","Auto-merging lib/plugins.ts","Merge made by the 'ort' strategy."], ok:true,
+    rows:[["plugins table, line 5", "nothing", 'export: () => "csv",', null, 0, "Take A"], ["runPlugin, line 8", "plugins[name]()", null, "plugins[name.toLowerCase()]()", 0, "Take B"]] },
+);
+const EXPLAIN = [
+  [ // unrelated changes
+    ["A changes how much <code>chargeCard</code> charges. B changes how <code>validateForm</code> checks an email address.",
+     "Each branch was written alone, from the same main. Neither knows about the other."],
+    ["Git compares each branch with main. A changed one region, line 12 of <code>lib/billing.ts</code>. B changed another, line 5 of <code>lib/auth.ts</code>. No region was changed by both, so git takes both changes.",
+     "Git only checks that the changed text doesn't overlap. It never looks at what the code does."],
+    ["Flow looks up the owner of each changed line in the ledger. Line 12 belongs to <code>chargeCard</code>, line 5 to <code>validateForm</code>.",
+     "Once flow knows the function, it knows every journey that runs it."],
+    ["<code>chargeCard</code> runs only in Upgrade to Pro. <code>validateForm</code> runs in Sign up and Log in.",
+     "These come from the lifted flows, so they include callers in other files that neither diff shows."],
+    ["No journey runs code from both branches.",
+     "If no journey runs both changes, neither change can affect what the other does. They can merge in parallel, and only those 3 journeys need testing instead of the whole suite."],
+  ],
+  [ // conflict in imports
+    ["A adds a <code>log</code> call to <code>chargeCard</code>. B adds an <code>audit</code> call to <code>planGuard</code>. Each also adds an import for the function it calls.",
+     "Both new imports go in the same place in <code>lib/billing.ts</code>: right after the first import on line 2."],
+    ["Git compares each branch with main. A's edit to <code>chargeCard</code> and B's edit to <code>planGuard</code> are in different regions, so git takes both. But both branches also inserted a line in the same spot, right after line 2, and the lines are different. That one region is the conflict.",
+     "Two different inserts in one spot could mean keep A's, keep B's, or keep both, and if both, in which order. Git only knows text, so it won't guess. Here the answer is obvious to a person, but git still stops the whole merge."],
+    ["The conflicting lines are imports, which the ledger gives to the file, not to any function. The real edits are in <code>chargeCard</code> (A) and <code>planGuard</code> (B).",
+     "A line no function owns isn't a step in any journey, so the conflict itself can't change what a journey does."],
+    ["<code>chargeCard</code> runs in Upgrade to Pro. <code>planGuard</code> runs in Ask the agent.",
+     "Different journeys. Nothing A changes is reached by B's journey, and the reverse."],
+    ["Flow's answer: keep both imports.",
+     "Each journey needs its own branch's import. Drop either one and that journey crashes calling a name that was never imported."],
+    ["For each option, git only shows the text left in the file. Flow runs both affected journeys on that text.",
+     "Keep A removes the <code>audit</code> import, so Ask the agent fails. Keep B removes <code>log</code>, so Upgrade to Pro fails. Keep both is the only choice where both journeys run."],
+  ],
+  [ // same line, two intents
+    ["A makes plan changes keep the user's billing interval. B makes new Pro plans bill yearly. Both rewrite line 16 of <code>applyPlanChange</code>.",
+     "Two people solving two different problems in the same line of code."],
+    ["Git compares each branch with main. Both branches replaced the same line, line 16, with different text. One region, two different changes: a conflict.",
+     "Git can't know which version is right. Choosing one is a question about what the app should do, and git only knows text."],
+    ["Line 16 belongs to <code>applyPlanChange</code>, so A and B change the same stop.",
+     "When two changes meet at one stop, every journey through that stop gets both changes at once."],
+    ["<code>applyPlanChange</code> runs in Upgrade to Pro and Cancel plan.",
+     "Those are the only journeys whose behavior depends on how this conflict is resolved. The other four can't be affected."],
+    ["Both branches change Upgrade to Pro and Cancel plan, through the same stop.",
+     "Keeping A's or B's line throws away the other branch's intent. Flow judges each option by what the journeys do, not by which text looks right."],
+    ["For each option, flow runs three cases through the shared journeys and checks each against what A or B meant to happen.",
+     "Keep A: new Pro users stay monthly, so B's goal is lost. Keep B: users who chose monthly are switched to yearly. Combine keeps the user's choice when there is one and defaults new Pro plans to yearly, so both intents hold."],
+  ],
+  [ // hidden collision
+    ["A keeps the user's billing interval when their plan changes. B shows the interval in the header.",
+     "Different files, different authors. Each change is correct on its own branch."],
+    ["Git compares each branch with main. A changed line 16 of <code>lib/billing.ts</code>. B changed lines 5 and 6 of <code>lib/ui.ts</code>. Different regions, so git takes both and merges without asking anyone.",
+     "Git has no idea that B reads the data A now writes. As far as text goes, these changes never meet."],
+    ["Line 16 belongs to <code>applyPlanChange</code> (A). Lines 5 and 6 belong to <code>renderHeader</code> (B).",
+     "They're different stops, but flow also records what each stop reads and changes: <code>applyPlanChange</code> changes <code>S.plans</code>, and <code>renderHeader</code> reads it."],
+    ["<code>applyPlanChange</code> runs in Upgrade to Pro and Cancel plan. <code>renderHeader</code> runs in those two and also in Sign up and Log in.",
+     "Upgrade to Pro and Cancel plan run both changes, one after the other. That's the only place the two branches can affect each other."],
+    ["Both branches change Upgrade to Pro and Cancel plan.",
+     "A changes what goes into <code>S.plans</code>, and B changes how <code>S.plans</code> is shown. Each was tested alone, never together."],
+    ["Flow runs Cancel plan for a yearly Pro user on main, on each branch alone, and on the merge.",
+     "Alone, each branch shows FREE. Merged, A keeps the yearly interval after the user cancels and B displays it, so a free user sees FREE YEARLY. Git didn't flag it, and neither author could have seen it."],
+  ],
+];
+const SHORT = ["Unrelated", "Import conflict", "Same line", "Hidden collision", "Rename", "Delete vs edit", "Event wiring", "Dynamic call"];
+const STORY = [
+  "One developer gives loyal customers 20% off. Another makes the sign-up email check stricter. They changed different code. Can both go in safely?",
+  "One developer adds logging to payments. Another adds an audit trail to the agent. Both also added one line at the top of the same file, in the same spot, so git refuses to merge. Is anything actually at risk?",
+  "One developer wants a plan change to keep the customer's billing choice, monthly or yearly. Another wants new Pro plans billed yearly. Both rewrote the same line. Which version should win?",
+  "One developer keeps the customer's billing choice when their plan changes. Another shows that choice in the page header. Different files, so git merges them without a word. Is the result OK?",
+  "One developer renames a function from applyPlanChange to updatePlan, a tidy-up, and fixes every place that calls it. Another fixes a bug inside that same function. What should the merged code look like?",
+  "One developer deletes an old function nobody uses. Another improves that same function. Git can't both delete it and keep it. Does it matter which one wins?",
+  "Emails go out from a listener that waits for a \"plan changed\" signal. One developer renames the signal the listener waits for. Another writes a new plan-change email. Git merges them. Does the new email go out?",
+  "Plugins are picked by name while the app runs. One developer adds a new plugin. Another changes how names are matched. Git merges them. Can anyone tell which parts of the app are affected?",
+];
+const PLAIN = { a:"Only A", b:"Only B", ab:"Both changes", agent:"An agent's fix" };
+const touch = s => { const t = {}; for (const k of ["A","B"]) for (const fn of s[k].fn) for (const id of runsIn(fn)) (t[id] ||= new Set()).add(k); return t; };
+const verdictHTML = (v, cls="", delay=0) => `<div class="verdict ${v.v} ${cls}" style="animation-delay:${delay}s"><span class="sig">${v.v==="ok"?'<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"><path d="m3.5 8.5 3 3 6-7"/></svg>':v.v==="wait"?"":"!"}</span><div><b>${v.t}</b><span>${v.d}</span></div></div>`;
+
+function conflictHTML(s, o, E, enterPick){
+  const c = s.conflict, row = (t, cls="", st="") => `<div class="row ${cls}" ${st}><span class="dots"></span><span class="ln"></span><span class="mk"></span><span>${hl(t)}</span></div>`;
+  const mark = t => `<div class="row cm ${E?'flash-bad':''}"><span class="dots"></span><span class="ln"></span><span class="mk"></span><span>${esc(t)}</span></div>`;
+  let h = c.before.map(t => row(t)).join("");
+  if (!o) h += mark("<<<<<<< A") + c.ours.map(t => row(t,"add")).join("") + mark("=======") + c.theirs.map(t => row(t,"add")).join("") + mark(">>>>>>> B");
+  else h += o.code.map((t,i) => row(t, "add" + (enterPick ? " enter flash-add" : ""), enterPick ? `style="animation-delay:${i*.12}s"` : "")).join("");
+  return h + c.after.map(t => row(t)).join("");
+}
+function outcomeHTML(s){
+  const cell = (o, ok, txt, ri) => `<td class="${o.id===pick&&pickAnim?'sweep':''}" style="${o.id===pick?'background:var(--sheet-2);':''}animation-delay:${.15+ri*.12}s"><span class="${ok?'ok-t':'bad-t'}">${ok?'✓':'✕'}</span> ${txt}</td>`;
+  if (s.cases) return `<table class="imp"><tr><th>Scenario</th>${s.opts.map(o => `<th>${o.name}</th>`).join("")}</tr>${s.cases.map(([id,label],ci) =>
+      `<tr><td class="j"><i style="background:var(--l-${id})"></i>${label}</td>${s.opts.map(o => cell(o, ...o.res[ci], ci)).join("")}</tr>`).join("")}</table>
+      <div class="hint">✓ means the result is what the branch that asked for it intended. Only Combine keeps both intents.</div>`;
+  const ids = [...new Set(s.opts.flatMap(o => Object.keys(o.out)))];
+  return `<table class="imp"><tr><th>Journey</th>${s.opts.map(o => `<th>${o.name}</th>`).join("")}</tr>${ids.map((id,ri) =>
+    `<tr><td class="j"><i style="background:var(--l-${id})"></i>${LBY[id].name}</td>${s.opts.map(o => cell(o, ...o.out[id], ri)).join("")}</tr>`).join("")}</table>
+    <div class="hint">The other 4 journeys don't run code that A or B changed, so no choice affects them.</div>`;
+}
+
+// Which function owns each changed line, per scenario and branch: [where, owner or null for the file's imports]
+const OWNERS = [
+  { A:[["lib/billing.ts, line 12","chargeCard"]], B:[["lib/auth.ts, line 5","validateForm"]] },
+  { A:[["lib/billing.ts, line 3",null],["lib/billing.ts, line 13","chargeCard"]], B:[["lib/billing.ts, line 3",null],["lib/billing.ts, line 22","planGuard"]] },
+  { A:[["lib/billing.ts, line 16","applyPlanChange"]], B:[["lib/billing.ts, line 16","applyPlanChange"]] },
+  { A:[["lib/billing.ts, line 16","applyPlanChange"]], B:[["lib/ui.ts, lines 5 to 6","renderHeader"]] },
+  { A:[["lib/billing.ts, line 15","applyPlanChange","renamed to updatePlan"],["the two route files","POST","now call updatePlan"]], B:[["lib/billing.ts, line 16","applyPlanChange"]] },
+  { A:[["lib/plugins.ts, lines 10 to 14","legacyExport","deleted, and no journey runs it"]], B:[["lib/plugins.ts, line 13","legacyExport","no journey runs it"]] },
+  { A:[["lib/mailer.ts, line 14",null,"no owner: it runs when the file loads and connects the plan_changed event to onPlanChanged"]], B:[["lib/mailer.ts, line 6","sendEmail"],["lib/mailer.ts, line 11","onPlanChanged"]] },
+  { A:[["lib/plugins.ts, line 5","plugins"]], B:[["lib/plugins.ts, line 8","runPlugin"]] },
+];
+const rd = k => `<span class="rd ${k}">${k}</span>`;
+const jchips = ids => ids.map(id => `<span class="jc"><i style="background:var(--l-${id})"></i>${LBY[id].name}</span>`).join("");
+const card = (title, body, cls="", delay=0) => `<div class="sheet scard ${cls}" style="animation-delay:${delay}s">${title?`<div class="sh">${title}</div>`:""}${body}</div>`;
+
+function sceneBranch(s, E){
+  return card(`<h2>main</h2><small>Both branches start from the same commit</small>`, `<div class="graph">${graphSVG(0, k => E && k===0)}</div>`, "", 0)
+    + ["A","B"].map((k,n) => card(`${rd(k)}<h2>${esc(s[k].msg)}</h2><small>${s[k].file}</small>`, `<div class="code wrapcode">${diffHTML(s[k].diff, null, { enter:E, delay:.5+n*.4 })}</div>`, E?"enter":"", .3+n*.4)).join("");
+}
+function sceneGit(s, E){
+  let h = card(`<span class="who git">Git</span><h2>Git merges B into A</h2>`, `<div class="graph">${graphSVG(1, k => E && k===1)}</div>${regionsHTML(E)}`);
+  if (s.conflict) h += card(`<h2>The file git leaves behind</h2><small>${s.conflict.file}</small>`, `<div class="code wrapcode ${E?'shake':''}" style="animation-delay:1.6s">${conflictHTML(s, null, E, false)}</div><div class="rule">Git writes <code>HEAD</code> and the branch name around each side; they're shown here as A and B. The merge is stuck until a person edits this file.</div>`, E?"enter":"", 1.3);
+  return h + card("", verdictHTML(s.git), E?"enter":"", 1.6);
+}
+function sceneStops(s, E){
+  const rows = ["A","B"].flatMap(k => OWNERS[sc][k].map(([where, fn]) => [k, where, fn]));
+  const list = `<div class="owners">${rows.map(([k, where, fn], i) => `<div class="own-row ${E?'enter':''}" style="animation-delay:${.2+i*.3}s">${rd(k)}<span class="file">${where}</span><span class="arrowto">belongs to</span>${fn ? `<b class="st">${fn}</b>` : `<span class="dimt">the file's imports, which no journey runs</span>`}</div>`).join("")}</div>`;
+  const marks = {}, edited = {}; for (const k of ["A","B"]) for (const fn of s[k].fn) { (marks[fn] ||= []).push(k); edited[fn] = true; }
+  return card(`<span class="who flow">Flow</span><h2>Flow finds the owner of every changed line</h2>`, list)
+    + card(`<h2>Those owners are stops on the journey map</h2>`, `<div class="mapbox">${mapSVG({ lines:allIdle(), base:"idle", marks, edited, anim:{ drop:E } })}</div>`, E?"enter":"", .2+rows.length*.3);
+}
+function sceneJourneys(s, E){
+  const t = touch(s), lines = {}; for (const [id,set] of Object.entries(t)) lines[id] = set.size===2 ? "both" : "on";
+  const marks = {}, edited = {}; for (const k of ["A","B"]) for (const fn of s[k].fn) { (marks[fn] ||= []).push(k); edited[fn] = true; }
+  const table = `<table class="imp"><tr><th>Journey</th><th class="c">A</th><th class="c">B</th><th>What flow does with it</th></tr>${LINES.map((l, ri) => { const set = t[l.id]; const both = set && set.size===2;
+    return `<tr class="${both?'both':''} ${E?'enter':''}" style="animation-delay:${DUR + ri*.1}s"><td class="j ${set?'':'dim'}"><i style="background:var(--l-${l.id});opacity:${set?1:.3}"></i>${l.name}</td><td class="c">${set?.has("A")?rd("A"):''}</td><td class="c">${set?.has("B")?rd("B"):''}</td><td class="${set?'':'dim'}">${set?(both?'<span class="bad-t">Runs both changes. Test it on the merge.</span>':`Runs only ${[...set][0]}'s change. Test it on that branch.`):'Runs neither change. Skip it.'}</td></tr>`; }).join("")}</table>`;
+  return card(`<span class="who flow">Flow</span><h2>Every journey through a changed stop lights up</h2>`, `<div class="mapbox">${mapSVG({ lines, base:"dim", marks, edited, anim:{ draw:E ? Object.keys(t) : [] } })}</div><div class="legend">${legendHTML(Object.keys(t))}<span><i style="background:var(--signal);opacity:.35;height:10px"></i>Runs both changes</span></div>`)
+    + card("", table, E?"enter":"", DUR);
+}
+function sceneVerdict(s, E){
+  return card(`<span class="who git">Git</span><h2>Git's answer</h2>`, verdictHTML(s.git), E?"enter":"", .1)
+    + card(`<span class="who flow">Flow</span><h2>Flow's answer</h2>`, verdictHTML(s.flow), E?"enter":"", .6);
+}
+function sceneResolve(s, E){
+  const ids = Object.keys(touch(s)).filter(id => touch(s)[id].size);
+  const gitSteps = `<ol class="steps-v">
+      <li class="${E?'enter':''}" style="animation-delay:.2s"><b>Git stops</b> and writes both versions into the file, between markers.</li>
+      <li class="${E?'enter':''}" style="animation-delay:.4s"><b>A person opens the file</b>, deletes the markers and keeps whatever text they think is right.</li>
+      <li class="${E?'enter':''}" style="animation-delay:.6s"><b>They commit.</b> Git accepts any text without markers. Nothing checks what the journeys do.</li></ol>`;
+  const flowSteps = `<ol class="steps-v">
+      <li class="${E?'enter':''}" style="animation-delay:.9s"><b>Flow writes every way to resolve it</b>: ${s.opts.map(o => o.name.toLowerCase()).join(", ").replace(/, ([^,]*)$/, " or $1")}.</li>
+      <li class="${E?'enter':''}" style="animation-delay:1.1s"><b>It runs the journeys both branches touch</b> on each version${s.cases?', using cases that show what each branch meant':''}.</li>
+      <li class="${E?'enter':''}" style="animation-delay:1.3s"><b>It recommends the version where every journey works.</b> You confirm, and flow commits it as a normal git merge.</li></ol>`;
+  const opts = s.opts.map((o, i) => {
+    const res = s.cases ? s.cases.map(([id,label], ci) => [id, label, ...o.res[ci]]) : Object.entries(o.out).map(([id, r]) => [id, LBY[id] ? LBY[id].name : "Every journey", ...r]);
+    const allOk = res.every(r => r[2]);
+    return `<div class="opt ${o.id===pick?'on':''} ${E?'enter':''}" style="animation-delay:${1.6+i*.25}s">
+      <div class="opt-h"><b>${o.name}</b><span>${o.note}</span>${o.id===s.pick?'<span class="rec">Flow recommends</span>':''}<button data-o="${o.id}" class="${o.id===pick?'go':'go ghost'}">${o.id===pick?'Chosen':'Use this'}</button></div>
+      <div class="code wrapcode">${o.code.map(t => `<div class="row add"><span class="dots"></span><span class="ln"></span><span class="mk">+</span><span>${hl(t)}</span></div>`).join("")}</div>
+      <ul class="res">${res.map(([id, label, ok, txt]) => `<li><i style="background:var(--l-${id}, var(--ink-3))"></i><span>${label}</span><b class="${ok?'ok-t':'bad-t'}">${ok?'✓':'✕'} ${txt}</b></li>`).join("")}</ul>
+      <div class="opt-f ${allOk?'ok-t':'bad-t'}">${allOk?'Every journey does what its branch intended.':'At least one journey breaks or loses its branch\'s intent.'}</div></div>`;
+  }).join("");
+  let done = "";
+  if (pick) {
+    const o = s.opts.find(o => o.id===pick), good = pick===s.pick;
+    done = card(`<h2>The merge</h2><small>${s.conflict.file}</small>`, `<div class="code wrapcode">${conflictHTML(s, o, false, pickAnim)}</div>
+      <div class="term">${`<span class="pr">$ git commit -m "Merge B: ${esc((PLAIN[o.id] || o.name).toLowerCase())}"</span>\n`}<span class="${good?'ok':'bad'}">${good?`Flow ran the merged code: ${jnames(ids)} pass on every case.`:`Flow ran the merged code: some cases fail. See the ✕ results above.`}</span></div>`, pickAnim?"enter":"");
+  }
+  return card(`<span class="who git">Git</span><h2>Resolving it with git</h2>`, gitSteps)
+    + card(`<span class="who flow">Flow</span><h2>Resolving it with flow</h2>`, flowSteps + `<div class="opts-v">${opts}</div>`, E?"enter":"", .8)
+    + done;
+}
+function sceneRun(s, E){
+  const r = s.run, L = LBY[r.line], n = L.stops.length;
+  return card(`<span class="who flow">Flow</span><h2>Flow runs ${L.name} on every version</h2><small>${r.who}</small>`,
+    `<div class="runs">${r.rows.map(([label, vals, bad], ci) => `<div class="runrow ${bad?'bad':''} ${E?'enter':''}" style="animation-delay:${ci*.15}s">
+      <span class="rl">${label}</span>
+      <div class="mini"><div class="rail" style="background:var(--l-${r.line})"></div>${L.stops.map((fn,k) => `<i style="left:${k/(n-1)*100}%;border-color:var(--l-${r.line})" title="${fn}"></i>`).join("")}<b class="rider ${E?'ride':''}" style="animation-delay:${.4+ci*.35}s"></b></div>
+      <div class="vals">${vals.map(([k, v], vi) => `<div class="${E?'fade':''}" style="animation-delay:${1.1+vi*1.1+ci*.35}s">${k} <code>${v}</code></div>`).join("")}</div></div>`).join("")}</div>
+    <div class="rule">${r.note}</div>`);
+}
+
+// One sentence per step: what happens and why.
+const SAY = [
+  [ "A makes chargeCard charge 20% less, and B makes validateForm use a stricter email check.",
+    "Git takes both changes because they touch different lines, and it never checks what the code does.",
+    "Flow looks up who owns each changed line: chargeCard for A, validateForm for B.",
+    "chargeCard runs only in Upgrade to Pro and validateForm runs in Sign up and Log in, so no journey runs both.",
+    "No journey runs both changes, so they can merge in parallel and only those 3 journeys need testing." ],
+  [ "A adds a log call to chargeCard and B adds an audit call to planGuard, and both add an import right after line 2.",
+    "Git merges the two function edits but stops on the imports, because both branches inserted a different line in the same spot.",
+    "The conflicting imports belong to the file, not to any function, so the conflict itself isn't part of any journey.",
+    "chargeCard runs in Upgrade to Pro and planGuard runs in Ask the agent, so the two changes never meet.",
+    "Each journey needs its own branch's import, so the right answer is to keep both lines.",
+    "Keeping only A's or only B's import crashes the other journey, so keeping both is the only choice where every journey works." ],
+  [ "A makes plan changes keep the user's billing interval and B makes new Pro plans bill yearly, both by rewriting line 16.",
+    "Both branches rewrote line 16 differently, and git can't tell which one is right, so it stops.",
+    "Line 16 belongs to applyPlanChange, so both branches change the same stop.",
+    "applyPlanChange runs in Upgrade to Pro and Cancel plan, so those two journeys decide how the conflict should be resolved.",
+    "Picking either line throws away the other branch's goal, so flow compares what each option does to the journeys.",
+    "Flow runs every option, including a plausible agent fix that fails one case. Only the version with both changes keeps both goals." ],
+  [ "A keeps the user's billing interval when their plan changes, and B shows the interval in the header.",
+    "The changes are in different files, so git merges them without asking anyone.",
+    "A's line belongs to applyPlanChange, which changes S.plans, and B's lines belong to renderHeader, which reads S.plans.",
+    "Upgrade to Pro and Cancel plan run both stops, so that's where A's data meets B's display.",
+    "Both branches change Upgrade to Pro and Cancel plan and were never tested together, so flow runs them on the merge.",
+    "On the merge, a yearly user who cancels sees FREE YEARLY: a bug neither branch has alone, and one git never flagged." ],
+  [ "A renames applyPlanChange to updatePlan and updates both callers, and B fixes the billing interval inside it.",
+    "Git takes A's caller edits but stops at lines 15 and 16: A changed one, B the next, and git treats touching lines as one region.",
+    "Both branches change the same function, but flow matches stops by name, so it sees A remove applyPlanChange and add updatePlan.",
+    "That function runs in Upgrade to Pro and Cancel plan, so both journeys depend on how this is resolved.",
+    "Keeping either side alone breaks something, so flow compares the options journey by journey.",
+    "With only B's version, the pages call updatePlan, which no longer exists, and crash. Both changes together, A's new name with B's fix, keep everything working." ],
+  [ "A deletes legacyExport because nothing calls it, and B edits the same function.",
+    "Git can't delete lines the other branch edited, so it stops.",
+    "Both changes land in legacyExport, which flow already listed as code no journey reaches.",
+    "No journey runs it, so neither change can affect what any user does.",
+    "The conflict is real for git but harmless for users, so flow takes the delete.",
+    "Either choice leaves all six journeys unchanged. Taking A's delete also removes the dead code." ],
+  [ "A renames the event that onPlanChanged listens for, and B changes the email that handler sends.",
+    "The edits are on different lines of mailer.ts, so git merges them without a conflict.",
+    "A's line has no owner: it runs when the file loads and wires the event, so flow warns that its journey list may be incomplete.",
+    "Without that wiring, Cancel plan and Upgrade to Pro no longer reach onPlanChanged, the stop B just changed.",
+    "applyPlanChange still emits plan_changed but nothing listens for it now, so B's email never goes out from those journeys.",
+    "On the merge, cancelling a plan sends no email at all. Flow already sees this break on A's branch alone." ],
+  [ "A adds a CSV export plugin, and B makes runPlugin ignore the case of the plugin name.",
+    "The edits are on different lines, so git merges them.",
+    "A's line belongs to the plugins table and B's line belongs to runPlugin, the function that picks from it.",
+    "The name is chosen at runtime, but plugins[name]() can only pick from that table, so flow puts the table on the Load a plugin journey.",
+    "A's new plugin and B's new name matching meet in Load a plugin, so flow says to test that journey on the merge." ],
+];
+function mergeSteps(){
+  const s = SC[sc], labels = ["The changes", "Git merges", "Find stops", "Journeys", "Verdict"];
+  if (s.opts) labels.push("Resolve"); if (s.run) labels.push("Run it");
+  return labels.map((label, k) => ({ label, say: SAY[sc][k] }));
+}
+
+// What an agent might write for each conflict, given the conflicted file and the two commit messages.
+// These are examples of plausible agent output, judged with the same cases flow uses.
+const AGENT = {
+  1: { code:['import { log } from "./log";','import { audit } from "./audit";'],
+       out:{ up:[1,"runs as on A"], ag:[1,"runs as on B"] },
+       note:"Keeps both imports. Correct, and the type checker would have caught a dropped one." },
+  2: { code:['  S.plans = { ...S.plans, [S.user]: { plan, interval: S.interval ?? (plan === "pro" ? "year" : "month") } };'],
+       res:[[1,"Pro, monthly"],[1,"Pro, yearly"],[0,"Free, yearly"]],
+       note:"Looks like it keeps both intents, and it compiles. It fails one case: a yearly user who cancels keeps a yearly free plan. No test in this repo covers it." },
+  4: { code:['export function updatePlan(plan: "free" | "pro") {','  S.plans = { ...S.plans, [S.user]: { plan, interval: S.interval ?? "month" } };'],
+       out:{ up:[1,"works, with B's fix"], ca:[1,"works, with B's fix"] },
+       note:"Combines A's name with B's body. Correct. Keeping B would have failed the type checker, since the routes call updatePlan." },
+  5: { code:["export function legacyExport() {","  return Object.keys(plugins).sort();","}"],
+       out:{ all:[1,"unchanged: no journey runs legacyExport"] },
+       note:"Keeps B's edited function so no work is lost. Harmless, since no journey runs it, but the dead code stays." },
+};
+const resultsOf = (s, o) => s.cases ? s.cases.map(([id,label], ci) => [id, label, ...o.res[ci]]) : Object.entries(o.out).map(([id, r]) => [id, LBY[id] ? LBY[id].name : "Every journey", ...r]);
+
+function gitResolveHTML(s, E){
+  const ag = AGENT[sc];
+  let h = `<div class="colh"><span class="who git">Git</span><h2>Resolving with git</h2></div>
+    <div class="sub">The file git leaves behind</div><div class="code wrapcode">${conflictHTML(s, null, false, false)}</div>
+    <div class="how ${E?'enter':''}" style="animation-delay:.2s"><h3>By hand</h3><p>A person deletes the markers, keeps the text they think is right, and commits. Git accepts any text without markers and checks nothing else.</p></div>
+    <div class="how ${E?'enter':''}" style="animation-delay:.5s"><h3>With an agent</h3><p>An agent gets the same file, both commit messages, and any file it chooses to open. It can check its answer with the type checker and the repo's tests. This repo has no tests for these journeys.</p></div>`;
+  if (ag) {
+    const ok = resultsOf(s, ag).every(r => r[2]);
+    h += `<div class="sub ${E?'enter':''}" style="animation-delay:.8s">An example of what an agent might write</div>
+      <div class="code wrapcode ${E?'enter':''}" style="animation-delay:.9s">${ag.code.map(t => `<div class="row add"><span class="dots"></span><span class="ln"></span><span class="mk">+</span><span>${hl(t)}</span></div>`).join("")}</div>
+      ${verdictHTML({ v: ok ? "ok" : "bad", t: ok ? "Right this time" : "Plausible, and wrong", d: ag.note }, E?"enter":"", 1.1)}`;
+  }
+  return h;
+}
+function flowResolveHTML(s, E){
+  const ag = AGENT[sc];
+  const opts = ag ? [...s.opts, { id:"agent", name:"Agent's version", note:"from the left", code:ag.code, res:ag.res, out:ag.out }] : s.opts;
+  const rows = resultsOf(s, opts[0]).map((r, ri) => [r[0], r[1], opts.map(o => resultsOf(s, o)[ri])]);
+  const ok = o => resultsOf(s, o).every(r => r[2]);
+  let h = `<div class="colh"><span class="who flow">Flow</span><h2>Resolving with flow</h2></div>
+    <div class="rule">Flow runs the journeys both branches touch on every possible resolution, including the agent's, and recommends the one where every case works. You pick, and flow commits it as a normal git merge.</div>
+    <div class="rtable"><table class="imp"><tr><th>${s.cases ? "Case" : "Journey"}</th>${opts.map(o => `<th class="${o.id===pick?'pk':''} ${o.id===s.pick?'recd':''}"><button data-o="${o.id}" class="pickb ${o.id===pick?'on':''}">${PLAIN[o.id] || o.name}</button><small>${o.id===s.pick ? "Flow recommends" : o.note}</small></th>`).join("")}</tr>
+      ${rows.map(([id, label, cells], ri) => `<tr class="${E?'enter':''}" style="animation-delay:${.3+ri*.15}s"><td class="j"><i style="background:var(--l-${id}, var(--ink-3))"></i>${label}</td>${cells.map((c, oi) =>
+        `<td class="${opts[oi].id===pick?'pk':''} ${opts[oi].id===pick&&pickAnim?'sweep':''}" style="animation-delay:${.1+ri*.1}s"><span class="${c[2]?'ok-t':'bad-t'}">${c[2]?'✓':'✕'}</span> ${c[3]}</td>`).join("")}</tr>`).join("")}
+      <tr class="tot"><td>All cases pass</td>${opts.map(o => `<td class="${o.id===pick?'pk':''}">${ok(o)?'<span class="ok-t">Yes</span>':'<span class="bad-t">No</span>'}</td>`).join("")}</tr></table></div>`;
+  if (pick) {
+    const o = opts.find(o => o.id===pick), good = ok(o);
+    h += `<div class="sub">The merged file with ${esc(PLAIN[o.id] || o.name).toLowerCase()}</div><div class="code wrapcode">${conflictHTML(s, o, false, pickAnim)}</div>
+      <div class="term">${good ? `<span class="ok">Flow checked the merge: every case passes.</span>\n<span class="pr">$ git commit -m "Merge B: ${esc(o.name.toLowerCase())}"</span>` : `<span class="bad">Flow checked the merge: some cases fail. It stops here instead of committing.</span>`}</div>`;
+  } else h += `<div class="hint">Click a column name to pick that resolution.</div>`;
+  return h;
+}
+function runHTML(s, E){
+  const r = s.run, L = LBY[r.line], n = L.stops.length;
+  return `<div class="colh"><span class="who flow">Flow</span><h2>Flow runs ${L.name} on every version</h2></div><div class="rule">${r.who}.</div>
+    <div class="runs">${r.rows.map(([label, vals, bad], ci) => `<div class="runrow ${bad?'bad':''} ${E?'enter':''}" style="animation-delay:${ci*.15}s">
+      <span class="rl">${label}</span>
+      <div class="mini"><div class="rail" style="background:var(--l-${r.line})"></div>${L.stops.map((fn,k) => `<i style="left:${k/(n-1)*100}%;border-color:var(--l-${r.line})" title="${fn}"></i>`).join("")}<b class="rider ${E?'ride':''}" style="animation-delay:${.4+ci*.35}s"></b></div>
+      <div class="vals">${vals.map(([k, v], vi) => `<div class="${E?'fade':''}" style="animation-delay:${1.1+vi*1.1+ci*.35}s">${k} <code>${v}</code></div>`).join("")}</div></div>`).join("")}</div>
+    <div class="rule">${r.note}</div>`;
+}
+const GIT_NOTHING = `<div class="colh"><span class="who git">Git</span><h2>Resolving with git</h2></div>
+  <div class="how"><h3>Nothing to resolve</h3><p>Git merged it without a conflict, so nobody is asked to look, and no agent is called either. The merged code ships unless a test happens to cover the journey.</p></div>`;
+
+// The merge page: one step at a time, two panes per step, nothing piles up.
+const paneH = (logo, title) => `<div class="colh">${logo}<h2>${title}</h2></div>`;
+const G = `<span class="who git">Git</span>`, F = `<span class="who flow">Flow</span>`;
+const pane = (html, cls="", delay=0) => `<section class="sheet pane ${cls}" style="animation-delay:${delay}s">${html}</section>`;
+
+function ownersHTML(E){
+  const rows = ["A","B"].flatMap(k => OWNERS[sc][k].map(([where, fn, note]) => [k, where, fn, note]));
+  return `<div class="owners">${rows.map(([k, where, fn, note], i) => `<div class="own-row ${E?'enter':''}" style="animation-delay:${.1+i*.25}s">${rd(k)}<span class="file">${where}</span><span class="arrowto">belongs to</span>${fn ? `<b class="st">${fn}</b>` : ""}${note ? `<span class="dimt">${note}</span>` : fn ? "" : `<span class="dimt">the file's imports, which no journey runs</span>`}</div>`).join("")}</div>`;
+}
+function journeyTable(s, E){
+  const t = touch(s);
+  return `<table class="imp"><tr><th>Journey</th><th class="c">A</th><th class="c">B</th><th>Test</th></tr>${LINES.map((l, ri) => { const set = t[l.id]; const both = set && set.size===2;
+    return `<tr class="${both?'both':''} ${E?'enter':''}" style="animation-delay:${DUR*.6 + ri*.08}s"><td class="j ${set?'':'dim'}"><i style="background:var(--l-${l.id});opacity:${set?1:.3}"></i>${l.name}</td><td class="c">${set?.has("A")?rd("A"):''}</td><td class="c">${set?.has("B")?rd("B"):''}</td><td class="${set?'':'dim'}">${set?(both?'<span class="bad-t">On the merge</span>':'On its branch'):'Skip'}</td></tr>`; }).join("")}</table>`;
+}
+function stageMap(s, step, E){
+  const t = touch(s), lines = {}; for (const [id,set] of Object.entries(t)) lines[id] = set.size===2 ? "both" : "on";
+  const marks = {}, edited = {}; for (const k of ["A","B"]) for (const fn of s[k].fn) { (marks[fn] ||= []).push(k); edited[fn] = true; }
+  return `<div class="mapbox">${mapSVG({ lines: step >= 3 ? lines : allIdle(), base: step >= 3 ? "dim" : "idle", marks, edited, only: Object.keys(edited), anim:{ drop: E && step===2, draw: E && step===3 ? Object.keys(t) : [] } })}</div>`;
+}
+
+function renderMerge(ms, anim){
+  const s = SC[sc], E = anim;
+  document.getElementById("scen").innerHTML = ["Common","Edge cases"].map(g => `<div class="gl">${g}</div>${SC.map((x,i) => x.group!==g ? "" : `<button class="sc-item ${i===sc?'on':''}" data-i="${i}"><b>${x.title}</b><span>${x.sub}</span></button>`).join("")}`).join("");
+  document.querySelectorAll("#scen button").forEach(b => b.onclick = () => { sc = +b.dataset.i; pick = null; MP.reset(); MP.go(0); });
+  document.getElementById("story").innerHTML = `<p class="q">${STORY[sc]}</p><details class="key"><summary>What do A, B and journey mean?</summary><p><b>A</b> and <b>B</b> are two developers' changes, made at the same time from the same code. A <b>journey</b> is something a user does, like Cancel plan. A <b>stop</b> is a function a journey runs.</p></details>`;
+
+  let L = "", R = "";
+  if (ms === 0) {
+    for (const [k, n] of [["A",0],["B",1]]) {
+      const h = pane(paneH(rd(k), `${esc(s[k].msg)} <small class="file">${s[k].file}</small>`) + `<div class="code wrapcode">${diffHTML(s[k].diff, null, { enter:E, delay:.15+n*.3 })}</div>`, E?"enter":"", n*.25);
+      if (k==="A") L = h; else R = h;
+    }
+  } else if (ms === 1) {
+    L = pane(paneH(G, "How git merged it") + regionsHTML(E));
+    R = pane(paneH(G, s.conflict ? "The file git leaves behind" : "The result") +
+      (s.conflict ? `<div class="code wrapcode ${E?'shake':''}" style="animation-delay:1.4s">${conflictHTML(s, null, E, false)}</div>` : "") +
+      verdictHTML(s.git, E?"enter":"", 1.2), E?"enter":"", .2);
+  } else if (ms === 2) {
+    L = pane(paneH(F, "Who owns each changed line") + ownersHTML(E));
+    R = pane(paneH(F, "Those owners on the journey map") + stageMap(s, 2, E), E?"enter":"", .2);
+  } else if (ms === 3) {
+    L = pane(paneH(F, "Journeys to test") + journeyTable(s, E));
+    R = pane(paneH(F, "The journey map") + stageMap(s, 3, E) + `<div class="legend">${legendHTML(Object.keys(touch(s)))}</div>`);
+  } else if (ms === 4) {
+    L = pane(paneH(G, "Git's answer") + verdictHTML(s.git), E?"enter":"", 0);
+    R = pane(paneH(F, "Flow's answer") + verdictHTML(s.flow), E?"enter":"", .4);
+  } else {
+    L = pane(s.opts ? gitResolveHTML(s, E) : GIT_NOTHING);
+    R = pane(s.opts ? flowResolveHTML(s, E) : runHTML(s, E));
+  }
+  const st = document.getElementById("stage");
+  st.className = "stage" + (ms===2 || ms===3 ? " mapr" : "") + (anim ? " in" : "") + (ms===4 ? " big" : "");
+  st.innerHTML = L + R;
+  document.querySelectorAll("#stage [data-o]").forEach(b => b.onclick = () => { pick = b.dataset.o; pickAnim = true; renderMerge(MP.i, false); pickAnim = false; });
+}
+
+let MP = null;
+
+/* ---------------- navigation ---------------- */
+(function(){
+  const btn = document.getElementById("theme"), root = document.documentElement;
+  const dark = () => root.dataset.theme ? root.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  const label = () => { btn.textContent = dark() ? "Light" : "Dark"; };
+  try { const t = localStorage.getItem("flow-theme"); if (t) root.dataset.theme = t; } catch (e) {}
+  label();
+  btn.onclick = () => { root.dataset.theme = dark() ? "light" : "dark"; try { localStorage.setItem("flow-theme", root.dataset.theme); } catch (e) {} label(); };
+})();
+const PAGES = {
+  overview: () => { if (!OVP) OVP = makePlayer(document.getElementById("ov-player"), () => OV_STEPS, renderOverview, 2600); OVP.reset(); if (reduced) OVP.go(OV_STEPS.length-1, false); else { OVP.go(0); OVP.play(); } },
+  file: renderFile, diff: renderDiff, flow: renderFlow,
+  merge: () => { if (!MP) MP = makePlayer(document.getElementById("m-player"), mergeSteps, renderMerge, 3400); MP.reset(); MP.go(0); },
+};
+function route(){
+  const h = (location.hash || "#overview").slice(1), r = PAGES[h] ? h : "overview";
+  document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.getAttribute("href")==="#"+r));
+  document.querySelectorAll(".page").forEach(p => p.classList.toggle("on", p.id==="p-"+r));
+  PAGES[r]();
+}
+window.addEventListener("hashchange", () => { route(); window.scrollTo(0,0); });
+route();
+</script>
+</body>
+</html>

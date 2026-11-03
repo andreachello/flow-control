@@ -1,0 +1,4 @@
+{
+  // Same alias a Next.js app uses.
+  "compilerOptions": { "baseUrl": ".", "paths": { "@/*": ["./*"] }, },
+}

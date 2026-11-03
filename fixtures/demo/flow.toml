@@ -1,0 +1,4 @@
+# The event bus registers handlers by name. This rule tells the lifter how to follow it.
+[[rules.event]]
+register = "on"
+emit = "emit"

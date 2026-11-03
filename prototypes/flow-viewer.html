@@ -1,0 +1,846 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Flow viewer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a working bench. One column, three stages that really depend on each other: parse, trace, review. */
+:root{
+  --bg:#edf0ec; --surface:#fbfbf9; --surface-2:#e3e8e3; --ink:#1a2227; --ink-2:#4a585e; --ink-3:#77858a;
+  --line:#d3d9d3; --line-strong:#b6c0bb;
+  --accent:#0b6e84; --accent-soft:#d4eaee; --accent-ink:#07495a; --on-accent:#ffffff;
+  --good:#1f7a4d; --good-bg:#dcefe3; --warn:#946000; --warn-bg:#f5e6c4; --bad:#b3321f; --bad-bg:#f7ddd6;
+  --bar-l:44%;
+  --f-display:'Familjen Grotesk','Hanken Grotesk',system-ui,sans-serif;
+  --f-body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12181b; --surface:#192125; --surface-2:#222c31; --ink:#e6ebea; --ink-2:#a3b1b5; --ink-3:#75858a;
+    --line:#2d3a40; --line-strong:#41525a;
+    --accent:#5cc0d6; --accent-soft:#17353c; --accent-ink:#a9e3ef; --on-accent:#0a1e24;
+    --good:#5fcb93; --good-bg:#16352a; --warn:#e6b450; --warn-bg:#3b2f14; --bad:#f0897a; --bad-bg:#3e1e19;
+    --bar-l:64%; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12181b; --surface:#192125; --surface-2:#222c31; --ink:#e6ebea; --ink-2:#a3b1b5; --ink-3:#75858a;
+  --line:#2d3a40; --line-strong:#41525a;
+  --accent:#5cc0d6; --accent-soft:#17353c; --accent-ink:#a9e3ef; --on-accent:#0a1e24;
+  --good:#5fcb93; --good-bg:#16352a; --warn:#e6b450; --warn-bg:#3b2f14; --bad:#f0897a; --bad-bg:#3e1e19;
+  --bar-l:64%; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--ink); font:400 15px/1.55 var(--f-body);
+  padding-block:28px 72px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap{max-width:760px;margin:0 auto}
+h1{font:600 38px/1.05 var(--f-display);letter-spacing:-.01em;margin:0 0 10px;text-wrap:balance}
+h2{font:600 22px/1.2 var(--f-display);margin:0;text-wrap:balance}
+h3{font:600 15px/1.3 var(--f-body);margin:0}
+p{margin:0}
+.lede{color:var(--ink-2);max-width:62ch}
+.stage{margin-top:44px}
+.stage-head{display:flex;align-items:center;gap:12px;margin:0 0 8px}
+.num{font:500 13px var(--f-mono);color:var(--accent-ink);background:var(--accent-soft);border-radius:6px;padding:3px 8px}
+.stage .lede{margin:0 0 16px}
+.strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.pill{font:500 13px var(--f-body);padding:6px 11px;border-radius:8px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pill b{color:var(--ink);font-weight:600}
+.pill.good{background:var(--good-bg);border-color:transparent;color:var(--ink)}
+.pill.bad{background:var(--bad-bg);border-color:transparent;color:var(--ink)}
+.pill.warn{background:var(--warn-bg);border-color:transparent;color:var(--ink)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{font:500 14px var(--f-body);padding:9px 14px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.small{padding:6px 11px;font-size:13px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.tab{font:400 12px var(--f-mono);padding:6px 10px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.tab[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.tab .dot{width:7px;height:7px;border-radius:50%;background:var(--bad)}
+.code{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.code-in{min-width:max-content;padding:8px 0}
+.ln{display:grid;grid-template-columns:40px 4px 1fr;font:400 12.5px/1.7 var(--f-mono);transition:opacity .15s}
+.ln .n{color:var(--ink-3);text-align:right;padding-right:10px;user-select:none}
+.ln .bar{background:hsl(var(--h) 55% var(--bar-l))}
+.ln code{display:block;white-space:pre;padding:0 14px 0 12px;background:hsl(var(--h) 60% 50% / .1);font:inherit}
+.ln code em{font:500 11px var(--f-body);font-style:normal;margin-left:12px;color:var(--ink-2)}
+.ln.un .bar{background:var(--bad)}
+.ln.un code{background:var(--bad-bg)}
+.ln.dim{opacity:.28}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.chip{display:inline-flex;align-items:center;gap:7px;font:400 12px var(--f-mono);padding:5px 9px;border:1px solid var(--line);background:var(--surface);border-radius:6px;cursor:pointer;color:var(--ink)}
+.chip i{width:9px;height:9px;border-radius:2px;background:hsl(var(--h) 55% var(--bar-l))}
+.chip small{color:var(--ink-3);font-size:11px}
+.chip[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.chip.un i{background:var(--bad)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px;margin:14px 0 0}
+.m{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px}
+.m b{display:block;font:600 24px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.m span{font-size:12px;color:var(--ink-2)}
+.checks{display:grid;gap:7px;margin:14px 0 0}
+.check{display:flex;gap:9px;align-items:flex-start;font-size:14px}
+.check svg{flex:none;margin-top:2px}
+.callout{border-radius:10px;padding:13px 15px;font-size:14px;margin-top:14px}
+.callout.bad{background:var(--bad-bg)}
+.callout.good{background:var(--good-bg)}
+.callout.warn{background:var(--warn-bg)}
+.callout.plain{background:var(--surface);border:1px solid var(--line)}
+.callout strong{font-weight:600}
+.callout .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.callout code,.mono{font:400 12.5px var(--f-mono)}
+select{font:400 13px var(--f-mono);padding:7px 9px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);max-width:100%}
+.flow{border:1px solid var(--line);background:var(--surface);border-radius:10px;margin-bottom:8px;overflow:hidden}
+.flow-h{display:flex;width:100%;align-items:center;gap:10px;padding:12px 14px;background:none;border:0;text-align:left;cursor:pointer}
+.flow-h .name{font:500 14px var(--f-mono)}
+.flow-h .meta{margin-left:auto;font-size:12px;color:var(--ink-2)}
+.step.plain{font:400 14px var(--f-body)}
+.name.plain{font:500 15px var(--f-body)!important}
+.brow{padding:8px 0;border-top:1px solid var(--line)}
+.brow:first-of-type{border-top:0}
+.brow .k{font-weight:600;font-size:14px}
+.brow .v{font-size:14px;color:var(--ink-2)}
+.brow .v b{color:var(--ink);font-weight:500}
+.chev{width:16px;height:16px;flex:none;color:var(--ink-3);transition:transform .15s}
+.flow-h[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.steps{border-top:1px solid var(--line)}
+.step{display:flex;align-items:center;gap:8px;width:100%;padding:9px 14px 9px calc(14px + var(--d) * 18px);border:0;border-top:1px solid var(--line);background:none;text-align:left;cursor:pointer;font:400 13px var(--f-mono)}
+.step:first-child{border-top:0}
+.step[aria-pressed="true"]{background:var(--accent-soft)}
+.step .idx{color:var(--ink-3);font-size:11px;min-width:18px}
+.tag{font:500 11px var(--f-body);padding:2px 7px;border-radius:5px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.tag.acc{background:var(--accent-soft);color:var(--accent-ink)}
+.tag.warn{background:var(--warn-bg);color:var(--ink)}
+.tag.bad{background:var(--bad-bg);color:var(--ink)}
+.tag.good{background:var(--good-bg);color:var(--ink)}
+.tag.m{font:400 12px var(--f-mono);display:inline-block;margin:0 6px 6px 0;border:0;padding:3px 8px;border-radius:6px}
+.tag.r{background:var(--accent-soft);color:var(--accent-ink)}
+.tag.w{background:var(--bad-bg);color:var(--ink)}
+.detail{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:15px 16px;margin-top:12px}
+.detail .head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.detail .head .f{font:400 12px var(--f-mono);color:var(--ink-3)}
+.src{margin:12px 0;border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow-x:auto}
+.src .code-in{padding:6px 0}
+.lab{font-size:12px;color:var(--ink-2);margin:12px 0 6px}
+.seg{display:inline-grid;grid-template-columns:1fr 1fr;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;max-width:100%}
+.seg button{padding:9px 14px;background:var(--surface);border:0;font:500 14px var(--f-body);color:var(--ink-2);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.card{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.card-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-bottom:8px}
+.card-h .name{font:500 14px var(--f-mono)}
+.diffs{display:grid;gap:10px;margin-top:10px}
+.diff-k{font:500 12px var(--f-mono);margin-bottom:4px}
+.dl{display:block;font:400 12.5px/1.55 var(--f-mono);white-space:pre-wrap;word-break:break-word;padding:2px 9px;border-radius:4px}
+.dl.rm{background:var(--bad-bg)}
+.dl.ad{background:var(--good-bg)}
+.dl.ctx{color:var(--ink-3)}
+.sub{font-size:13px;color:var(--ink-2)}
+.hint{font-size:13px;color:var(--ink-3);margin-top:10px}
+.foot{margin-top:48px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:18px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:480px){h1{font-size:32px}.step{flex-wrap:wrap}}
+</style>
+<style>
+.inp{font:400 15px var(--f-body);width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink)}
+.row2{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+.si{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line);font-size:14px}
+.si:first-child{border-top:0}
+.si .idx{font:500 11px var(--f-mono);color:var(--ink-3);min-width:18px}
+.si .lbl{flex:1;min-width:0}
+.ib{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;color:var(--ink-2);font-size:15px;line-height:1}
+.ib:hover{border-color:var(--ink-3)}
+.ib:disabled{opacity:.35;cursor:default}
+.tr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:9px 14px 9px calc(14px + var(--d) * 20px);border-top:1px solid var(--line);font-size:14px}
+.tr:first-child{border-top:0}
+.tr.cons{color:var(--ink-2)}
+.pal-l{font-size:12px;color:var(--ink-2);margin:14px 0 6px}
+.chip.add{font:500 13px var(--f-body)}
+pre.gen{margin:10px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font:400 12.5px/1.6 var(--f-mono);overflow-x:auto}
+.tag.newfp{background:var(--warn-bg);color:var(--ink)}
+</style>
+
+</style>
+<style>
+.player{display:flex;gap:8px;align-items:center;margin:14px 0 6px}
+.player .btn{min-width:44px;padding:8px 12px}
+input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;align-items:start;margin-top:10px}
+.pane{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.pane-h{padding:9px 14px;font:600 12px var(--f-body);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);border-bottom:1px solid var(--line);background:var(--surface-2)}
+.strow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;width:100%;padding:9px 14px 9px calc(14px + var(--d) * 18px);border:0;border-top:1px solid var(--line);background:none;text-align:left;cursor:pointer;font:400 14px var(--f-body);color:var(--ink)}
+.pane-h+.strow{border-top:0}
+.strow.cur{background:var(--accent-soft)}
+.strow.fut{opacity:.4}
+.strow.static{cursor:default}
+.strow .i{font:500 11px var(--f-mono);color:var(--ink-3);min-width:18px}
+.srow{display:grid;grid-template-columns:minmax(92px,34%) 1fr;gap:8px;padding:9px 14px;border-top:1px solid var(--line);font-size:14px;overflow-wrap:anywhere}
+.pane-h+.srow{border-top:0}
+.srow .k{color:var(--ink-2)}
+.srow.hi{background:var(--accent-soft)}
+.srow .by{display:block;font-size:12px;color:var(--accent-ink)}
+.srow .jump{all:unset;cursor:pointer;color:var(--accent-ink);text-decoration:underline;font-size:13px}
+.cmp3{display:grid;grid-template-columns:minmax(78px,26%) 1fr 1fr;border-top:1px solid var(--line);font-size:14px}
+.cmp3>div{padding:9px 12px;overflow-wrap:anywhere}
+.cmp3 .d{background:var(--accent-soft)}
+.cmp3 .k{color:var(--ink-2)}
+.glance{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
+.gl{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 12px;cursor:pointer;text-align:left;font:400 14px var(--f-body);color:var(--ink)}
+.gl small{display:block;color:var(--ink-2);font-size:12px}
+.gl[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.fact{padding:11px 14px;border-top:1px solid var(--line);font-size:14px}
+.pane-h+.fact{border-top:0}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Flow viewer</h1>
+    <p class="lede">See what the system is doing. Pick a journey, watch it run step by step, and see the information it touches change as it goes. Nothing here approves or rejects anything. It only shows.</p>
+    <div id="strip" class="strip"></div>
+  </header>
+
+  <section class="stage" id="s1">
+    <div class="stage-head"><span class="num">1</span><h2>Watch a journey</h2></div>
+    <p class="lede">Press play, or drag to any moment. The right side shows the information at that moment, and whatever just changed is highlighted.</p>
+    <div id="v1"></div>
+  </section>
+
+  <section class="stage">
+    <div class="stage-head"><span class="num">2</span><h2>Before and after</h2></div>
+    <p class="lede">The same journey, run on the app as it was and on the app after an AI edited it. Differences are highlighted. They are not judged.</p>
+    <div id="v2"></div>
+  </section>
+
+  <section class="stage">
+    <div class="stage-head"><span class="num">3</span><h2>How each piece of information changed</h2></div>
+    <p class="lede">For the journey you picked, every value that was set along the way, and which step set it.</p>
+    <div id="v3"></div>
+  </section>
+
+  <section class="stage">
+    <div class="stage-head"><span class="num">4</span><h2>On the map</h2></div>
+    <p class="lede">Plain facts about how the app is wired together.</p>
+    <div id="v4"></div>
+  </section>
+
+  <div class="foot">
+    <span class="sub">Everything here runs locally. Nothing is sent anywhere.</span>
+  </div>
+</div>
+
+<script>
+var ORDER = ['bus.js', 'flags.js', 'auth.js', 'billing.js', 'mailer.js', 'agent.js', 'ui.js', 'routes.js'];
+
+var SRC = {
+  'bus.js': [
+    '// A tiny event bus. Handlers are looked up by name at runtime.',
+    'const handlers = {};',
+    '',
+    'function on(evt, fn) { handlers[evt] = (handlers[evt] || []).concat([fn]); }',
+    '',
+    'function emit(evt) { (handlers[evt] || []).forEach(function (fn) { fn(); }); }'
+  ].join('\n'),
+  'flags.js': [
+    '// Feature flags live in state.',
+    'function isEnabled(name) { return !!S.flags[name]; }'
+  ].join('\n'),
+  'auth.js': [
+    '// Sign-up and sessions.',
+    'function validateForm(f) {',
+    "  if (f.email.indexOf('@') < 0) { throw new Error('bad email'); }",
+    '  return f;',
+    '}',
+    '',
+    'function createUser(f) {',
+    "  const id = 'u' + (Object.keys(S.users).length + 1);",
+    '  S.users = Object.assign({}, S.users, { [id]: { email: f.email } });',
+    "  S.plans = Object.assign({}, S.plans, { [id]: { plan: 'free', interval: 'month' } });",
+    '  return id;',
+    '}',
+    '',
+    "function issueSid(id) { S.sid = 'sid-' + id; }",
+    '',
+    "function loadSession() { S.user = S.sid.replace('sid-', ''); }"
+  ].join('\n'),
+  'billing.js': [
+    '// Pricing and plan changes.',
+    'function resolvePrice(plan) {',
+    "  const table = isEnabled('newPricing') ? { pro: 24 } : { pro: 20 };",
+    '  return table[plan];',
+    '}',
+    '',
+    'function chargeCard(amount) { S.charged = (S.charged || 0) + amount; }',
+    '',
+    'function applyPlanChange(plan) {',
+    "  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: 'month' } });",
+    "  emit('plan_changed');",
+    '}',
+    '',
+    'function planGuard(action) {',
+    "  if (S.plans[S.user].plan === 'free') { throw new Error('upgrade required for ' + action); }",
+    '}'
+  ].join('\n'),
+  'mailer.js': [
+    '// Email. The plan-changed handler is wired by name.',
+    'function sendEmail(kind) {',
+    '  const u = S.users[S.user];',
+    "  S.outbox = (S.outbox || []).concat([kind + ' -> ' + u.email]);",
+    '}',
+    '',
+    "function onPlanChanged() { sendEmail('plan-changed'); }",
+    '',
+    "on('plan_changed', onPlanChanged);"
+  ].join('\n'),
+  'agent.js': [
+    '// The agent: prompt, tools and reply.',
+    'function buildSystemPrompt() {',
+    "  const base = 'You help a ' + S.plans[S.user].plan + ' user.';",
+    "  S.prompt = isEnabled('betaUi') ? base + ' Beta on.' : base;",
+    '}',
+    '',
+    'function pickTools() {',
+    "  S.tools = S.plans[S.user].plan === 'free' ? ['search'] : ['search', 'code'];",
+    '}',
+    '',
+    "function streamReply() { S.reply = 'ok:' + S.prompt.length + ':' + S.tools.length; }"
+  ].join('\n'),
+  'ui.js': [
+    '// The header badge.',
+    'function renderHeader() { S.header = S.plans[S.user].plan.toUpperCase(); }'
+  ].join('\n'),
+  'routes.js': [
+    '// User actions. Each one is a journey.',
+    'function signUp(f) {',
+    '  validateForm(f);',
+    '  const id = createUser(f);',
+    '  issueSid(id);',
+    '  loadSession();',
+    "  sendEmail('welcome');",
+    '  renderHeader();',
+    '}',
+    '',
+    'function logIn(f) {',
+    '  validateForm(f);',
+    "  issueSid('u1');",
+    '  loadSession();',
+    '  renderHeader();',
+    '}',
+    '',
+    'function upgradePlan(plan) {',
+    '  loadSession();',
+    '  chargeCard(resolvePrice(plan));',
+    '  applyPlanChange(plan);',
+    '  renderHeader();',
+    '}',
+    '',
+    'function askAgent() {',
+    '  loadSession();',
+    "  planGuard('agent');",
+    '  buildSystemPrompt();',
+    '  pickTools();',
+    '  streamReply();',
+    '}',
+    '',
+    'function cancelPlan() {',
+    '  loadSession();',
+    "  applyPlanChange('free');",
+    '  renderHeader();',
+    '}'
+  ].join('\n')
+};
+
+var PATCH = [
+  { file: 'billing.js',
+    find: '  return table[plan];',
+    rep: "  return table[plan] * (S.interval === 'year' ? 10 : 1);" },
+  { file: 'billing.js',
+    find: "  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: 'month' } });",
+    rep: "  const interval = S.interval || 'month';\n  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: interval } });" },
+  { file: 'mailer.js',
+    find: "[kind + ' -> ' + u.email]",
+    rep: "[kind + (S.interval ? ' (' + S.interval + ')' : '') + ' -> ' + u.email]" }
+];
+
+var NEWFILES = {
+  'seed.js': [
+    '// One-off script that seeds annual prices.',
+    'function seedAnnualPrices() {',
+    '  S.annualPrices = { pro: 240 };',
+    '}'
+  ].join('\n')
+};
+
+function base(o) {
+  o = o || {};
+  var s = {
+    users: { u1: { email: 'a@x.com' } },
+    plans: { u1: o.plan || { plan: 'free', interval: 'month' } },
+    sid: 'sid-u1',
+    user: 'u1',
+    flags: { newPricing: true, betaUi: true }
+  };
+  if (o.interval) s.interval = o.interval;
+  return s;
+}
+
+var JOURNEYS = [
+  { id: 'sign-up', entry: 'signUp', args: [{ email: 'new@x.com' }], init: function () { return base(); } },
+  { id: 'log-in', entry: 'logIn', args: [{ email: 'a@x.com' }], init: function () { return base(); } },
+  { id: 'upgrade-plan', entry: 'upgradePlan', args: ['pro'], init: function () { return base({ interval: 'year' }); } },
+  { id: 'ask-the-agent', entry: 'askAgent', args: [], init: function () { return base({ plan: { plan: 'pro', interval: 'month' } }); } },
+  { id: 'cancel-plan', entry: 'cancelPlan', args: [], init: function () { return base({ interval: 'year', plan: { plan: 'pro', interval: 'year' } }); } }
+];
+
+function parseFile(name, src, asg) {
+  var lines = src.split('\n'), spans = [], i, j, k;
+  for (i = 0; i < lines.length; i++) {
+    var m = /^function\s+(\w+)/.exec(lines[i]);
+    if (!m) continue;
+    var depth = 0, started = false;
+    for (j = i; j < lines.length; j++) {
+      var t = lines[j].replace(/\/\/.*$/, '');
+      for (var c = 0; c < t.length; c++) {
+        if (t[c] === '{') { depth++; started = true; }
+        else if (t[c] === '}') depth--;
+      }
+      if (started && depth === 0) break;
+    }
+    spans.push({ name: m[1], start: i, end: j });
+    i = j;
+  }
+  var own = lines.map(function () { return null; });
+  spans.forEach(function (s) { for (var q = s.start; q <= s.end; q++) own[q] = s.name; });
+  spans.forEach(function (s) {
+    var q = s.start - 1;
+    while (q >= 0 && own[q] === null && /^\s*(\/\/.*)?$/.test(lines[q])) { own[q] = s.name; q--; }
+  });
+  var support = name + ' (support)', unplaced = [], hand = {};
+  for (k = 0; k < lines.length; k++) {
+    if (own[k] !== null) continue;
+    if (asg && asg[k]) { own[k] = asg[k]; hand[k] = true; }
+    else if (/^\w+\(.*\);?\s*$/.test(lines[k])) unplaced.push(k);
+    else own[k] = support;
+  }
+  var slices = [], by = {};
+  for (k = 0; k < lines.length; k++) {
+    var n = own[k];
+    if (n === null) continue;
+    if (!by[n]) { by[n] = { name: n, file: name, kind: n === support ? 'support' : 'fn', idx: [], text: [], hand: 0 }; slices.push(by[n]); }
+    by[n].idx.push(k);
+    by[n].text.push(lines[k]);
+    if (hand[k]) by[n].hand++;
+  }
+  slices.forEach(function (s) { s.from = s.idx[0] + 1; s.to = s.idx[s.idx.length - 1] + 1; });
+  return {
+    name: name, src: src, lines: lines, spans: spans, own: own, slices: slices, by: by, support: support,
+    unplaced: unplaced, unplacedText: unplaced.map(function (u) { return lines[u]; }), hand: hand
+  };
+}
+
+function printFile(p) {
+  var out = [];
+  p.slices.forEach(function (s) { s.idx.forEach(function (k, i) { out[k] = s.text[i]; }); });
+  p.unplaced.forEach(function (k, i) { out[k] = p.unplacedText[i]; });
+  return out.join('\n');
+}
+
+function ledger(p) {
+  var placed = 0;
+  p.slices.forEach(function (s) { placed += s.idx.length; });
+  return {
+    total: p.lines.length, placed: placed, unplaced: p.unplaced.length,
+    complete: placed + p.unplaced.length === p.lines.length,
+    roundTrip: printFile(p) === p.src
+  };
+}
+
+function fileOrder(files) {
+  return ORDER.filter(function (n) { return files[n]; }).concat(Object.keys(files).filter(function (n) { return ORDER.indexOf(n) < 0; }));
+}
+
+function parseAll(files, asgAll) {
+  var out = {};
+  fileOrder(files).forEach(function (n) { out[n] = parseFile(n, files[n], (asgAll || {})[n]); });
+  return out;
+}
+
+function inject(p) {
+  var L = p.lines.slice();
+  p.spans.forEach(function (s) {
+    var e = L[s.end], eb = e.lastIndexOf('}');
+    L[s.end] = e.slice(0, eb) + '}finally{__x();}}' + e.slice(eb + 1);
+    var b = L[s.start], sb = b.indexOf('{');
+    L[s.start] = b.slice(0, sb + 1) + '__e("' + s.name + '");try{' + b.slice(sb + 1);
+  });
+  return L.join('\n');
+}
+
+function runJourney(parsed, jr) {
+  var code = Object.keys(parsed).map(function (n) { return inject(parsed[n]); }).join('\n');
+  var trace = [], boot = [], stack = [], foot = {}, booting = true, miss = [];
+  var raw = jr.init(), init0 = {}, writes = [];
+  Object.keys(raw).forEach(function (k) { init0[k] = JSON.stringify(raw[k]); });
+  function rec(kind, key) {
+    var f = stack[stack.length - 1];
+    if (!f) return;
+    var o = foot[f] || (foot[f] = { r: {}, w: {} });
+    o[kind][key] = 1;
+  }
+  var S = new Proxy(raw, {
+    get: function (t, k) { if (typeof k === 'string') { rec('r', k); if (!(k in t) && stack.length) miss.push({ fn: stack[stack.length - 1], key: k }); } return t[k]; },
+    set: function (t, k, v) { rec('w', k); writes.push({ after: trace.length, by: stack[stack.length - 1] || null, key: k, val: JSON.stringify(v) }); t[k] = v; return true; }
+  });
+  function __e(n) {
+    var ev = { name: n, depth: stack.length, parent: stack[stack.length - 1] || null };
+    (booting ? boot : trace).push(ev);
+    stack.push(n);
+  }
+  function __x() { stack.pop(); }
+  var names = ['signUp', 'logIn', 'upgradePlan', 'askAgent', 'cancelPlan'].concat(jr.extra || []);
+  var api = new Function('S', '__e', '__x', code + '\nreturn {' + names.join(',') + '};')(S, __e, __x);
+  booting = false;
+  var err = null, ret = null;
+  try { var r = api[jr.entry].apply(null, jr.args); ret = r === undefined ? null : r; } catch (e) { err = String(e && e.message || e); }
+  var snap = {};
+  Object.keys(raw).sort().forEach(function (k) { snap[k] = JSON.stringify(raw[k]); });
+  return { trace: trace, boot: boot, foot: foot, snap: snap, ret: ret, err: err, miss: miss, init: init0, writes: writes };
+}
+
+function deriveFlows(parsed) {
+  return JOURNEYS.map(function (jr) {
+    var r = runJourney(parsed, jr), seen = {}, steps = [];
+    r.trace.forEach(function (ev) {
+      if (ev.depth === 0 || seen[ev.name]) return;
+      seen[ev.name] = 1;
+      steps.push({ name: ev.name, depth: ev.depth, parent: ev.parent });
+    });
+    return { id: jr.id, entry: jr.entry, steps: steps, run: r };
+  });
+}
+
+function footprints(flows) {
+  var fp = {};
+  flows.forEach(function (f) {
+    Object.keys(f.run.foot).forEach(function (n) {
+      var o = fp[n] || (fp[n] = { r: {}, w: {} });
+      Object.keys(f.run.foot[n].r).forEach(function (k) { o.r[k] = 1; });
+      Object.keys(f.run.foot[n].w).forEach(function (k) { o.w[k] = 1; });
+    });
+  });
+  return fp;
+}
+
+function coverage(flows) {
+  var c = {};
+  flows.forEach(function (f) {
+    f.run.trace.forEach(function (ev) { c[ev.name] = 1; });
+    f.run.boot.forEach(function (ev) { c[ev.name] = 1; });
+  });
+  return c;
+}
+
+function applyPatch(files) {
+  var out = {};
+  Object.keys(files).forEach(function (k) { out[k] = files[k]; });
+  PATCH.forEach(function (p) {
+    if (out[p.file].indexOf(p.find) < 0) throw new Error('patch target missing in ' + p.file);
+    out[p.file] = out[p.file].split(p.find).join(p.rep);
+  });
+  Object.keys(NEWFILES).forEach(function (k) { out[k] = NEWFILES[k]; });
+  return out;
+}
+
+function sliceMap(parsed) {
+  var m = {};
+  Object.keys(parsed).forEach(function (f) { parsed[f].slices.forEach(function (s) { m[s.name] = s; }); });
+  return m;
+}
+
+function lineDiff(a, b) {
+  return {
+    removed: a.filter(function (l) { return b.indexOf(l) < 0; }),
+    added: b.filter(function (l) { return a.indexOf(l) < 0; })
+  };
+}
+
+function changedSlices(baseParsed, newParsed) {
+  var bm = sliceMap(baseParsed), nm = sliceMap(newParsed), out = [];
+  Object.keys(nm).forEach(function (n) {
+    var s = nm[n];
+    if (s.kind === 'support') return;
+    var b = bm[n];
+    if (!b) { out.push({ name: n, file: s.file, isNew: true, removed: [], added: s.text }); return; }
+    if (b.text.join('\n') !== s.text.join('\n')) {
+      var d = lineDiff(b.text, s.text);
+      out.push({ name: n, file: s.file, isNew: false, removed: d.removed, added: d.added });
+    }
+  });
+  return out;
+}
+
+function behaviorDiff(a, b) {
+  var keys = {}, out = [];
+  Object.keys(a.snap).forEach(function (k) { keys[k] = 1; });
+  Object.keys(b.snap).forEach(function (k) { keys[k] = 1; });
+  Object.keys(keys).sort().forEach(function (k) {
+    if (a.snap[k] !== b.snap[k]) out.push({ key: k, before: a.snap[k], after: b.snap[k] });
+  });
+  if (a.err !== b.err) out.push({ key: 'error', before: String(a.err), after: String(b.err) });
+  return out;
+}
+
+function review(baseParsed, patchedParsed, baseFlows, changed, forkOnly, intended) {
+  var names = {};
+  changed.forEach(function (c) { names[c.name] = 1; });
+  return JOURNEYS.map(function (jr, i) {
+    var useNew = forkOnly === null || forkOnly === jr.id;
+    var bf = baseFlows[i];
+    var run = runJourney(useNew ? patchedParsed : baseParsed, jr);
+    var touched = useNew ? bf.steps.map(function (s) { return s.name; }).concat([bf.entry]).filter(function (n) { return names[n]; }) : [];
+    var beh = behaviorDiff(bf.run, run);
+    var widened = [];
+    touched.forEach(function (n) {
+      var o = run.foot[n], p = bf.run.foot[n] || { r: {}, w: {} };
+      if (!o) return;
+      Object.keys(o.r).forEach(function (k) { if (!p.r[k]) widened.push({ slice: n, kind: 'reads', key: k }); });
+      Object.keys(o.w).forEach(function (k) { if (!p.w[k]) widened.push({ slice: n, kind: 'changes', key: k }); });
+    });
+    var status;
+    if (!touched.length) status = 'untouched';
+    else if (beh.length && intended.indexOf(jr.id) < 0) status = 'unexpected';
+    else if (beh.length) status = 'intended';
+    else status = 'identical';
+    return { id: jr.id, status: status, touched: touched, behavior: beh, widened: widened, run: run };
+  });
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { SRC: SRC, PATCH: PATCH, NEWFILES: NEWFILES, JOURNEYS: JOURNEYS, parseFile: parseFile, parseAll: parseAll, printFile: printFile, ledger: ledger, deriveFlows: deriveFlows, footprints: footprints, coverage: coverage, applyPatch: applyPatch, sliceMap: sliceMap, changedSlices: changedSlices, review: review, runJourney: runJourney, inject: inject };
+}
+
+/* ---------- Flow viewer UI ---------- */
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  var PLAIN = {
+    signUp: 'Person fills in the sign-up form', logIn: 'Person logs in', upgradePlan: 'Person upgrades to Pro', askAgent: 'Person asks the agent a question',
+    cancelPlan: 'Person cancels their plan', validateForm: 'Check the email looks valid', createUser: 'Create the account on the free plan',
+    issueSid: 'Start a login session', loadSession: 'Work out who is signed in', sendEmail: 'Send an email', renderHeader: 'Show the plan badge in the header',
+    resolvePrice: 'Look up the price', chargeCard: 'Charge their card', applyPlanChange: 'Switch their plan', emit: 'Announce that the plan changed',
+    onPlanChanged: 'Send the plan-changed email', planGuard: 'Check their plan allows the agent', buildSystemPrompt: 'Write the agent’s instructions',
+    pickTools: 'Choose the agent’s tools', streamReply: 'Send the agent’s reply', isEnabled: 'Check a feature switch', on: 'Register a listener',
+    seedAnnualPrices: 'Set up the annual price list'
+  };
+  var JT = { 'sign-up': 'A new person signs up', 'log-in': 'Someone logs back in', 'upgrade-plan': 'A free user upgrades to Pro, yearly', 'ask-the-agent': 'A Pro user asks the agent', 'cancel-plan': 'A Pro user cancels' };
+  var SL = { users: 'Account list', plans: 'Their plan', sid: 'Login session', user: 'Who is signed in', flags: 'Feature switches', outbox: 'Emails sent', charged: 'Money charged', prompt: 'Agent instructions', tools: 'Agent tools', reply: 'Agent reply', header: 'Header badge', interval: 'Billing period', annualPrices: 'Annual price list', error: 'How it ended' };
+  var KEYORDER = ['users', 'plans', 'sid', 'user', 'flags', 'interval', 'outbox', 'charged', 'prompt', 'tools', 'reply', 'header'];
+  function P(n) { return PLAIN[n] || n; }
+  function lab(k) { return SL[k] || k; }
+  function fmt(key, j) {
+    if (j === undefined) return 'not set';
+    if (key === 'error') return j === 'null' ? 'no error' : j;
+    var v; try { v = JSON.parse(j); } catch (e) { return j; }
+    if (key === 'plans') return Object.keys(v).map(function (u) { return v[u].plan + ' plan, billed ' + (v[u].interval === 'year' ? 'yearly' : 'monthly'); }).join('; ') || 'no plans';
+    if (key === 'users') return Object.keys(v).length + ' account' + (Object.keys(v).length === 1 ? '' : 's') + ': ' + Object.keys(v).map(function (u) { return v[u].email; }).join(', ');
+    if (key === 'flags') return Object.keys(v).map(function (f) { return f + (v[f] ? ' on' : ' off'); }).join(', ') || 'none';
+    if (key === 'charged') return v === null ? 'an invalid amount' : '$' + v;
+    if (key === 'interval') return v === 'year' ? 'yearly' : 'monthly';
+    if (key === 'outbox') return v.length ? v.map(function (x) { return '“' + x + '”'; }).join(', ') : 'none';
+    if (Array.isArray(v)) return v.join(', ');
+    if (typeof v === 'object' && v) return JSON.stringify(v);
+    return String(v);
+  }
+
+  var st = { j: 1 + 1, p: 0, timer: null };
+  var D = {};
+  function compute() {
+    D.base = parseAll(SRC);
+    D.patched = parseAll(applyPatch(SRC));
+    D.bf = deriveFlows(D.base);
+    D.pf = deriveFlows(D.patched);
+  }
+  function cur() { return D.bf[st.j]; }
+  function stateAt(run, p) {
+    var vals = {}, by = {};
+    Object.keys(run.init).forEach(function (k) { vals[k] = run.init[k]; });
+    run.writes.forEach(function (w) {
+      if (w.after <= p) { vals[w.key] = w.val; if (w.after === p && p > 0) by[w.key] = w.by; }
+    });
+    return { vals: vals, by: by };
+  }
+
+  function stop() { if (st.timer) { clearInterval(st.timer); st.timer = null; } var b = $('playbtn'); if (b) b.textContent = 'Play'; }
+
+  function ctl() {
+    var f = cur(), N = f.run.trace.length, h = '<div class="tabs" role="group" aria-label="Journey">';
+    D.bf.forEach(function (x, i) { h += '<button class="tab" data-act="j" data-v="' + i + '" aria-pressed="' + (i === st.j) + '" style="font-family:var(--f-body);font-size:13px">' + esc(JT[x.id]) + '</button>'; });
+    h += '</div><div class="player"><button class="btn" data-act="first" aria-label="Back to start">&#9198;</button><button class="btn" data-act="prev" aria-label="Previous step">&#9664;</button>' +
+      '<button class="btn primary" id="playbtn" data-act="play" style="min-width:76px">Play</button><button class="btn" data-act="next" aria-label="Next step">&#9654;</button>' +
+      '<input type="range" id="scrub" min="0" max="' + N + '" value="' + st.p + '" aria-label="Moment in the journey"></div><div class="sub" id="poslab"></div>' +
+      '<div class="grid2"><div class="pane" id="stepsPane"></div><div class="pane" id="statePane"></div></div>';
+    $('v1').innerHTML = h;
+  }
+
+  function panes() {
+    var f = cur(), run = f.run, ev = run.trace, N = ev.length, p = st.p;
+    $('scrub').value = p;
+    $('poslab').textContent = p === 0 ? 'Before anything has run' : 'Step ' + p + ' of ' + N + (p === N ? ' (finished' + (run.err ? ', stopped by an error' : '') + ')' : '');
+    var h = '<div class="pane-h">What runs</div>';
+    ev.forEach(function (e, i) {
+      var c = i === p - 1, fut = i >= p;
+      h += '<button class="strow' + (c ? ' cur' : '') + (fut ? ' fut' : '') + '" style="--d:' + e.depth + '" data-act="at" data-v="' + (i + 1) + '"><span class="i">' + (i + 1) + '</span><span>' + esc(P(e.name)) + '</span>' +
+        (i === 0 ? '<span class="tag acc">starts here</span>' : '') +
+        (e.depth > 1 && e.parent && e.parent !== ev[0].name && e.parent !== 'emit' ? '<span class="tag">happened as a result</span>' : '') +
+        (e.parent === 'emit' ? '<span class="tag warn">found only by running it</span>' : '') + '</button>';
+    });
+    if (p > 0) {
+      var e2 = ev[p - 1], fp = run.foot[e2.name] || { r: {}, w: {} };
+      function tg(o, c) { var ks = Object.keys(o); return ks.length ? ks.map(function (k) { return '<span class="tag m ' + c + '">' + esc(lab(k)) + '</span>'; }).join('') : '<span class="sub">Nothing</span>'; }
+      h += '<div style="padding:10px 14px 12px;border-top:1px solid var(--line)"><div class="sub" style="margin-bottom:6px"><b style="color:var(--ink)">' + esc(P(e2.name)) + '</b>' + (e2.parent ? ', called by ' + esc(P(e2.parent)) : '') + '</div><div class="lab" style="margin-top:0">Looks at</div>' + tg(fp.r, 'r') + '<div class="lab" style="margin-top:4px">Changes</div>' + tg(fp.w, 'w') + '</div>';
+    }
+    $('stepsPane').innerHTML = h;
+    var s = stateAt(run, p), sh = '<div class="pane-h">Information right now</div>';
+    KEYORDER.concat(Object.keys(s.vals).filter(function (k) { return KEYORDER.indexOf(k) < 0; })).forEach(function (k) {
+      if (s.vals[k] === undefined) return;
+      var hi = Object.prototype.hasOwnProperty.call(s.by, k);
+      sh += '<div class="srow' + (hi ? ' hi' : '') + '"><div class="k">' + esc(lab(k)) + '</div><div>' + esc(fmt(k, s.vals[k])) + (hi ? '<span class="by">just set by ' + esc(P(s.by[k])) + '</span>' : '') + '</div></div>';
+    });
+    $('statePane').innerHTML = sh;
+  }
+
+  function strip() {
+    var run = cur().run, written = {};
+    run.writes.forEach(function (w) { written[w.key] = 1; });
+    var dyn = cur().steps.filter(function (s) { return s.parent === 'emit'; }).length;
+    $('strip').innerHTML = '<span class="pill"><b>' + run.trace.length + '</b> steps</span><span class="pill"><b>' + Object.keys(written).length + '</b> pieces of information changed</span>' +
+      (dyn ? '<span class="pill warn"><b>' + dyn + '</b> found only by running it</span>' : '');
+  }
+
+  function diffInfo(i) {
+    var a = D.bf[i].run, b = D.pf[i].run;
+    var an = a.trace.map(function (e) { return e.name; }), bn = b.trace.map(function (e) { return e.name; });
+    var bset = {}, aset = {}; bn.forEach(function (n) { bset[n] = 1; }); an.forEach(function (n) { aset[n] = 1; });
+    var beh = behaviorDiff(a, b);
+    var steps = Object.keys(aset).filter(function (n) { return !bset[n]; }).length + Object.keys(bset).filter(function (n) { return !aset[n]; }).length;
+    return { beh: beh, steps: steps, count: beh.length + steps, aset: aset, bset: bset };
+  }
+
+  function v2() {
+    var h = '<div class="glance">';
+    D.bf.forEach(function (x, i) {
+      var d = diffInfo(i);
+      h += '<button class="gl" data-act="j" data-v="' + i + '" aria-pressed="' + (i === st.j) + '">' + esc(JT[x.id]) + '<small>' + (d.count ? d.count + ' difference' + (d.count === 1 ? '' : 's') : 'no differences') + '</small></button>';
+    });
+    h += '</div>';
+    var i = st.j, a = D.bf[i].run, b = D.pf[i].run, d = diffInfo(i);
+    function col(run, other, title) {
+      var s = '<div class="pane"><div class="pane-h">' + title + '</div>';
+      run.trace.forEach(function (e, k) {
+        var only = !other[e.name];
+        s += '<div class="strow static' + (only ? ' cur' : '') + '" style="--d:' + e.depth + '"><span class="i">' + (k + 1) + '</span><span>' + esc(P(e.name)) + '</span>' + (only ? '<span class="tag acc">only in this version</span>' : '') + '</div>';
+      });
+      return s + '</div>';
+    }
+    h += '<div class="grid2">' + col(a, d.bset, 'The app as it was') + col(b, d.aset, 'The app after the edit') + '</div>';
+    h += '<div class="lab">Where the journey ends up</div>';
+    if (!d.beh.length) h += '<p class="sub">Both versions end with exactly the same information.</p>';
+    else {
+      h += '<div class="pane"><div class="cmp3" style="border-top:0"><div class="k"></div><div class="k"><b>As it was</b></div><div class="k"><b>After the edit</b></div></div>';
+      d.beh.forEach(function (x) { h += '<div class="cmp3"><div class="k">' + esc(lab(x.key)) + '</div><div class="d">' + esc(fmt(x.key, x.before)) + '</div><div class="d">' + esc(fmt(x.key, x.after)) + '</div></div>'; });
+      h += '</div>';
+      var same = Object.keys(a.snap).length - d.beh.filter(function (x) { return x.key !== 'error'; }).length;
+      if (same > 0) h += '<p class="hint">' + same + ' other value' + (same === 1 ? ' is' : 's are') + ' identical.</p>';
+    }
+    var fl = [];
+    var fns = {}; Object.keys(a.foot).concat(Object.keys(b.foot)).forEach(function (n) { fns[n] = 1; });
+    Object.keys(fns).forEach(function (n) {
+      var x = a.foot[n] || { r: {}, w: {} }, y = b.foot[n] || { r: {}, w: {} };
+      Object.keys(y.r).forEach(function (k) { if (!x.r[k]) fl.push(P(n) + ' now looks at ' + lab(k).toLowerCase()); });
+      Object.keys(y.w).forEach(function (k) { if (!x.w[k]) fl.push(P(n) + ' now changes ' + lab(k).toLowerCase()); });
+      Object.keys(x.r).forEach(function (k) { if (!y.r[k]) fl.push(P(n) + ' no longer looks at ' + lab(k).toLowerCase()); });
+      Object.keys(x.w).forEach(function (k) { if (!y.w[k]) fl.push(P(n) + ' no longer changes ' + lab(k).toLowerCase()); });
+    });
+    h += '<div class="lab">What it touches</div>' + (fl.length ? fl.map(function (t) { return '<span class="tag m r">' + esc(t) + '</span>'; }).join('') : '<p class="sub">The same information is looked at and changed in both versions.</p>');
+    $('v2').innerHTML = h;
+  }
+
+  function v3() {
+    var run = cur().run, ev = run.trace, groups = {};
+    run.writes.forEach(function (w) { (groups[w.key] = groups[w.key] || []).push(w); });
+    var keys = KEYORDER.filter(function (k) { return groups[k]; }).concat(Object.keys(groups).filter(function (k) { return KEYORDER.indexOf(k) < 0; }));
+    var h = '';
+    if (!keys.length) h = '<p class="sub">This journey does not change anything.</p>';
+    else {
+      h = '<div class="pane">';
+      keys.forEach(function (k, n) {
+        h += '<div class="srow" style="grid-template-columns:1fr' + (n ? '' : '') + '"><div><b>' + esc(lab(k)) + '</b></div><div class="sub">Started as <b style="color:var(--ink);font-weight:500">' + esc(fmt(k, run.init[k])) + '</b></div>' +
+          groups[k].map(function (w) {
+            return '<div style="margin-top:2px">&rarr; <b style="font-weight:500">' + esc(fmt(k, w.val)) + '</b> <span class="sub">set by ' + esc(P(w.by || '')) + '</span> <button class="jump" data-act="at" data-v="' + w.after + '">step ' + w.after + '</button></div>';
+          }).join('') + '</div>';
+      });
+      h += '</div>';
+      var readOnly = Object.keys(run.snap).filter(function (k) { return !groups[k]; }).map(lab);
+      if (readOnly.length) h += '<p class="hint">Looked at but never changed: ' + esc(readOnly.join(', ')) + '.</p>';
+    }
+    $('v3').innerHTML = h;
+  }
+
+  function v4() {
+    var h = '<div class="pane">', n = 0;
+    function fact(t) { n++; h += '<div class="fact">' + t + '</div>'; }
+    Object.keys(D.base).forEach(function (f) {
+      D.base[f].unplaced.forEach(function (k) {
+        fact('Line ' + (k + 1) + ' of <code>' + f + '</code>, <code>' + esc(D.base[f].lines[k]) + '</code>, is not attached to any behavior. It sits outside every function, so the map cannot say which part of a journey it belongs to.');
+      });
+    });
+    var counts = {}, via = {};
+    D.bf.forEach(function (f) {
+      var seen = {};
+      f.run.trace.forEach(function (e) { if (!seen[e.name]) { seen[e.name] = 1; counts[e.name] = (counts[e.name] || 0) + 1; } if (e.parent === 'emit') via[e.name] = 1; });
+    });
+    Object.keys(via).forEach(function (nm) { fact('<b>' + esc(P(nm)) + '</b> is never called directly. It only runs because an event reaches it, so it was found by running the journeys, not by reading the code.'); });
+    Object.keys(counts).filter(function (nm) { return counts[nm] >= 3; }).sort(function (a, b) { return counts[b] - counts[a]; }).forEach(function (nm) {
+      fact('<b>' + esc(P(nm)) + '</b> is used by ' + counts[nm] + ' journeys.');
+    });
+    var cov = coverage(D.pf);
+    Object.keys(D.patched).forEach(function (f) {
+      D.patched[f].slices.forEach(function (s) {
+        if (s.kind === 'fn' && !cov[s.name]) fact('<b>' + esc(P(s.name)) + '</b> in <code>' + f + '</code> is not used by any journey' + (D.base[f] ? '' : '. It arrived with the AI edit') + '.');
+      });
+    });
+    if (!n) h += '<div class="fact">Nothing to note.</div>';
+    $('v4').innerHTML = h + '</div>';
+  }
+
+  function all() { stop(); st.p = 0; strip(); ctl(); panes(); v2(); v3(); v4(); }
+
+  document.querySelector('.wrap').addEventListener('click', function (e) {
+    var t = e.target.closest('[data-act]'); if (!t) return;
+    var a = t.getAttribute('data-act'), v = +t.getAttribute('data-v'), N = cur().run.trace.length;
+    if (a === 'j') { st.j = v; all(); }
+    else if (a === 'at') { stop(); st.p = v; panes(); if (t.className === 'jump') $('s1').scrollIntoView({ behavior: 'smooth' }); }
+    else if (a === 'first') { stop(); st.p = 0; panes(); }
+    else if (a === 'prev') { stop(); st.p = Math.max(0, st.p - 1); panes(); }
+    else if (a === 'next') { stop(); st.p = Math.min(N, st.p + 1); panes(); }
+    else if (a === 'play') {
+      if (st.timer) { stop(); return; }
+      if (st.p >= N) st.p = 0;
+      t.textContent = 'Pause'; panes();
+      st.timer = setInterval(function () { if (st.p >= N) { stop(); return; } st.p++; panes(); if (st.p >= N) stop(); }, 850);
+    }
+  });
+  document.querySelector('.wrap').addEventListener('input', function (e) {
+    if (e.target.id === 'scrub') { stop(); st.p = +e.target.value; panes(); }
+  });
+
+  try { new Function('return 1')(); compute(); all(); }
+  catch (err) { ['v1', 'v2', 'v3', 'v4'].forEach(function (id) { $(id).innerHTML = '<div class="callout warn">This page watches the example code run, and this viewer blocks running generated code. Open it in a regular browser tab to see it work.</div>'; }); }
+})();
+</script>
+
+</body></html>

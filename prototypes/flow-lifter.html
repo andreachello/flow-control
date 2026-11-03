@@ -1,0 +1,749 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Flow lifter</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a working bench. One column, three stages that really depend on each other: parse, trace, review. */
+:root{
+  --bg:#edf0ec; --surface:#fbfbf9; --surface-2:#e3e8e3; --ink:#1a2227; --ink-2:#4a585e; --ink-3:#77858a;
+  --line:#d3d9d3; --line-strong:#b6c0bb;
+  --accent:#0b6e84; --accent-soft:#d4eaee; --accent-ink:#07495a; --on-accent:#ffffff;
+  --good:#1f7a4d; --good-bg:#dcefe3; --warn:#946000; --warn-bg:#f5e6c4; --bad:#b3321f; --bad-bg:#f7ddd6;
+  --bar-l:44%;
+  --f-display:'Familjen Grotesk','Hanken Grotesk',system-ui,sans-serif;
+  --f-body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12181b; --surface:#192125; --surface-2:#222c31; --ink:#e6ebea; --ink-2:#a3b1b5; --ink-3:#75858a;
+    --line:#2d3a40; --line-strong:#41525a;
+    --accent:#5cc0d6; --accent-soft:#17353c; --accent-ink:#a9e3ef; --on-accent:#0a1e24;
+    --good:#5fcb93; --good-bg:#16352a; --warn:#e6b450; --warn-bg:#3b2f14; --bad:#f0897a; --bad-bg:#3e1e19;
+    --bar-l:64%; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12181b; --surface:#192125; --surface-2:#222c31; --ink:#e6ebea; --ink-2:#a3b1b5; --ink-3:#75858a;
+  --line:#2d3a40; --line-strong:#41525a;
+  --accent:#5cc0d6; --accent-soft:#17353c; --accent-ink:#a9e3ef; --on-accent:#0a1e24;
+  --good:#5fcb93; --good-bg:#16352a; --warn:#e6b450; --warn-bg:#3b2f14; --bad:#f0897a; --bad-bg:#3e1e19;
+  --bar-l:64%; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--ink); font:400 15px/1.55 var(--f-body);
+  padding-block:28px 72px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap{max-width:760px;margin:0 auto}
+h1{font:600 38px/1.05 var(--f-display);letter-spacing:-.01em;margin:0 0 10px;text-wrap:balance}
+h2{font:600 22px/1.2 var(--f-display);margin:0;text-wrap:balance}
+h3{font:600 15px/1.3 var(--f-body);margin:0}
+p{margin:0}
+.lede{color:var(--ink-2);max-width:62ch}
+.stage{margin-top:44px}
+.stage-head{display:flex;align-items:center;gap:12px;margin:0 0 8px}
+.num{font:500 13px var(--f-mono);color:var(--accent-ink);background:var(--accent-soft);border-radius:6px;padding:3px 8px}
+.stage .lede{margin:0 0 16px}
+.strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.pill{font:500 13px var(--f-body);padding:6px 11px;border-radius:8px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pill b{color:var(--ink);font-weight:600}
+.pill.good{background:var(--good-bg);border-color:transparent;color:var(--ink)}
+.pill.bad{background:var(--bad-bg);border-color:transparent;color:var(--ink)}
+.pill.warn{background:var(--warn-bg);border-color:transparent;color:var(--ink)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{font:500 14px var(--f-body);padding:9px 14px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.small{padding:6px 11px;font-size:13px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.tab{font:400 12px var(--f-mono);padding:6px 10px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.tab[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.tab .dot{width:7px;height:7px;border-radius:50%;background:var(--bad)}
+.code{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.code-in{min-width:max-content;padding:8px 0}
+.ln{display:grid;grid-template-columns:40px 4px 1fr;font:400 12.5px/1.7 var(--f-mono);transition:opacity .15s}
+.ln .n{color:var(--ink-3);text-align:right;padding-right:10px;user-select:none}
+.ln .bar{background:hsl(var(--h) 55% var(--bar-l))}
+.ln code{display:block;white-space:pre;padding:0 14px 0 12px;background:hsl(var(--h) 60% 50% / .1);font:inherit}
+.ln code em{font:500 11px var(--f-body);font-style:normal;margin-left:12px;color:var(--ink-2)}
+.ln.un .bar{background:var(--bad)}
+.ln.un code{background:var(--bad-bg)}
+.ln.dim{opacity:.28}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.chip{display:inline-flex;align-items:center;gap:7px;font:400 12px var(--f-mono);padding:5px 9px;border:1px solid var(--line);background:var(--surface);border-radius:6px;cursor:pointer;color:var(--ink)}
+.chip i{width:9px;height:9px;border-radius:2px;background:hsl(var(--h) 55% var(--bar-l))}
+.chip small{color:var(--ink-3);font-size:11px}
+.chip[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.chip.un i{background:var(--bad)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px;margin:14px 0 0}
+.m{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px}
+.m b{display:block;font:600 24px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.m span{font-size:12px;color:var(--ink-2)}
+.checks{display:grid;gap:7px;margin:14px 0 0}
+.check{display:flex;gap:9px;align-items:flex-start;font-size:14px}
+.check svg{flex:none;margin-top:2px}
+.callout{border-radius:10px;padding:13px 15px;font-size:14px;margin-top:14px}
+.callout.bad{background:var(--bad-bg)}
+.callout.good{background:var(--good-bg)}
+.callout.warn{background:var(--warn-bg)}
+.callout.plain{background:var(--surface);border:1px solid var(--line)}
+.callout strong{font-weight:600}
+.callout .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.callout code,.mono{font:400 12.5px var(--f-mono)}
+select{font:400 13px var(--f-mono);padding:7px 9px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);max-width:100%}
+.flow{border:1px solid var(--line);background:var(--surface);border-radius:10px;margin-bottom:8px;overflow:hidden}
+.flow-h{display:flex;width:100%;align-items:center;gap:10px;padding:12px 14px;background:none;border:0;text-align:left;cursor:pointer}
+.flow-h .name{font:500 14px var(--f-mono)}
+.flow-h .meta{margin-left:auto;font-size:12px;color:var(--ink-2)}
+.step.plain{font:400 14px var(--f-body)}
+.name.plain{font:500 15px var(--f-body)!important}
+.brow{padding:8px 0;border-top:1px solid var(--line)}
+.brow:first-of-type{border-top:0}
+.brow .k{font-weight:600;font-size:14px}
+.brow .v{font-size:14px;color:var(--ink-2)}
+.brow .v b{color:var(--ink);font-weight:500}
+.chev{width:16px;height:16px;flex:none;color:var(--ink-3);transition:transform .15s}
+.flow-h[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.steps{border-top:1px solid var(--line)}
+.step{display:flex;align-items:center;gap:8px;width:100%;padding:9px 14px 9px calc(14px + var(--d) * 18px);border:0;border-top:1px solid var(--line);background:none;text-align:left;cursor:pointer;font:400 13px var(--f-mono)}
+.step:first-child{border-top:0}
+.step[aria-pressed="true"]{background:var(--accent-soft)}
+.step .idx{color:var(--ink-3);font-size:11px;min-width:18px}
+.tag{font:500 11px var(--f-body);padding:2px 7px;border-radius:5px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.tag.acc{background:var(--accent-soft);color:var(--accent-ink)}
+.tag.warn{background:var(--warn-bg);color:var(--ink)}
+.tag.bad{background:var(--bad-bg);color:var(--ink)}
+.tag.good{background:var(--good-bg);color:var(--ink)}
+.tag.m{font:400 12px var(--f-mono);display:inline-block;margin:0 6px 6px 0;border:0;padding:3px 8px;border-radius:6px}
+.tag.r{background:var(--accent-soft);color:var(--accent-ink)}
+.tag.w{background:var(--bad-bg);color:var(--ink)}
+.detail{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:15px 16px;margin-top:12px}
+.detail .head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.detail .head .f{font:400 12px var(--f-mono);color:var(--ink-3)}
+.src{margin:12px 0;border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow-x:auto}
+.src .code-in{padding:6px 0}
+.lab{font-size:12px;color:var(--ink-2);margin:12px 0 6px}
+.seg{display:inline-grid;grid-template-columns:1fr 1fr;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;max-width:100%}
+.seg button{padding:9px 14px;background:var(--surface);border:0;font:500 14px var(--f-body);color:var(--ink-2);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.card{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.card-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-bottom:8px}
+.card-h .name{font:500 14px var(--f-mono)}
+.diffs{display:grid;gap:10px;margin-top:10px}
+.diff-k{font:500 12px var(--f-mono);margin-bottom:4px}
+.dl{display:block;font:400 12.5px/1.55 var(--f-mono);white-space:pre-wrap;word-break:break-word;padding:2px 9px;border-radius:4px}
+.dl.rm{background:var(--bad-bg)}
+.dl.ad{background:var(--good-bg)}
+.dl.ctx{color:var(--ink-3)}
+.sub{font-size:13px;color:var(--ink-2)}
+.hint{font-size:13px;color:var(--ink-3);margin-top:10px}
+.foot{margin-top:48px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:18px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:480px){h1{font-size:32px}.step{flex-wrap:wrap}}
+</style>
+<style>
+.inp{font:400 15px var(--f-body);width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink)}
+.row2{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+.si{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line);font-size:14px}
+.si:first-child{border-top:0}
+.si .idx{font:500 11px var(--f-mono);color:var(--ink-3);min-width:18px}
+.si .lbl{flex:1;min-width:0}
+.ib{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;color:var(--ink-2);font-size:15px;line-height:1}
+.ib:hover{border-color:var(--ink-3)}
+.ib:disabled{opacity:.35;cursor:default}
+.tr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:9px 14px 9px calc(14px + var(--d) * 20px);border-top:1px solid var(--line);font-size:14px}
+.tr:first-child{border-top:0}
+.tr.cons{color:var(--ink-2)}
+.pal-l{font-size:12px;color:var(--ink-2);margin:14px 0 6px}
+.chip.add{font:500 13px var(--f-body)}
+pre.gen{margin:10px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font:400 12.5px/1.6 var(--f-mono);overflow-x:auto}
+.tag.newfp{background:var(--warn-bg);color:var(--ink)}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Flow lifter</h1>
+    <p class="lede">Reads the files and recovers the flows, with no AI and no guessing. Same files in, same flows out. Then it checks itself against a real run of the code.</p>
+    <div id="strip" class="strip"></div>
+  </header>
+
+  <section class="stage">
+    <div class="stage-head"><span class="num">1</span><h2>Flows from the files alone</h2></div>
+    <p class="lede">Entry points are the functions in the routes file. From each one the analyzer follows every call it can read in the code. Where code reaches another function through an event, it only follows the link if a written rule covers that pattern. Anything else is reported as unresolved, never guessed.</p>
+    <div id="c1"></div>
+    <div id="flows"></div>
+  </section>
+
+  <section class="stage">
+    <div class="stage-head"><span class="num">2</span><h2>Checked against a real run</h2></div>
+    <p class="lede">Each flow below is compared with what the code actually did when the matching journey ran. Disagreements are the interesting part: they show where a rule is missing.</p>
+    <div id="cmp"></div>
+  </section>
+
+  <div class="foot">
+    <span class="sub">Everything here runs locally. Nothing is sent anywhere.</span>
+    <button class="btn" id="reset">Reset</button>
+  </div>
+</div>
+
+<script>
+var ORDER = ['bus.js', 'flags.js', 'auth.js', 'billing.js', 'mailer.js', 'agent.js', 'ui.js', 'routes.js'];
+
+var SRC = {
+  'bus.js': [
+    '// A tiny event bus. Handlers are looked up by name at runtime.',
+    'const handlers = {};',
+    '',
+    'function on(evt, fn) { handlers[evt] = (handlers[evt] || []).concat([fn]); }',
+    '',
+    'function emit(evt) { (handlers[evt] || []).forEach(function (fn) { fn(); }); }'
+  ].join('\n'),
+  'flags.js': [
+    '// Feature flags live in state.',
+    'function isEnabled(name) { return !!S.flags[name]; }'
+  ].join('\n'),
+  'auth.js': [
+    '// Sign-up and sessions.',
+    'function validateForm(f) {',
+    "  if (f.email.indexOf('@') < 0) { throw new Error('bad email'); }",
+    '  return f;',
+    '}',
+    '',
+    'function createUser(f) {',
+    "  const id = 'u' + (Object.keys(S.users).length + 1);",
+    '  S.users = Object.assign({}, S.users, { [id]: { email: f.email } });',
+    "  S.plans = Object.assign({}, S.plans, { [id]: { plan: 'free', interval: 'month' } });",
+    '  return id;',
+    '}',
+    '',
+    "function issueSid(id) { S.sid = 'sid-' + id; }",
+    '',
+    "function loadSession() { S.user = S.sid.replace('sid-', ''); }"
+  ].join('\n'),
+  'billing.js': [
+    '// Pricing and plan changes.',
+    'function resolvePrice(plan) {',
+    "  const table = isEnabled('newPricing') ? { pro: 24 } : { pro: 20 };",
+    '  return table[plan];',
+    '}',
+    '',
+    'function chargeCard(amount) { S.charged = (S.charged || 0) + amount; }',
+    '',
+    'function applyPlanChange(plan) {',
+    "  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: 'month' } });",
+    "  emit('plan_changed');",
+    '}',
+    '',
+    'function planGuard(action) {',
+    "  if (S.plans[S.user].plan === 'free') { throw new Error('upgrade required for ' + action); }",
+    '}'
+  ].join('\n'),
+  'mailer.js': [
+    '// Email. The plan-changed handler is wired by name.',
+    'function sendEmail(kind) {',
+    '  const u = S.users[S.user];',
+    "  S.outbox = (S.outbox || []).concat([kind + ' -> ' + u.email]);",
+    '}',
+    '',
+    "function onPlanChanged() { sendEmail('plan-changed'); }",
+    '',
+    "on('plan_changed', onPlanChanged);"
+  ].join('\n'),
+  'agent.js': [
+    '// The agent: prompt, tools and reply.',
+    'function buildSystemPrompt() {',
+    "  const base = 'You help a ' + S.plans[S.user].plan + ' user.';",
+    "  S.prompt = isEnabled('betaUi') ? base + ' Beta on.' : base;",
+    '}',
+    '',
+    'function pickTools() {',
+    "  S.tools = S.plans[S.user].plan === 'free' ? ['search'] : ['search', 'code'];",
+    '}',
+    '',
+    "function streamReply() { S.reply = 'ok:' + S.prompt.length + ':' + S.tools.length; }"
+  ].join('\n'),
+  'ui.js': [
+    '// The header badge.',
+    'function renderHeader() { S.header = S.plans[S.user].plan.toUpperCase(); }'
+  ].join('\n'),
+  'routes.js': [
+    '// User actions. Each one is a journey.',
+    'function signUp(f) {',
+    '  validateForm(f);',
+    '  const id = createUser(f);',
+    '  issueSid(id);',
+    '  loadSession();',
+    "  sendEmail('welcome');",
+    '  renderHeader();',
+    '}',
+    '',
+    'function logIn(f) {',
+    '  validateForm(f);',
+    "  issueSid('u1');",
+    '  loadSession();',
+    '  renderHeader();',
+    '}',
+    '',
+    'function upgradePlan(plan) {',
+    '  loadSession();',
+    '  chargeCard(resolvePrice(plan));',
+    '  applyPlanChange(plan);',
+    '  renderHeader();',
+    '}',
+    '',
+    'function askAgent() {',
+    '  loadSession();',
+    "  planGuard('agent');",
+    '  buildSystemPrompt();',
+    '  pickTools();',
+    '  streamReply();',
+    '}',
+    '',
+    'function cancelPlan() {',
+    '  loadSession();',
+    "  applyPlanChange('free');",
+    '  renderHeader();',
+    '}'
+  ].join('\n')
+};
+
+var PATCH = [
+  { file: 'billing.js',
+    find: '  return table[plan];',
+    rep: "  return table[plan] * (S.interval === 'year' ? 10 : 1);" },
+  { file: 'billing.js',
+    find: "  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: 'month' } });",
+    rep: "  const interval = S.interval || 'month';\n  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: interval } });" },
+  { file: 'mailer.js',
+    find: "[kind + ' -> ' + u.email]",
+    rep: "[kind + (S.interval ? ' (' + S.interval + ')' : '') + ' -> ' + u.email]" }
+];
+
+var NEWFILES = {
+  'seed.js': [
+    '// One-off script that seeds annual prices.',
+    'function seedAnnualPrices() {',
+    '  S.annualPrices = { pro: 240 };',
+    '}'
+  ].join('\n')
+};
+
+function base(o) {
+  o = o || {};
+  var s = {
+    users: { u1: { email: 'a@x.com' } },
+    plans: { u1: o.plan || { plan: 'free', interval: 'month' } },
+    sid: 'sid-u1',
+    user: 'u1',
+    flags: { newPricing: true, betaUi: true }
+  };
+  if (o.interval) s.interval = o.interval;
+  return s;
+}
+
+var JOURNEYS = [
+  { id: 'sign-up', entry: 'signUp', args: [{ email: 'new@x.com' }], init: function () { return base(); } },
+  { id: 'log-in', entry: 'logIn', args: [{ email: 'a@x.com' }], init: function () { return base(); } },
+  { id: 'upgrade-plan', entry: 'upgradePlan', args: ['pro'], init: function () { return base({ interval: 'year' }); } },
+  { id: 'ask-the-agent', entry: 'askAgent', args: [], init: function () { return base({ plan: { plan: 'pro', interval: 'month' } }); } },
+  { id: 'cancel-plan', entry: 'cancelPlan', args: [], init: function () { return base({ interval: 'year', plan: { plan: 'pro', interval: 'year' } }); } }
+];
+
+function parseFile(name, src, asg) {
+  var lines = src.split('\n'), spans = [], i, j, k;
+  for (i = 0; i < lines.length; i++) {
+    var m = /^function\s+(\w+)/.exec(lines[i]);
+    if (!m) continue;
+    var depth = 0, started = false;
+    for (j = i; j < lines.length; j++) {
+      var t = lines[j].replace(/\/\/.*$/, '');
+      for (var c = 0; c < t.length; c++) {
+        if (t[c] === '{') { depth++; started = true; }
+        else if (t[c] === '}') depth--;
+      }
+      if (started && depth === 0) break;
+    }
+    spans.push({ name: m[1], start: i, end: j });
+    i = j;
+  }
+  var own = lines.map(function () { return null; });
+  spans.forEach(function (s) { for (var q = s.start; q <= s.end; q++) own[q] = s.name; });
+  spans.forEach(function (s) {
+    var q = s.start - 1;
+    while (q >= 0 && own[q] === null && /^\s*(\/\/.*)?$/.test(lines[q])) { own[q] = s.name; q--; }
+  });
+  var support = name + ' (support)', unplaced = [], hand = {};
+  for (k = 0; k < lines.length; k++) {
+    if (own[k] !== null) continue;
+    if (asg && asg[k]) { own[k] = asg[k]; hand[k] = true; }
+    else if (/^\w+\(.*\);?\s*$/.test(lines[k])) unplaced.push(k);
+    else own[k] = support;
+  }
+  var slices = [], by = {};
+  for (k = 0; k < lines.length; k++) {
+    var n = own[k];
+    if (n === null) continue;
+    if (!by[n]) { by[n] = { name: n, file: name, kind: n === support ? 'support' : 'fn', idx: [], text: [], hand: 0 }; slices.push(by[n]); }
+    by[n].idx.push(k);
+    by[n].text.push(lines[k]);
+    if (hand[k]) by[n].hand++;
+  }
+  slices.forEach(function (s) { s.from = s.idx[0] + 1; s.to = s.idx[s.idx.length - 1] + 1; });
+  return {
+    name: name, src: src, lines: lines, spans: spans, own: own, slices: slices, by: by, support: support,
+    unplaced: unplaced, unplacedText: unplaced.map(function (u) { return lines[u]; }), hand: hand
+  };
+}
+
+function printFile(p) {
+  var out = [];
+  p.slices.forEach(function (s) { s.idx.forEach(function (k, i) { out[k] = s.text[i]; }); });
+  p.unplaced.forEach(function (k, i) { out[k] = p.unplacedText[i]; });
+  return out.join('\n');
+}
+
+function ledger(p) {
+  var placed = 0;
+  p.slices.forEach(function (s) { placed += s.idx.length; });
+  return {
+    total: p.lines.length, placed: placed, unplaced: p.unplaced.length,
+    complete: placed + p.unplaced.length === p.lines.length,
+    roundTrip: printFile(p) === p.src
+  };
+}
+
+function fileOrder(files) {
+  return ORDER.filter(function (n) { return files[n]; }).concat(Object.keys(files).filter(function (n) { return ORDER.indexOf(n) < 0; }));
+}
+
+function parseAll(files, asgAll) {
+  var out = {};
+  fileOrder(files).forEach(function (n) { out[n] = parseFile(n, files[n], (asgAll || {})[n]); });
+  return out;
+}
+
+function inject(p) {
+  var L = p.lines.slice();
+  p.spans.forEach(function (s) {
+    var e = L[s.end], eb = e.lastIndexOf('}');
+    L[s.end] = e.slice(0, eb) + '}finally{__x();}}' + e.slice(eb + 1);
+    var b = L[s.start], sb = b.indexOf('{');
+    L[s.start] = b.slice(0, sb + 1) + '__e("' + s.name + '");try{' + b.slice(sb + 1);
+  });
+  return L.join('\n');
+}
+
+function runJourney(parsed, jr) {
+  var code = Object.keys(parsed).map(function (n) { return inject(parsed[n]); }).join('\n');
+  var trace = [], boot = [], stack = [], foot = {}, booting = true;
+  var raw = jr.init();
+  function rec(kind, key) {
+    var f = stack[stack.length - 1];
+    if (!f) return;
+    var o = foot[f] || (foot[f] = { r: {}, w: {} });
+    o[kind][key] = 1;
+  }
+  var S = new Proxy(raw, {
+    get: function (t, k) { if (typeof k === 'string') rec('r', k); return t[k]; },
+    set: function (t, k, v) { rec('w', k); t[k] = v; return true; }
+  });
+  function __e(n) {
+    var ev = { name: n, depth: stack.length, parent: stack[stack.length - 1] || null };
+    (booting ? boot : trace).push(ev);
+    stack.push(n);
+  }
+  function __x() { stack.pop(); }
+  var names = ['signUp', 'logIn', 'upgradePlan', 'askAgent', 'cancelPlan'];
+  var api = new Function('S', '__e', '__x', code + '\nreturn {' + names.join(',') + '};')(S, __e, __x);
+  booting = false;
+  var err = null, ret = null;
+  try { var r = api[jr.entry].apply(null, jr.args); ret = r === undefined ? null : r; } catch (e) { err = String(e && e.message || e); }
+  var snap = {};
+  Object.keys(raw).sort().forEach(function (k) { snap[k] = JSON.stringify(raw[k]); });
+  return { trace: trace, boot: boot, foot: foot, snap: snap, ret: ret, err: err };
+}
+
+function deriveFlows(parsed) {
+  return JOURNEYS.map(function (jr) {
+    var r = runJourney(parsed, jr), seen = {}, steps = [];
+    r.trace.forEach(function (ev) {
+      if (ev.depth === 0 || seen[ev.name]) return;
+      seen[ev.name] = 1;
+      steps.push({ name: ev.name, depth: ev.depth, parent: ev.parent });
+    });
+    return { id: jr.id, entry: jr.entry, steps: steps, run: r };
+  });
+}
+
+function footprints(flows) {
+  var fp = {};
+  flows.forEach(function (f) {
+    Object.keys(f.run.foot).forEach(function (n) {
+      var o = fp[n] || (fp[n] = { r: {}, w: {} });
+      Object.keys(f.run.foot[n].r).forEach(function (k) { o.r[k] = 1; });
+      Object.keys(f.run.foot[n].w).forEach(function (k) { o.w[k] = 1; });
+    });
+  });
+  return fp;
+}
+
+function coverage(flows) {
+  var c = {};
+  flows.forEach(function (f) {
+    f.run.trace.forEach(function (ev) { c[ev.name] = 1; });
+    f.run.boot.forEach(function (ev) { c[ev.name] = 1; });
+  });
+  return c;
+}
+
+function applyPatch(files) {
+  var out = {};
+  Object.keys(files).forEach(function (k) { out[k] = files[k]; });
+  PATCH.forEach(function (p) {
+    if (out[p.file].indexOf(p.find) < 0) throw new Error('patch target missing in ' + p.file);
+    out[p.file] = out[p.file].split(p.find).join(p.rep);
+  });
+  Object.keys(NEWFILES).forEach(function (k) { out[k] = NEWFILES[k]; });
+  return out;
+}
+
+function sliceMap(parsed) {
+  var m = {};
+  Object.keys(parsed).forEach(function (f) { parsed[f].slices.forEach(function (s) { m[s.name] = s; }); });
+  return m;
+}
+
+function lineDiff(a, b) {
+  return {
+    removed: a.filter(function (l) { return b.indexOf(l) < 0; }),
+    added: b.filter(function (l) { return a.indexOf(l) < 0; })
+  };
+}
+
+function changedSlices(baseParsed, newParsed) {
+  var bm = sliceMap(baseParsed), nm = sliceMap(newParsed), out = [];
+  Object.keys(nm).forEach(function (n) {
+    var s = nm[n];
+    if (s.kind === 'support') return;
+    var b = bm[n];
+    if (!b) { out.push({ name: n, file: s.file, isNew: true, removed: [], added: s.text }); return; }
+    if (b.text.join('\n') !== s.text.join('\n')) {
+      var d = lineDiff(b.text, s.text);
+      out.push({ name: n, file: s.file, isNew: false, removed: d.removed, added: d.added });
+    }
+  });
+  return out;
+}
+
+function behaviorDiff(a, b) {
+  var keys = {}, out = [];
+  Object.keys(a.snap).forEach(function (k) { keys[k] = 1; });
+  Object.keys(b.snap).forEach(function (k) { keys[k] = 1; });
+  Object.keys(keys).sort().forEach(function (k) {
+    if (a.snap[k] !== b.snap[k]) out.push({ key: k, before: a.snap[k], after: b.snap[k] });
+  });
+  if (a.err !== b.err) out.push({ key: 'error', before: String(a.err), after: String(b.err) });
+  return out;
+}
+
+function review(baseParsed, patchedParsed, baseFlows, changed, forkOnly, intended) {
+  var names = {};
+  changed.forEach(function (c) { names[c.name] = 1; });
+  return JOURNEYS.map(function (jr, i) {
+    var useNew = forkOnly === null || forkOnly === jr.id;
+    var bf = baseFlows[i];
+    var run = runJourney(useNew ? patchedParsed : baseParsed, jr);
+    var touched = useNew ? bf.steps.map(function (s) { return s.name; }).concat([bf.entry]).filter(function (n) { return names[n]; }) : [];
+    var beh = behaviorDiff(bf.run, run);
+    var widened = [];
+    touched.forEach(function (n) {
+      var o = run.foot[n], p = bf.run.foot[n] || { r: {}, w: {} };
+      if (!o) return;
+      Object.keys(o.r).forEach(function (k) { if (!p.r[k]) widened.push({ slice: n, kind: 'reads', key: k }); });
+      Object.keys(o.w).forEach(function (k) { if (!p.w[k]) widened.push({ slice: n, kind: 'changes', key: k }); });
+    });
+    var status;
+    if (!touched.length) status = 'untouched';
+    else if (beh.length && intended.indexOf(jr.id) < 0) status = 'unexpected';
+    else if (beh.length) status = 'intended';
+    else status = 'identical';
+    return { id: jr.id, status: status, touched: touched, behavior: beh, widened: widened, run: run };
+  });
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { SRC: SRC, PATCH: PATCH, NEWFILES: NEWFILES, JOURNEYS: JOURNEYS, parseFile: parseFile, parseAll: parseAll, printFile: printFile, ledger: ledger, deriveFlows: deriveFlows, footprints: footprints, coverage: coverage, applyPatch: applyPatch, sliceMap: sliceMap, changedSlices: changedSlices, review: review, runJourney: runJourney, inject: inject };
+}
+
+/* ---------- Lifter UI ---------- */
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  var PLAIN = {
+    signUp: 'Person fills in the sign-up form', logIn: 'Person logs in', upgradePlan: 'Person upgrades to Pro', askAgent: 'Person asks the agent a question',
+    cancelPlan: 'Person cancels their plan', runPlugin: 'Person runs a plugin', validateForm: 'Check the email looks valid', createUser: 'Create the account on the free plan',
+    issueSid: 'Start a login session', loadSession: 'Work out who is signed in', sendEmail: 'Send an email', renderHeader: 'Show the plan badge in the header',
+    resolvePrice: 'Look up the price', chargeCard: 'Charge their card', applyPlanChange: 'Switch their plan', emit: 'Announce that the plan changed',
+    onPlanChanged: 'Send the plan-changed email', planGuard: 'Check their plan allows the agent', buildSystemPrompt: 'Write the agent’s instructions',
+    pickTools: 'Choose the agent’s tools', streamReply: 'Send the agent’s reply', isEnabled: 'Check a feature switch', on: 'Register a listener'
+  };
+  function P(n) { return PLAIN[n] || n; }
+
+  /* The deterministic analyzer. Reads files only; never executes anything. */
+  function analyze(files, ruleOn) {
+    var parsed = parseAll(files), fns = {}, reg = {}, cache = {};
+    Object.keys(parsed).forEach(function (f) { parsed[f].slices.forEach(function (s) { if (s.kind === 'fn') fns[s.name] = s; }); });
+    Object.keys(files).forEach(function (f) {
+      files[f].split('\n').forEach(function (l) {
+        var mm = /^\s*on\('(\w+)',\s*(\w+)\)/.exec(l);
+        if (mm) (reg[mm[1]] = reg[mm[1]] || []).push({ fn: mm[2], file: f });
+      });
+    });
+    var KW = { 'if': 1, 'for': 1, 'while': 1, 'switch': 1, 'catch': 1, 'return': 1, 'typeof': 1, 'new': 1, 'function': 1 }, BI = { Error: 1, Object: 1, Boolean: 1 };
+    function scan(s) {
+      if (cache[s.name]) return cache[s.name];
+      var edges = [], unres = [];
+      s.text.forEach(function (raw, i) {
+        var line = raw.replace(/\/\/.*$/, ''), evs = [];
+        line = line.replace(/\bemit\('(\w+)'\)/g, function (_, e) { evs.push(e); return 'emit(__)'; });
+        line = line.replace(/'[^']*'/g, "''").replace(/function\s*\w*\s*\([^)]*\)/g, 'function_');
+        var ln = s.idx[i] + 1, re = /(?<![.\w])(\w+)\s*\(/g, mm;
+        while ((mm = re.exec(line))) {
+          var n = mm[1];
+          if (KW[n] || BI[n]) continue;
+          if (n === 'emit') { edges.push({ to: 'emit', evt: evs.shift() }); continue; }
+          if (fns[n]) { if (n !== s.name) edges.push({ to: n }); }
+          else if (ruleOn && s.name === 'emit') { /* the event registry rule covers the dispatcher */ }
+          else unres.push({ site: n + '(…)', line: ln });
+        }
+        var cr = /(\w+)\[[^\]]*\]\s*\(/g;
+        while ((mm = cr.exec(line))) unres.push({ site: mm[1] + '[…](…)', line: ln });
+      });
+      return (cache[s.name] = { edges: edges, unres: unres });
+    }
+    var entries = Object.keys(fns).filter(function (n) { return fns[n].file === 'routes.js'; });
+    var flows = entries.map(function (entry) {
+      var steps = [], seen = {}, unres = [], seenU = {};
+      function visit(name, depth, parent, kind) {
+        if (seen[name]) return;
+        seen[name] = 1;
+        steps.push({ name: name, depth: depth, parent: parent, kind: kind, file: fns[name].file });
+        var sc = scan(fns[name]);
+        sc.unres.forEach(function (u) {
+          var key = name + u.site;
+          if (!seenU[key]) { seenU[key] = 1; unres.push({ fn: name, site: u.site, line: u.line, file: fns[name].file }); }
+        });
+        sc.edges.forEach(function (e) {
+          visit(e.to, depth + 1, name, 'call');
+          if (e.to === 'emit' && ruleOn && e.evt) (reg[e.evt] || []).forEach(function (h) { visit(h.fn, depth + 2, 'emit', 'rule'); });
+        });
+      }
+      visit(entry, 0, null, 'entry');
+      return { entry: entry, steps: steps, unres: unres };
+    });
+    return { flows: flows, reg: reg };
+  }
+  function fingerprint(o) {
+    var s = JSON.stringify(o), h = 5381;
+    for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
+    return h.toString(16);
+  }
+
+  var st = { rule: true, change: false };
+  var CHANGE = '\n\nfunction runPlugin(name) {\n  const plugins = { sync: loadSession };\n  plugins[name]();\n}';
+  function files() {
+    var f = {}; Object.keys(SRC).forEach(function (k) { f[k] = SRC[k]; });
+    if (st.change) f['routes.js'] += CHANGE;
+    return f;
+  }
+
+  var M = {};
+  function compute() {
+    var fl = files();
+    M.a = analyze(fl, st.rule);
+    M.fp1 = fingerprint(M.a.flows);
+    M.fp2 = fingerprint(analyze(fl, st.rule).flows);
+    M.traced = deriveFlows(parseAll(fl));
+    M.bad = 0; M.complete = 0;
+    M.a.flows.forEach(function (f) { if (f.unres.length) M.bad++; else M.complete++; });
+  }
+
+  function setOf(steps) { var o = {}; steps.forEach(function (s) { o[s.name] = 1; }); return o; }
+
+  function controls() {
+    $('c1').innerHTML =
+      '<div class="lab" style="margin-top:0">Rule library</div><div class="seg" role="group"><button data-act="rule" data-v="on" aria-pressed="' + st.rule + '">Event registry rule: on</button><button data-act="rule" data-v="off" aria-pressed="' + !st.rule + '">Rule: off</button></div>' +
+      '<p class="hint" style="margin-bottom:6px">The rule says: a line like <code>on(‘plan_changed’, handler)</code> registers a handler, and a later <code>emit(‘plan_changed’)</code> reaches it. It is plain code, written once.</p>' +
+      '<div class="row2"><button class="btn small" data-act="change">' + (st.change ? 'Undo the AI change' : 'Apply an AI change that adds a plugin route') + '</button></div>' +
+      '<div class="check" style="margin:4px 0 16px">' + (M.fp1 === M.fp2 ? '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--good)" stroke-width="2" style="flex:none;margin-top:2px"><path d="M3 8.5l3 3 7-7"/></svg>' : '') +
+      '<span>Analyzed twice, identical result. Fingerprint <code>' + M.fp1 + '</code>. It changes only when the files do.</span></div>';
+  }
+
+  function flowsHtml() {
+    var h = '';
+    M.a.flows.forEach(function (f) {
+      var incomplete = f.unres.length > 0;
+      h += '<div class="flow"><div class="flow-h" style="cursor:default"><span class="name plain" style="font:500 15px var(--f-body)">' + esc(P(f.entry)) + '</span><span class="meta"><span class="tag ' + (incomplete ? 'bad' : 'good') + '">' + (incomplete ? 'Incomplete' : 'Complete') + '</span></span></div><div class="steps">';
+      f.steps.forEach(function (s, i) {
+        h += '<div class="tr" style="--d:' + s.depth + '"><span style="font:500 11px var(--f-mono);color:var(--ink-3);min-width:18px">' + (i + 1) + '</span><span>' + esc(P(s.name)) + '</span>' +
+          (s.kind === 'rule' ? '<span class="tag warn">reached by the event rule</span>' : '') +
+          '<span class="tag" style="margin-left:auto;font-family:var(--f-mono)">' + esc(s.name) + '</span></div>';
+      });
+      h += '</div>';
+      f.unres.forEach(function (u) {
+        h += '<div style="padding:0 14px 14px"><div class="callout bad" style="margin:0"><strong>Cannot tell where this goes.</strong> <code>' + esc(u.site) + '</code> in <code>' + u.file + '</code> line ' + u.line + ' calls something the analyzer cannot read from the code. The flow stays incomplete until a rule covers it or a run resolves it.</div></div>';
+      });
+      h += '</div>';
+    });
+    $('flows').innerHTML = h;
+  }
+
+  function cmpHtml() {
+    var h = '';
+    M.a.flows.forEach(function (f) {
+      var t = M.traced.filter(function (x) { return x.entry === f.entry; })[0];
+      h += '<div class="card"><div class="card-h"><span class="name plain" style="font:500 15px var(--f-body)">' + esc(P(f.entry)) + '</span>';
+      if (!t) {
+        h += '<span class="tag warn">Never run</span></div><p class="sub">No journey exercises this flow, so there is nothing to compare. The analyzer found it from the files alone, which a run could not have done.</p></div>';
+        return;
+      }
+      var a = setOf(f.steps), b = setOf([{ name: t.entry }].concat(t.steps));
+      var onlyS = Object.keys(a).filter(function (k) { return !b[k]; });
+      var onlyR = Object.keys(b).filter(function (k) { return !a[k]; });
+      var agree = !onlyS.length && !onlyR.length;
+      h += '<span class="tag ' + (agree ? 'good' : 'warn') + '">' + (agree ? 'Agrees with the run' : 'Differs from the run') + '</span></div>';
+      if (agree) h += '<p class="sub">Reading the files and running the code found the same ' + f.steps.length + ' steps.</p>';
+      if (onlyR.length) h += '<div class="lab" style="margin-top:0">Only seen by running</div>' + onlyR.map(function (n) { return '<span class="tag m w">' + esc(P(n)) + '</span>'; }).join('') +
+        '<p class="hint" style="margin-top:0">A rule is missing: the code reaches these steps in a way the analyzer cannot read.</p>';
+      if (onlyS.length) h += '<div class="lab">Only in the code</div>' + onlyS.map(function (n) { return '<span class="tag m r">' + esc(P(n)) + '</span>'; }).join('') +
+        '<p class="hint" style="margin-top:0">Paths the code allows that this run did not take.</p>';
+      h += '</div>';
+    });
+    $('cmp').innerHTML = h;
+  }
+
+  function strip() {
+    $('strip').innerHTML = '<span class="pill"><b>' + M.a.flows.length + '</b> flows found</span><span class="pill good"><b>' + M.complete + '</b> complete</span><span class="pill ' + (M.bad ? 'bad' : 'good') + '"><b>' + M.bad + '</b> incomplete</span>';
+  }
+
+  function render() { compute(); strip(); controls(); flowsHtml(); cmpHtml(); }
+
+  document.querySelector('.wrap').addEventListener('click', function (e) {
+    var t = e.target.closest('[data-act]'); if (!t) return;
+    var a = t.getAttribute('data-act'), v = t.getAttribute('data-v');
+    if (a === 'rule') { st.rule = v === 'on'; render(); }
+    else if (a === 'change') { st.change = !st.change; render(); }
+  });
+  $('reset').addEventListener('click', function () { st = { rule: true, change: false }; render(); });
+
+  try { new Function('return 1')(); render(); }
+  catch (err) { ['c1', 'flows', 'cmp'].forEach(function (id) { $(id).innerHTML = '<div class="callout warn">This page checks its own results by running the example code, and this viewer blocks running generated code. Open it in a regular browser tab to see it work.</div>'; }); }
+})();
+</script>
+
+</body></html>

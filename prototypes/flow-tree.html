@@ -1,0 +1,861 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Flow tree</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a working bench. One column, three stages that really depend on each other: parse, trace, review. */
+:root{
+  --bg:#edf0ec; --surface:#fbfbf9; --surface-2:#e3e8e3; --ink:#1a2227; --ink-2:#4a585e; --ink-3:#77858a;
+  --line:#d3d9d3; --line-strong:#b6c0bb;
+  --accent:#0b6e84; --accent-soft:#d4eaee; --accent-ink:#07495a; --on-accent:#ffffff;
+  --good:#1f7a4d; --good-bg:#dcefe3; --warn:#946000; --warn-bg:#f5e6c4; --bad:#b3321f; --bad-bg:#f7ddd6;
+  --bar-l:44%;
+  --f-display:'Familjen Grotesk','Hanken Grotesk',system-ui,sans-serif;
+  --f-body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12181b; --surface:#192125; --surface-2:#222c31; --ink:#e6ebea; --ink-2:#a3b1b5; --ink-3:#75858a;
+    --line:#2d3a40; --line-strong:#41525a;
+    --accent:#5cc0d6; --accent-soft:#17353c; --accent-ink:#a9e3ef; --on-accent:#0a1e24;
+    --good:#5fcb93; --good-bg:#16352a; --warn:#e6b450; --warn-bg:#3b2f14; --bad:#f0897a; --bad-bg:#3e1e19;
+    --bar-l:64%; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12181b; --surface:#192125; --surface-2:#222c31; --ink:#e6ebea; --ink-2:#a3b1b5; --ink-3:#75858a;
+  --line:#2d3a40; --line-strong:#41525a;
+  --accent:#5cc0d6; --accent-soft:#17353c; --accent-ink:#a9e3ef; --on-accent:#0a1e24;
+  --good:#5fcb93; --good-bg:#16352a; --warn:#e6b450; --warn-bg:#3b2f14; --bad:#f0897a; --bad-bg:#3e1e19;
+  --bar-l:64%; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--ink); font:400 15px/1.55 var(--f-body);
+  padding-block:28px 72px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap{max-width:760px;margin:0 auto}
+h1{font:600 38px/1.05 var(--f-display);letter-spacing:-.01em;margin:0 0 10px;text-wrap:balance}
+h2{font:600 22px/1.2 var(--f-display);margin:0;text-wrap:balance}
+h3{font:600 15px/1.3 var(--f-body);margin:0}
+p{margin:0}
+.lede{color:var(--ink-2);max-width:62ch}
+.stage{margin-top:44px}
+.stage-head{display:flex;align-items:center;gap:12px;margin:0 0 8px}
+.num{font:500 13px var(--f-mono);color:var(--accent-ink);background:var(--accent-soft);border-radius:6px;padding:3px 8px}
+.stage .lede{margin:0 0 16px}
+.strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.pill{font:500 13px var(--f-body);padding:6px 11px;border-radius:8px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pill b{color:var(--ink);font-weight:600}
+.pill.good{background:var(--good-bg);border-color:transparent;color:var(--ink)}
+.pill.bad{background:var(--bad-bg);border-color:transparent;color:var(--ink)}
+.pill.warn{background:var(--warn-bg);border-color:transparent;color:var(--ink)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{font:500 14px var(--f-body);padding:9px 14px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.small{padding:6px 11px;font-size:13px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.tab{font:400 12px var(--f-mono);padding:6px 10px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.tab[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.tab .dot{width:7px;height:7px;border-radius:50%;background:var(--bad)}
+.code{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.code-in{min-width:max-content;padding:8px 0}
+.ln{display:grid;grid-template-columns:40px 4px 1fr;font:400 12.5px/1.7 var(--f-mono);transition:opacity .15s}
+.ln .n{color:var(--ink-3);text-align:right;padding-right:10px;user-select:none}
+.ln .bar{background:hsl(var(--h) 55% var(--bar-l))}
+.ln code{display:block;white-space:pre;padding:0 14px 0 12px;background:hsl(var(--h) 60% 50% / .1);font:inherit}
+.ln code em{font:500 11px var(--f-body);font-style:normal;margin-left:12px;color:var(--ink-2)}
+.ln.un .bar{background:var(--bad)}
+.ln.un code{background:var(--bad-bg)}
+.ln.dim{opacity:.28}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.chip{display:inline-flex;align-items:center;gap:7px;font:400 12px var(--f-mono);padding:5px 9px;border:1px solid var(--line);background:var(--surface);border-radius:6px;cursor:pointer;color:var(--ink)}
+.chip i{width:9px;height:9px;border-radius:2px;background:hsl(var(--h) 55% var(--bar-l))}
+.chip small{color:var(--ink-3);font-size:11px}
+.chip[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.chip.un i{background:var(--bad)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px;margin:14px 0 0}
+.m{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px}
+.m b{display:block;font:600 24px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.m span{font-size:12px;color:var(--ink-2)}
+.checks{display:grid;gap:7px;margin:14px 0 0}
+.check{display:flex;gap:9px;align-items:flex-start;font-size:14px}
+.check svg{flex:none;margin-top:2px}
+.callout{border-radius:10px;padding:13px 15px;font-size:14px;margin-top:14px}
+.callout.bad{background:var(--bad-bg)}
+.callout.good{background:var(--good-bg)}
+.callout.warn{background:var(--warn-bg)}
+.callout.plain{background:var(--surface);border:1px solid var(--line)}
+.callout strong{font-weight:600}
+.callout .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.callout code,.mono{font:400 12.5px var(--f-mono)}
+select{font:400 13px var(--f-mono);padding:7px 9px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);max-width:100%}
+.flow{border:1px solid var(--line);background:var(--surface);border-radius:10px;margin-bottom:8px;overflow:hidden}
+.flow-h{display:flex;width:100%;align-items:center;gap:10px;padding:12px 14px;background:none;border:0;text-align:left;cursor:pointer}
+.flow-h .name{font:500 14px var(--f-mono)}
+.flow-h .meta{margin-left:auto;font-size:12px;color:var(--ink-2)}
+.step.plain{font:400 14px var(--f-body)}
+.name.plain{font:500 15px var(--f-body)!important}
+.brow{padding:8px 0;border-top:1px solid var(--line)}
+.brow:first-of-type{border-top:0}
+.brow .k{font-weight:600;font-size:14px}
+.brow .v{font-size:14px;color:var(--ink-2)}
+.brow .v b{color:var(--ink);font-weight:500}
+.chev{width:16px;height:16px;flex:none;color:var(--ink-3);transition:transform .15s}
+.flow-h[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.steps{border-top:1px solid var(--line)}
+.step{display:flex;align-items:center;gap:8px;width:100%;padding:9px 14px 9px calc(14px + var(--d) * 18px);border:0;border-top:1px solid var(--line);background:none;text-align:left;cursor:pointer;font:400 13px var(--f-mono)}
+.step:first-child{border-top:0}
+.step[aria-pressed="true"]{background:var(--accent-soft)}
+.step .idx{color:var(--ink-3);font-size:11px;min-width:18px}
+.tag{font:500 11px var(--f-body);padding:2px 7px;border-radius:5px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.tag.acc{background:var(--accent-soft);color:var(--accent-ink)}
+.tag.warn{background:var(--warn-bg);color:var(--ink)}
+.tag.bad{background:var(--bad-bg);color:var(--ink)}
+.tag.good{background:var(--good-bg);color:var(--ink)}
+.tag.m{font:400 12px var(--f-mono);display:inline-block;margin:0 6px 6px 0;border:0;padding:3px 8px;border-radius:6px}
+.tag.r{background:var(--accent-soft);color:var(--accent-ink)}
+.tag.w{background:var(--bad-bg);color:var(--ink)}
+.detail{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:15px 16px;margin-top:12px}
+.detail .head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.detail .head .f{font:400 12px var(--f-mono);color:var(--ink-3)}
+.src{margin:12px 0;border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow-x:auto}
+.src .code-in{padding:6px 0}
+.lab{font-size:12px;color:var(--ink-2);margin:12px 0 6px}
+.seg{display:inline-grid;grid-template-columns:1fr 1fr;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;max-width:100%}
+.seg button{padding:9px 14px;background:var(--surface);border:0;font:500 14px var(--f-body);color:var(--ink-2);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.card{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.card-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-bottom:8px}
+.card-h .name{font:500 14px var(--f-mono)}
+.diffs{display:grid;gap:10px;margin-top:10px}
+.diff-k{font:500 12px var(--f-mono);margin-bottom:4px}
+.dl{display:block;font:400 12.5px/1.55 var(--f-mono);white-space:pre-wrap;word-break:break-word;padding:2px 9px;border-radius:4px}
+.dl.rm{background:var(--bad-bg)}
+.dl.ad{background:var(--good-bg)}
+.dl.ctx{color:var(--ink-3)}
+.sub{font-size:13px;color:var(--ink-2)}
+.hint{font-size:13px;color:var(--ink-3);margin-top:10px}
+.foot{margin-top:48px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:18px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:480px){h1{font-size:32px}.step{flex-wrap:wrap}}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Flow tree</h1>
+    <p class="lede" id="l0">A small web app, parsed and run in your browser. Every line has one owner, every journey is traced from a real run, and an AI change is reviewed by what it does to each journey.</p>
+    <div class="seg" id="view" role="group" aria-label="View" style="margin-top:20px"></div>
+    <div id="strip" class="strip"></div>
+  </header>
+
+  <section class="stage" id="s1">
+    <div class="stage-head"><span class="num">1</span><h2>Every line has one owner</h2></div>
+    <p class="lede">These eight files are the app. A parser splits each one into slices and gives every line exactly one owner. A line it cannot place stays visible as unplaced.</p>
+    <div id="p1"></div>
+  </section>
+
+  <section class="stage" id="s2">
+    <div class="stage-head"><span class="num" id="n2">2</span><h2 id="t2">Flows come from real runs</h2></div>
+    <p class="lede" id="l2">Each journey below ran for real, with tracing switched on. The steps are what actually executed, in order, along with the state each one read and changed.</p>
+    <div id="p2"></div>
+  </section>
+
+  <section class="stage" id="s3">
+    <div class="stage-head"><span class="num" id="n3">3</span><h2 id="t3">Review by behavior</h2></div>
+    <p class="lede" id="l3">Apply a change written by an AI, then run every journey again. The review shows what each journey now does differently, not which files moved.</p>
+    <div id="p3"></div>
+  </section>
+
+  <div class="foot">
+    <span class="sub">Everything here runs locally. Nothing is sent anywhere.</span>
+    <button class="btn" id="reset">Reset the demo</button>
+  </div>
+</div>
+
+<script>
+var ORDER = ['bus.js', 'flags.js', 'auth.js', 'billing.js', 'mailer.js', 'agent.js', 'ui.js', 'routes.js'];
+
+var SRC = {
+  'bus.js': [
+    '// A tiny event bus. Handlers are looked up by name at runtime.',
+    'const handlers = {};',
+    '',
+    'function on(evt, fn) { handlers[evt] = (handlers[evt] || []).concat([fn]); }',
+    '',
+    'function emit(evt) { (handlers[evt] || []).forEach(function (fn) { fn(); }); }'
+  ].join('\n'),
+  'flags.js': [
+    '// Feature flags live in state.',
+    'function isEnabled(name) { return !!S.flags[name]; }'
+  ].join('\n'),
+  'auth.js': [
+    '// Sign-up and sessions.',
+    'function validateForm(f) {',
+    "  if (f.email.indexOf('@') < 0) { throw new Error('bad email'); }",
+    '  return f;',
+    '}',
+    '',
+    'function createUser(f) {',
+    "  const id = 'u' + (Object.keys(S.users).length + 1);",
+    '  S.users = Object.assign({}, S.users, { [id]: { email: f.email } });',
+    "  S.plans = Object.assign({}, S.plans, { [id]: { plan: 'free', interval: 'month' } });",
+    '  return id;',
+    '}',
+    '',
+    "function issueSid(id) { S.sid = 'sid-' + id; }",
+    '',
+    "function loadSession() { S.user = S.sid.replace('sid-', ''); }"
+  ].join('\n'),
+  'billing.js': [
+    '// Pricing and plan changes.',
+    'function resolvePrice(plan) {',
+    "  const table = isEnabled('newPricing') ? { pro: 24 } : { pro: 20 };",
+    '  return table[plan];',
+    '}',
+    '',
+    'function chargeCard(amount) { S.charged = (S.charged || 0) + amount; }',
+    '',
+    'function applyPlanChange(plan) {',
+    "  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: 'month' } });",
+    "  emit('plan_changed');",
+    '}',
+    '',
+    'function planGuard(action) {',
+    "  if (S.plans[S.user].plan === 'free') { throw new Error('upgrade required for ' + action); }",
+    '}'
+  ].join('\n'),
+  'mailer.js': [
+    '// Email. The plan-changed handler is wired by name.',
+    'function sendEmail(kind) {',
+    '  const u = S.users[S.user];',
+    "  S.outbox = (S.outbox || []).concat([kind + ' -> ' + u.email]);",
+    '}',
+    '',
+    "function onPlanChanged() { sendEmail('plan-changed'); }",
+    '',
+    "on('plan_changed', onPlanChanged);"
+  ].join('\n'),
+  'agent.js': [
+    '// The agent: prompt, tools and reply.',
+    'function buildSystemPrompt() {',
+    "  const base = 'You help a ' + S.plans[S.user].plan + ' user.';",
+    "  S.prompt = isEnabled('betaUi') ? base + ' Beta on.' : base;",
+    '}',
+    '',
+    'function pickTools() {',
+    "  S.tools = S.plans[S.user].plan === 'free' ? ['search'] : ['search', 'code'];",
+    '}',
+    '',
+    "function streamReply() { S.reply = 'ok:' + S.prompt.length + ':' + S.tools.length; }"
+  ].join('\n'),
+  'ui.js': [
+    '// The header badge.',
+    'function renderHeader() { S.header = S.plans[S.user].plan.toUpperCase(); }'
+  ].join('\n'),
+  'routes.js': [
+    '// User actions. Each one is a journey.',
+    'function signUp(f) {',
+    '  validateForm(f);',
+    '  const id = createUser(f);',
+    '  issueSid(id);',
+    '  loadSession();',
+    "  sendEmail('welcome');",
+    '  renderHeader();',
+    '}',
+    '',
+    'function logIn(f) {',
+    '  validateForm(f);',
+    "  issueSid('u1');",
+    '  loadSession();',
+    '  renderHeader();',
+    '}',
+    '',
+    'function upgradePlan(plan) {',
+    '  loadSession();',
+    '  chargeCard(resolvePrice(plan));',
+    '  applyPlanChange(plan);',
+    '  renderHeader();',
+    '}',
+    '',
+    'function askAgent() {',
+    '  loadSession();',
+    "  planGuard('agent');",
+    '  buildSystemPrompt();',
+    '  pickTools();',
+    '  streamReply();',
+    '}',
+    '',
+    'function cancelPlan() {',
+    '  loadSession();',
+    "  applyPlanChange('free');",
+    '  renderHeader();',
+    '}'
+  ].join('\n')
+};
+
+var PATCH = [
+  { file: 'billing.js',
+    find: '  return table[plan];',
+    rep: "  return table[plan] * (S.interval === 'year' ? 10 : 1);" },
+  { file: 'billing.js',
+    find: "  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: 'month' } });",
+    rep: "  const interval = S.interval || 'month';\n  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: interval } });" },
+  { file: 'mailer.js',
+    find: "[kind + ' -> ' + u.email]",
+    rep: "[kind + (S.interval ? ' (' + S.interval + ')' : '') + ' -> ' + u.email]" }
+];
+
+var NEWFILES = {
+  'seed.js': [
+    '// One-off script that seeds annual prices.',
+    'function seedAnnualPrices() {',
+    '  S.annualPrices = { pro: 240 };',
+    '}'
+  ].join('\n')
+};
+
+function base(o) {
+  o = o || {};
+  var s = {
+    users: { u1: { email: 'a@x.com' } },
+    plans: { u1: o.plan || { plan: 'free', interval: 'month' } },
+    sid: 'sid-u1',
+    user: 'u1',
+    flags: { newPricing: true, betaUi: true }
+  };
+  if (o.interval) s.interval = o.interval;
+  return s;
+}
+
+var JOURNEYS = [
+  { id: 'sign-up', entry: 'signUp', args: [{ email: 'new@x.com' }], init: function () { return base(); } },
+  { id: 'log-in', entry: 'logIn', args: [{ email: 'a@x.com' }], init: function () { return base(); } },
+  { id: 'upgrade-plan', entry: 'upgradePlan', args: ['pro'], init: function () { return base({ interval: 'year' }); } },
+  { id: 'ask-the-agent', entry: 'askAgent', args: [], init: function () { return base({ plan: { plan: 'pro', interval: 'month' } }); } },
+  { id: 'cancel-plan', entry: 'cancelPlan', args: [], init: function () { return base({ interval: 'year', plan: { plan: 'pro', interval: 'year' } }); } }
+];
+
+function parseFile(name, src, asg) {
+  var lines = src.split('\n'), spans = [], i, j, k;
+  for (i = 0; i < lines.length; i++) {
+    var m = /^function\s+(\w+)/.exec(lines[i]);
+    if (!m) continue;
+    var depth = 0, started = false;
+    for (j = i; j < lines.length; j++) {
+      var t = lines[j].replace(/\/\/.*$/, '');
+      for (var c = 0; c < t.length; c++) {
+        if (t[c] === '{') { depth++; started = true; }
+        else if (t[c] === '}') depth--;
+      }
+      if (started && depth === 0) break;
+    }
+    spans.push({ name: m[1], start: i, end: j });
+    i = j;
+  }
+  var own = lines.map(function () { return null; });
+  spans.forEach(function (s) { for (var q = s.start; q <= s.end; q++) own[q] = s.name; });
+  spans.forEach(function (s) {
+    var q = s.start - 1;
+    while (q >= 0 && own[q] === null && /^\s*(\/\/.*)?$/.test(lines[q])) { own[q] = s.name; q--; }
+  });
+  var support = name + ' (support)', unplaced = [], hand = {};
+  for (k = 0; k < lines.length; k++) {
+    if (own[k] !== null) continue;
+    if (asg && asg[k]) { own[k] = asg[k]; hand[k] = true; }
+    else if (/^\w+\(.*\);?\s*$/.test(lines[k])) unplaced.push(k);
+    else own[k] = support;
+  }
+  var slices = [], by = {};
+  for (k = 0; k < lines.length; k++) {
+    var n = own[k];
+    if (n === null) continue;
+    if (!by[n]) { by[n] = { name: n, file: name, kind: n === support ? 'support' : 'fn', idx: [], text: [], hand: 0 }; slices.push(by[n]); }
+    by[n].idx.push(k);
+    by[n].text.push(lines[k]);
+    if (hand[k]) by[n].hand++;
+  }
+  slices.forEach(function (s) { s.from = s.idx[0] + 1; s.to = s.idx[s.idx.length - 1] + 1; });
+  return {
+    name: name, src: src, lines: lines, spans: spans, own: own, slices: slices, by: by, support: support,
+    unplaced: unplaced, unplacedText: unplaced.map(function (u) { return lines[u]; }), hand: hand
+  };
+}
+
+function printFile(p) {
+  var out = [];
+  p.slices.forEach(function (s) { s.idx.forEach(function (k, i) { out[k] = s.text[i]; }); });
+  p.unplaced.forEach(function (k, i) { out[k] = p.unplacedText[i]; });
+  return out.join('\n');
+}
+
+function ledger(p) {
+  var placed = 0;
+  p.slices.forEach(function (s) { placed += s.idx.length; });
+  return {
+    total: p.lines.length, placed: placed, unplaced: p.unplaced.length,
+    complete: placed + p.unplaced.length === p.lines.length,
+    roundTrip: printFile(p) === p.src
+  };
+}
+
+function fileOrder(files) {
+  return ORDER.filter(function (n) { return files[n]; }).concat(Object.keys(files).filter(function (n) { return ORDER.indexOf(n) < 0; }));
+}
+
+function parseAll(files, asgAll) {
+  var out = {};
+  fileOrder(files).forEach(function (n) { out[n] = parseFile(n, files[n], (asgAll || {})[n]); });
+  return out;
+}
+
+function inject(p) {
+  var L = p.lines.slice();
+  p.spans.forEach(function (s) {
+    var e = L[s.end], eb = e.lastIndexOf('}');
+    L[s.end] = e.slice(0, eb) + '}finally{__x();}}' + e.slice(eb + 1);
+    var b = L[s.start], sb = b.indexOf('{');
+    L[s.start] = b.slice(0, sb + 1) + '__e("' + s.name + '");try{' + b.slice(sb + 1);
+  });
+  return L.join('\n');
+}
+
+function runJourney(parsed, jr) {
+  var code = Object.keys(parsed).map(function (n) { return inject(parsed[n]); }).join('\n');
+  var trace = [], boot = [], stack = [], foot = {}, booting = true;
+  var raw = jr.init();
+  function rec(kind, key) {
+    var f = stack[stack.length - 1];
+    if (!f) return;
+    var o = foot[f] || (foot[f] = { r: {}, w: {} });
+    o[kind][key] = 1;
+  }
+  var S = new Proxy(raw, {
+    get: function (t, k) { if (typeof k === 'string') rec('r', k); return t[k]; },
+    set: function (t, k, v) { rec('w', k); t[k] = v; return true; }
+  });
+  function __e(n) {
+    var ev = { name: n, depth: stack.length, parent: stack[stack.length - 1] || null };
+    (booting ? boot : trace).push(ev);
+    stack.push(n);
+  }
+  function __x() { stack.pop(); }
+  var names = ['signUp', 'logIn', 'upgradePlan', 'askAgent', 'cancelPlan'];
+  var api = new Function('S', '__e', '__x', code + '\nreturn {' + names.join(',') + '};')(S, __e, __x);
+  booting = false;
+  var err = null, ret = null;
+  try { var r = api[jr.entry].apply(null, jr.args); ret = r === undefined ? null : r; } catch (e) { err = String(e && e.message || e); }
+  var snap = {};
+  Object.keys(raw).sort().forEach(function (k) { snap[k] = JSON.stringify(raw[k]); });
+  return { trace: trace, boot: boot, foot: foot, snap: snap, ret: ret, err: err };
+}
+
+function deriveFlows(parsed) {
+  return JOURNEYS.map(function (jr) {
+    var r = runJourney(parsed, jr), seen = {}, steps = [];
+    r.trace.forEach(function (ev) {
+      if (ev.depth === 0 || seen[ev.name]) return;
+      seen[ev.name] = 1;
+      steps.push({ name: ev.name, depth: ev.depth, parent: ev.parent });
+    });
+    return { id: jr.id, entry: jr.entry, steps: steps, run: r };
+  });
+}
+
+function footprints(flows) {
+  var fp = {};
+  flows.forEach(function (f) {
+    Object.keys(f.run.foot).forEach(function (n) {
+      var o = fp[n] || (fp[n] = { r: {}, w: {} });
+      Object.keys(f.run.foot[n].r).forEach(function (k) { o.r[k] = 1; });
+      Object.keys(f.run.foot[n].w).forEach(function (k) { o.w[k] = 1; });
+    });
+  });
+  return fp;
+}
+
+function coverage(flows) {
+  var c = {};
+  flows.forEach(function (f) {
+    f.run.trace.forEach(function (ev) { c[ev.name] = 1; });
+    f.run.boot.forEach(function (ev) { c[ev.name] = 1; });
+  });
+  return c;
+}
+
+function applyPatch(files) {
+  var out = {};
+  Object.keys(files).forEach(function (k) { out[k] = files[k]; });
+  PATCH.forEach(function (p) {
+    if (out[p.file].indexOf(p.find) < 0) throw new Error('patch target missing in ' + p.file);
+    out[p.file] = out[p.file].split(p.find).join(p.rep);
+  });
+  Object.keys(NEWFILES).forEach(function (k) { out[k] = NEWFILES[k]; });
+  return out;
+}
+
+function sliceMap(parsed) {
+  var m = {};
+  Object.keys(parsed).forEach(function (f) { parsed[f].slices.forEach(function (s) { m[s.name] = s; }); });
+  return m;
+}
+
+function lineDiff(a, b) {
+  return {
+    removed: a.filter(function (l) { return b.indexOf(l) < 0; }),
+    added: b.filter(function (l) { return a.indexOf(l) < 0; })
+  };
+}
+
+function changedSlices(baseParsed, newParsed) {
+  var bm = sliceMap(baseParsed), nm = sliceMap(newParsed), out = [];
+  Object.keys(nm).forEach(function (n) {
+    var s = nm[n];
+    if (s.kind === 'support') return;
+    var b = bm[n];
+    if (!b) { out.push({ name: n, file: s.file, isNew: true, removed: [], added: s.text }); return; }
+    if (b.text.join('\n') !== s.text.join('\n')) {
+      var d = lineDiff(b.text, s.text);
+      out.push({ name: n, file: s.file, isNew: false, removed: d.removed, added: d.added });
+    }
+  });
+  return out;
+}
+
+function behaviorDiff(a, b) {
+  var keys = {}, out = [];
+  Object.keys(a.snap).forEach(function (k) { keys[k] = 1; });
+  Object.keys(b.snap).forEach(function (k) { keys[k] = 1; });
+  Object.keys(keys).sort().forEach(function (k) {
+    if (a.snap[k] !== b.snap[k]) out.push({ key: k, before: a.snap[k], after: b.snap[k] });
+  });
+  if (a.err !== b.err) out.push({ key: 'error', before: String(a.err), after: String(b.err) });
+  return out;
+}
+
+function review(baseParsed, patchedParsed, baseFlows, changed, forkOnly, intended) {
+  var names = {};
+  changed.forEach(function (c) { names[c.name] = 1; });
+  return JOURNEYS.map(function (jr, i) {
+    var useNew = forkOnly === null || forkOnly === jr.id;
+    var bf = baseFlows[i];
+    var run = runJourney(useNew ? patchedParsed : baseParsed, jr);
+    var touched = useNew ? bf.steps.map(function (s) { return s.name; }).concat([bf.entry]).filter(function (n) { return names[n]; }) : [];
+    var beh = behaviorDiff(bf.run, run);
+    var widened = [];
+    touched.forEach(function (n) {
+      var o = run.foot[n], p = bf.run.foot[n] || { r: {}, w: {} };
+      if (!o) return;
+      Object.keys(o.r).forEach(function (k) { if (!p.r[k]) widened.push({ slice: n, kind: 'reads', key: k }); });
+      Object.keys(o.w).forEach(function (k) { if (!p.w[k]) widened.push({ slice: n, kind: 'changes', key: k }); });
+    });
+    var status;
+    if (!touched.length) status = 'untouched';
+    else if (beh.length && intended.indexOf(jr.id) < 0) status = 'unexpected';
+    else if (beh.length) status = 'intended';
+    else status = 'identical';
+    return { id: jr.id, status: status, touched: touched, behavior: beh, widened: widened, run: run };
+  });
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { SRC: SRC, PATCH: PATCH, NEWFILES: NEWFILES, JOURNEYS: JOURNEYS, parseFile: parseFile, parseAll: parseAll, printFile: printFile, ledger: ledger, deriveFlows: deriveFlows, footprints: footprints, coverage: coverage, applyPatch: applyPatch, sliceMap: sliceMap, changedSlices: changedSlices, review: review, runJourney: runJourney, inject: inject };
+}
+
+/* ---------- UI ---------- */
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function hue(n) { var h = 0; for (var i = 0; i < n.length; i++) h = (h * 31 + n.charCodeAt(i)) % 360; return h; }
+  var OK = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--good)" stroke-width="2" aria-hidden="true"><path d="M3 8.5l3 3 7-7"/></svg>';
+  var NO = '<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="var(--bad)" stroke-width="2" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>';
+  var CHEV = '<svg class="chev" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg>';
+
+  /* Plain-language layer. The code is still the source of truth; these only name it for people. */
+  var PLAIN = {
+    signUp: 'Person fills in the sign-up form', validateForm: 'Check the email looks valid', createUser: 'Create the account on the free plan',
+    issueSid: 'Start a login session', loadSession: 'Work out who is signed in', sendEmail: 'Send an email', renderHeader: 'Show the plan badge in the header',
+    logIn: 'Person logs in', upgradePlan: 'Person upgrades to Pro', resolvePrice: 'Look up the price', chargeCard: 'Charge their card',
+    applyPlanChange: 'Switch their plan', emit: 'Announce that the plan changed', onPlanChanged: 'Send the plan-changed email',
+    askAgent: 'Person asks the agent a question', planGuard: 'Check their plan allows the agent', buildSystemPrompt: 'Write the agent’s instructions',
+    pickTools: 'Choose which tools the agent may use', streamReply: 'Send the reply', cancelPlan: 'Person cancels their plan',
+    isEnabled: 'Check a feature switch', on: 'Register a listener', seedAnnualPrices: 'Set up the annual price list'
+  };
+  var JT = { 'sign-up': 'A new person signs up', 'log-in': 'Someone logs back in', 'upgrade-plan': 'A free user upgrades to Pro, yearly', 'ask-the-agent': 'A Pro user asks the agent', 'cancel-plan': 'A Pro user cancels' };
+  var SL = { users: 'Account list', plans: 'Their plan', sid: 'Login session', user: 'Who is signed in', flags: 'Feature switches', outbox: 'Emails sent', charged: 'Money charged', prompt: 'Agent instructions', tools: 'Agent tools', reply: 'Agent reply', header: 'Header badge', interval: 'Billing period', annualPrices: 'Annual price list', error: 'How it ended' };
+  function P(n) { return PLAIN[n] || n; }
+  function lab(k) { return SL[k] || k; }
+  function fmt(key, j) {
+    if (j === undefined) return 'nothing';
+    if (key === 'error') return j === 'null' ? 'no error' : j;
+    var v; try { v = JSON.parse(j); } catch (e) { return j; }
+    if (key === 'plans') return Object.keys(v).map(function (u) { return v[u].plan + ' plan, billed ' + (v[u].interval === 'year' ? 'yearly' : 'monthly'); }).join('; ');
+    if (key === 'charged') return '$' + v;
+    if (key === 'interval') return v === 'year' ? 'yearly' : 'monthly';
+    if (key === 'outbox') return v.length ? v.map(function (x) { return '“' + x + '”'; }).join(', ') : 'none';
+    if (Array.isArray(v)) return v.join(', ');
+    if (typeof v === 'object') return JSON.stringify(v);
+    return String(v);
+  }
+
+  function fresh() {
+    return { view: 'product', asg: {}, file: 'mailer.js', hl: null, open: { 'upgrade-plan': true }, sel: { flow: 'upgrade-plan', name: 'applyPlanChange' }, scope: 'all', intended: ['upgrade-plan'], drop: false };
+  }
+  var st = fresh(), m = {};
+  function prod() { return st.view === 'product'; }
+
+  function compute() {
+    m.parsed = parseAll(SRC, st.asg);
+    m.files = fileOrder(SRC);
+    m.flows = deriveFlows(m.parsed);
+    m.smap = sliceMap(m.parsed);
+    m.gate = 0; m.gateFiles = [];
+    m.files.forEach(function (f) { var u = m.parsed[f].unplaced.length; if (u) { m.gate += u; m.gateFiles.push(f); } });
+    m.lines = 0; m.slices = 0;
+    m.files.forEach(function (f) { m.lines += m.parsed[f].lines.length; m.slices += m.parsed[f].slices.length; });
+    m.covBase = coverage(m.flows);
+    if (!m.gate) {
+      var ps = applyPatch(SRC);
+      if (st.drop) delete ps['seed.js'];
+      m.pp = parseAll(ps, st.asg);
+      m.changed = changedSlices(m.parsed, m.pp);
+      m.rev = review(m.parsed, m.pp, m.flows, m.changed, st.scope === 'fork' ? 'upgrade-plan' : null, st.intended);
+      var cov = coverage(deriveFlows(m.pp));
+      m.loose = [];
+      Object.keys(m.pp).forEach(function (f) { m.pp[f].slices.forEach(function (s) { if (s.kind === 'fn' && !cov[s.name]) m.loose.push(s); }); });
+      m.ppOk = Object.keys(m.pp).every(function (f) { var l = ledger(m.pp[f]); return l.complete && l.roundTrip && !l.unplaced; });
+    }
+  }
+
+  function codeLines(idxs, texts, opts) {
+    opts = opts || {};
+    var h = '<div class="code-in">';
+    idxs.forEach(function (k, i) {
+      h += '<div class="ln' + (opts.cls ? opts.cls(k) : '') + '" style="--h:' + (opts.hue ? opts.hue(k) : 200) + '"><span class="n">' + (k + 1) + '</span><span class="bar"></span><code>' + esc(texts[i] || ' ') + (opts.em ? opts.em(k) : '') + '</code></div>';
+    });
+    return h + '</div>';
+  }
+
+  function frame() {
+    var pr = prod();
+    $('view').innerHTML = '<button data-act="view" data-v="product" aria-pressed="' + pr + '">Product view</button><button data-act="view" data-v="code" aria-pressed="' + !pr + '">Show how it’s built</button>';
+    $('s1').hidden = pr;
+    $('l0').textContent = pr
+      ? 'Nobody has to write code any more, but people do need to understand what a system does. This page shows a small app as the journeys people take through it, then reviews an AI change by what it does to each one.'
+      : 'A small web app, parsed and run in your browser. Every line has one owner, every journey is traced from a real run, and an AI change is reviewed by what it does to each journey.';
+    $('n2').textContent = pr ? '1' : '2'; $('n3').textContent = pr ? '2' : '3';
+    $('t2').textContent = pr ? 'What each journey does' : 'Flows come from real runs';
+    $('l2').textContent = pr
+      ? 'Every journey below was run for real. The steps are what actually happened, in order, with the information each step looked at and changed.'
+      : 'Each journey below ran for real, with tracing switched on. The steps are what actually executed, in order, along with the state each one read and changed.';
+    $('t3').textContent = pr ? 'Review what changed for people' : 'Review by behavior';
+    $('l3').textContent = pr
+      ? 'An AI has edited the app. Every journey is run again, and you see what each one now does differently, in plain words.'
+      : 'Apply a change written by an AI, then run every journey again. The review shows what each journey now does differently, not which files moved.';
+  }
+
+  function strip() {
+    $('strip').innerHTML = (prod()
+      ? '<span class="pill"><b>' + m.flows.length + '</b> journeys</span>'
+      : '<span class="pill"><b>' + m.files.length + '</b> files</span><span class="pill"><b>' + m.lines + '</b> lines</span><span class="pill"><b>' + m.slices + '</b> slices</span><span class="pill"><b>' + m.flows.length + '</b> flows</span>') +
+      (m.gate ? '<span class="pill bad"><b>' + m.gate + '</b> piece unconnected</span>' : '<span class="pill good">Everything accounted for</span>');
+  }
+
+  function assignUi(file, k, pfx) {
+    var pid = pfx + k;
+    var p = m.parsed[file], txt = p.lines[k], fns = p.slices.filter(function (s) { return s.kind === 'fn'; });
+    var sug = fns.filter(function (s) { return txt.indexOf(s.name) >= 0; })[0];
+    return '<div class="row"><label for="' + pid + '" class="sub">' + (prod() ? 'Attach it to' : 'Place it in') + '</label><select id="' + pid + '">' +
+      fns.map(function (s) { return '<option value="' + esc(s.name) + '"' + (sug && sug.name === s.name ? ' selected' : '') + '>' + esc(prod() ? P(s.name) : s.name) + '</option>'; }).join('') +
+      '</select><button class="btn primary small" data-act="assign" data-pick="' + pid + '" data-f="' + file + '" data-k="' + k + '">Assign</button></div>';
+  }
+
+  function p1() {
+    var p = m.parsed[st.file], L = ledger(p), h = '';
+    h += '<div class="tabs" role="group" aria-label="Files">';
+    m.files.forEach(function (f) {
+      var u = m.parsed[f].unplaced.length;
+      h += '<button class="tab" data-act="file" data-v="' + f + '" aria-pressed="' + (f === st.file) + '">' + f + (u ? '<span class="dot" title="unplaced line"></span>' : '') + '</button>';
+    });
+    h += '</div><div class="code">' + codeLines(p.lines.map(function (_, k) { return k; }), p.lines, {
+      hue: function (k) { return hue(p.own[k] || 'x'); },
+      cls: function (k) { var o = p.own[k]; return (o === null ? ' un' : '') + (st.hl && o !== st.hl ? ' dim' : ''); },
+      em: function (k) {
+        var o = p.own[k];
+        if (o === null) return '<em style="color:var(--bad)">unplaced</em>';
+        if (p.hand[k]) return '<em>placed by you in ' + esc(o) + '</em>';
+        return p.by[o].idx[0] === k ? '<em>' + esc(o) + '</em>' : '';
+      }
+    }) + '</div><div class="chips" role="group" aria-label="Slices">';
+    p.slices.forEach(function (s) {
+      h += '<button class="chip" style="--h:' + hue(s.name) + '" data-act="hl" data-v="' + esc(s.name) + '" aria-pressed="' + (st.hl === s.name) + '"><i></i>' + esc(s.name) + '<small>' + s.idx.length + ' ln</small></button>';
+    });
+    if (p.unplaced.length) h += '<span class="chip un" style="cursor:default"><i></i>unplaced<small>' + p.unplaced.length + ' ln</small></span>';
+    h += '</div><div class="metrics"><div class="m"><b>' + L.total + '</b><span>lines in file</span></div><div class="m"><b>' + L.placed + '</b><span>placed</span></div><div class="m"><b style="color:' + (L.unplaced ? 'var(--bad)' : 'inherit') + '">' + L.unplaced + '</b><span>unplaced</span></div><div class="m"><b>' + p.slices.length + '</b><span>slices</span></div></div>';
+    h += '<div class="checks"><div class="check">' + (L.complete ? OK : NO) + '<span><strong>Complete.</strong> ' + L.placed + ' placed + ' + L.unplaced + ' unplaced = ' + L.total + ' lines.</span></div>' +
+      '<div class="check">' + (L.roundTrip ? OK : NO) + '<span><strong>Round trip.</strong> Printing the slices back gives this file, character for character.</span></div></div>';
+    p.unplaced.forEach(function (k) {
+      h += '<div class="callout bad"><strong>Line ' + (k + 1) + ' belongs to nothing.</strong> <code>' + esc(p.lines[k]) + '</code> is a top-level call, not part of any function, so the parser will not guess an owner. Until you place it, review is blocked.' + assignUi(st.file, k, 'pa') + '</div>';
+    });
+    Object.keys(p.hand).forEach(function (k) {
+      h += '<div class="callout good"><strong>Line ' + (+k + 1) + ' placed by you</strong> in <code>' + esc(p.own[k]) + '</code>. Every line now has exactly one owner.<div class="row"><button class="btn small" data-act="unassign" data-f="' + st.file + '" data-k="' + k + '">Undo</button></div></div>';
+    });
+    var others = m.gateFiles.filter(function (f) { return f !== st.file; });
+    if (others.length) h += '<div class="callout warn">Also unplaced in ' + others.map(function (f) { return '<button class="btn small" data-act="file" data-v="' + f + '">' + f + '</button>'; }).join(' ') + '</div>';
+    $('p1').innerHTML = h;
+  }
+
+  function tags(o, plain) {
+    var ks = Object.keys(o);
+    if (!ks.length) return '<span class="sub">Nothing</span>';
+    return ks.map(function (k) { return '<span class="tag m ' + (plain.cls) + '">' + esc(plain.pr ? lab(k) : '@' + k) + '</span>'; }).join('');
+  }
+
+  function p2() {
+    var pr = prod(), h = '', total = 0, hit = 0;
+    m.files.forEach(function (f) { m.parsed[f].slices.forEach(function (s) { if (s.kind === 'fn') { total++; if (m.covBase[s.name]) hit++; } }); });
+    var count = {};
+    m.flows.forEach(function (f) { var seen = {}; [f.entry].concat(f.steps.map(function (s) { return s.name; })).forEach(function (n) { if (!seen[n]) { seen[n] = 1; count[n] = (count[n] || 0) + 1; } }); });
+    m.flows.forEach(function (f) {
+      var open = !!st.open[f.id], rows = [{ name: f.entry, depth: 0, parent: null }].concat(f.steps);
+      h += '<div class="flow"><button class="flow-h" data-act="flow" data-v="' + f.id + '" aria-expanded="' + open + '">' + CHEV + '<span class="name' + (pr ? ' plain' : '') + '">' + esc(pr ? JT[f.id] : f.id) + '</span><span class="meta">' + rows.length + ' steps' + (f.run.err ? ' &middot; ends in an error' : '') + '</span></button>';
+      if (open) {
+        h += '<div class="steps">';
+        rows.forEach(function (r, i) {
+          var sl = m.smap[r.name], sel = st.sel && st.sel.flow === f.id && st.sel.name === r.name;
+          h += '<button class="step' + (pr ? ' plain' : '') + '" style="--d:' + r.depth + '" data-act="step" data-f="' + f.id + '" data-v="' + r.name + '" aria-pressed="' + sel + '"><span class="idx">' + (i + 1) + '</span><span>' + esc(pr ? P(r.name) : r.name) + '</span>' +
+            (i === 0 ? '<span class="tag acc">' + (pr ? 'starts here' : 'entry') + '</span>' : '') +
+            (r.parent === 'emit' ? '<span class="tag warn">' + (pr ? 'found only by running it' : 'dynamic call') + '</span>' : '') +
+            (count[r.name] > 1 ? '<span class="tag">' + (pr ? 'used by ' + count[r.name] + ' journeys' : 'shared &times;' + count[r.name]) + '</span>' : '') +
+            (!pr && sl ? '<span class="tag" style="margin-left:auto">' + sl.file + '</span>' : '') + '</button>';
+        });
+        h += '</div>';
+        if (st.sel && st.sel.flow === f.id) {
+          var s = m.smap[st.sel.name], fp = f.run.foot[st.sel.name] || { r: {}, w: {} };
+          if (s) {
+            var inF = m.flows.filter(function (g) { return g.entry === s.name || g.steps.some(function (x) { return x.name === s.name; }); });
+            h += '<div style="padding:0 14px 14px"><div class="detail" style="margin-top:0;border-radius:8px"><div class="head"><h3' + (pr ? '' : ' class="mono"') + '>' + esc(pr ? P(s.name) : s.name) + '</h3>' + (pr ? '' : '<span class="f">' + s.file + ' &middot; lines ' + s.from + '-' + s.to + '</span>') + '</div>' +
+              (pr ? '' : '<div class="src">' + codeLines(s.idx, s.text, { hue: function () { return hue(s.name); } }) + '</div>') +
+              '<div class="lab">' + (pr ? 'Looks at' : 'Reads, as recorded while it ran in this flow') + '</div>' + tags(fp.r, { cls: 'r', pr: pr }) +
+              '<div class="lab">' + (pr ? 'Changes' : 'Changes') + '</div>' + tags(fp.w, { cls: 'w', pr: pr }) +
+              '<div class="lab">Used by</div>' + inF.map(function (g) { return '<span class="tag m" style="background:var(--surface-2)">' + esc(pr ? JT[g.id] : g.id) + '</span>'; }).join('') +
+              '</div></div>';
+          }
+        }
+      }
+      h += '</div>';
+    });
+    h += '<p class="hint">' + (pr
+      ? 'Steps marked “found only by running it” are not written down anywhere as a call. They were discovered because the journey really ran.'
+      : hit + ' of ' + total + ' functions are run by at least one journey. Where a step says dynamic call, no line of code names it: it was only found because the journey actually ran.') + '</p>';
+    $('p2').innerHTML = h;
+  }
+
+  var RANK = { unexpected: 0, intended: 1, identical: 2, untouched: 3 };
+  var LABEL = { unexpected: 'Unexpected change', intended: 'Intended change', identical: 'Code changed, behavior identical', untouched: 'Untouched' };
+  var TCLS = { unexpected: 'bad', intended: 'acc', identical: 'good', untouched: '' };
+
+  function behaviorHtml(r) {
+    if (!r.behavior.length) return '<p class="sub" style="margin-top:8px">The journey ran again with the new code and ended in exactly the same place.</p>';
+    if (prod()) return '<div style="margin-top:6px">' + r.behavior.map(function (b) {
+      return '<div class="brow"><div class="k">' + esc(lab(b.key)) + '</div><div class="v">was <b>' + esc(fmt(b.key, b.before)) + '</b>, now <b>' + esc(fmt(b.key, b.after)) + '</b></div></div>';
+    }).join('') + '</div>';
+    return '<div class="diffs">' + r.behavior.map(function (b) {
+      return '<div><div class="diff-k">' + esc(b.key) + '</div><span class="dl rm">- ' + esc(b.before) + '</span><span class="dl ad">+ ' + esc(b.after) + '</span></div>';
+    }).join('') + '</div>';
+  }
+
+  function p3() {
+    var pr = prod(), h = '';
+    if (m.gate) {
+      var f = m.gateFiles[0], k = m.parsed[f].unplaced[0];
+      if (pr) {
+        h = '<div class="callout bad"><strong>Review is paused.</strong> One piece of the app is not attached to any behavior: <code>' + esc(m.parsed[f].lines[k]) + '</code> in <code>' + f + '</code>. It is the wiring that makes the plan-changed email send. Until it is attached, the tool cannot say which journeys the change reaches, and a clean screen here would be misleading.' + assignUi(f, k, 'pb') + '</div>';
+      } else {
+        h = '<div class="callout bad"><strong>Review is blocked.</strong> ' + m.gate + ' line is still unplaced, so the tool cannot say which journeys the change reaches. A clean-looking screen here would be a lie.<div class="row"><button class="btn primary small" data-act="goto" data-v="' + f + '">Place it in ' + f + '</button></div></div>';
+      }
+      $('p3').innerHTML = h; return;
+    }
+    var newFile = m.changed.filter(function (c) { return c.isNew; }).length;
+    h += '<div class="card"><div class="card-h"><h3>The AI change</h3><span class="sub">' + (m.changed.length - newFile) + ' behaviors edited' + (newFile ? ', 1 new script' : '') + '</span></div>';
+    if (pr) {
+      h += m.changed.map(function (c) {
+        return '<div class="brow"><div class="k">' + esc(P(c.name)) + ' <span class="tag ' + (c.isNew ? 'warn' : '') + '">' + (c.isNew ? 'new, nothing uses it' : 'edited') + '</span></div></div>';
+      }).join('');
+    } else {
+      h += '<div class="diffs">' + m.changed.map(function (c) {
+        return '<div><div class="diff-k">' + esc(c.name) + ' <span class="sub">' + c.file + (c.isNew ? ' (new)' : '') + '</span></div>' +
+          c.removed.map(function (l) { return '<span class="dl rm">- ' + esc(l) + '</span>'; }).join('') +
+          c.added.map(function (l) { return '<span class="dl ad">+ ' + esc(l) + '</span>'; }).join('') + '</div>';
+      }).join('') + '</div>';
+    }
+    h += '</div><div class="lab">Where does the edit apply?</div><div class="seg" role="group"><button data-act="scope" data-v="all" aria-pressed="' + (st.scope === 'all') + '">Everywhere</button><button data-act="scope" data-v="fork" aria-pressed="' + (st.scope === 'fork') + '">Only in the upgrade journey</button></div>';
+    h += '<p class="hint" style="margin-bottom:16px">' + (st.scope === 'all'
+      ? 'The shared behaviors are edited in place, so every journey that uses them gets the new version.'
+      : 'The edit forks: the upgrade journey gets the new copies, and every other journey keeps running the original.') + '</p>';
+    var untouched = [];
+    m.rev.slice().sort(function (a, b) { return RANK[a.status] - RANK[b.status]; }).forEach(function (r) {
+      if (r.status === 'untouched') { untouched.push(pr ? JT[r.id] : r.id); return; }
+      h += '<div class="card"><div class="card-h"><span class="name' + (pr ? ' plain' : '') + '">' + esc(pr ? JT[r.id] : r.id) + '</span><span class="tag ' + TCLS[r.status] + '">' + LABEL[r.status] + '</span></div>' +
+        '<div class="sub">' + (pr ? 'Parts of this journey that were edited: ' : 'Touched ') + r.touched.map(function (n) { return '<span class="tag m" style="background:var(--surface-2)">' + esc(pr ? P(n) : n) + '</span>'; }).join('') + '</div>' +
+        behaviorHtml(r);
+      if (r.widened.length) {
+        h += '<div class="lab">' + (pr ? 'Now looks at or changes more than before' : 'Footprint grew') + '</div>' + r.widened.map(function (w) {
+          return '<span class="tag m ' + (w.kind === 'reads' ? 'r' : 'w') + '">' + esc(pr ? P(w.slice) + ' now ' + (w.kind === 'reads' ? 'looks at ' : 'changes ') + lab(w.key).toLowerCase() : w.slice + ' ' + w.kind + ' @' + w.key) + '</span>';
+        }).join('');
+      }
+      if (r.status === 'unexpected') h += '<div class="callout bad" style="margin-top:6px"><strong>Nothing said this journey should change.</strong>' + (pr ? ' The edit was aimed at upgrading, and this journey picked it up through a shared behavior.' : ' A file list would have shown <code>billing.js</code> and <code>mailer.js</code> and nothing about cancelling.') + '<div class="row"><button class="btn small" data-act="intend" data-v="' + r.id + '">Mark as intended</button></div></div>';
+      if (r.status === 'intended' && r.id !== 'upgrade-plan') h += '<div class="row" style="margin-top:6px"><button class="btn small" data-act="intend" data-v="' + r.id + '">Unmark</button></div>';
+      h += '</div>';
+    });
+    if (untouched.length) h += '<p class="sub" style="margin-bottom:10px"><strong>Untouched:</strong> ' + untouched.join(', ') + '. Nothing in these changed, so they were not re-reviewed.</p>';
+    if (m.loose.length) {
+      h += '<div class="callout warn"><strong>Loose code.</strong> ' + m.loose.map(function (s) { return pr ? '“' + esc(P(s.name)) + '”' : '<code>' + esc(s.name) + '</code> in <code>' + s.file + '</code>'; }).join(', ') + ' is not run by any journey. Nothing reviews it, so it stays flagged until it is kept on purpose or dropped.<div class="row"><button class="btn small" data-act="drop">Drop it from the change</button></div></div>';
+    } else if (st.drop) {
+      h += '<div class="callout good">The loose script was dropped from the change.<div class="row"><button class="btn small" data-act="undrop">Bring it back</button></div></div>';
+    }
+    h += '<div class="checks"><div class="check">' + (m.ppOk ? OK : NO) + '<span>' + (pr ? 'After the change, every piece of the app still belongs to exactly one behavior.' : 'After the change, every file still has full line ownership and round-trips exactly.') + '</span></div></div>';
+    $('p3').innerHTML = h;
+  }
+
+  function render(w) {
+    compute(); frame(); strip();
+    if (!w || w === 'all') { p1(); p2(); p3(); }
+    else { if (w.indexOf('1') >= 0) p1(); if (w.indexOf('2') >= 0) p2(); if (w.indexOf('3') >= 0) p3(); }
+  }
+
+  document.querySelector('.wrap').addEventListener('click', function (e) {
+    var t = e.target.closest('[data-act]'); if (!t) return;
+    var a = t.getAttribute('data-act'), v = t.getAttribute('data-v'), f = t.getAttribute('data-f');
+    if (a === 'view') { st.view = v; render('all'); }
+    else if (a === 'file') { st.file = v; st.hl = null; render('1'); }
+    else if (a === 'hl') { st.hl = st.hl === v ? null : v; render('1'); }
+    else if (a === 'assign') {
+      var k = +t.getAttribute('data-k'), val = $(t.getAttribute('data-pick')).value;
+      (st.asg[f] = st.asg[f] || {})[k] = val; st.file = f; render('all');
+    }
+    else if (a === 'unassign') { delete st.asg[f][+t.getAttribute('data-k')]; render('all'); }
+    else if (a === 'goto') { st.file = v; render('all'); $('s1').scrollIntoView({ behavior: 'smooth' }); }
+    else if (a === 'flow') { st.open[v] = !st.open[v]; render('2'); }
+    else if (a === 'step') { st.sel = { flow: f, name: v }; render('2'); }
+    else if (a === 'scope') { st.scope = v; render('3'); }
+    else if (a === 'intend') { var i = st.intended.indexOf(v); if (i < 0) st.intended.push(v); else st.intended.splice(i, 1); render('3'); }
+    else if (a === 'drop') { st.drop = true; render('3'); }
+    else if (a === 'undrop') { st.drop = false; render('3'); }
+  });
+  $('reset').addEventListener('click', function () { st = fresh(); render('all'); });
+
+  try { new Function('return 1')(); render('all'); }
+  catch (err) {
+    ['p1', 'p2', 'p3'].forEach(function (id) { $(id).innerHTML = '<div class="callout warn">This page runs the example code live, and this viewer blocks running generated code. Open it in a regular browser tab to see it work.</div>'; });
+  }
+})();
+</script>
+
+</body></html>

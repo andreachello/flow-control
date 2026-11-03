@@ -1,0 +1,809 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Flow control</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;600&family=Hanken+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a working bench. One column, three stages that really depend on each other: parse, trace, review. */
+:root{
+  --bg:#edf0ec; --surface:#fbfbf9; --surface-2:#e3e8e3; --ink:#1a2227; --ink-2:#4a585e; --ink-3:#77858a;
+  --line:#d3d9d3; --line-strong:#b6c0bb;
+  --accent:#0b6e84; --accent-soft:#d4eaee; --accent-ink:#07495a; --on-accent:#ffffff;
+  --good:#1f7a4d; --good-bg:#dcefe3; --warn:#946000; --warn-bg:#f5e6c4; --bad:#b3321f; --bad-bg:#f7ddd6;
+  --bar-l:44%;
+  --f-display:'Familjen Grotesk','Hanken Grotesk',system-ui,sans-serif;
+  --f-body:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#12181b; --surface:#192125; --surface-2:#222c31; --ink:#e6ebea; --ink-2:#a3b1b5; --ink-3:#75858a;
+    --line:#2d3a40; --line-strong:#41525a;
+    --accent:#5cc0d6; --accent-soft:#17353c; --accent-ink:#a9e3ef; --on-accent:#0a1e24;
+    --good:#5fcb93; --good-bg:#16352a; --warn:#e6b450; --warn-bg:#3b2f14; --bad:#f0897a; --bad-bg:#3e1e19;
+    --bar-l:64%; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#12181b; --surface:#192125; --surface-2:#222c31; --ink:#e6ebea; --ink-2:#a3b1b5; --ink-3:#75858a;
+  --line:#2d3a40; --line-strong:#41525a;
+  --accent:#5cc0d6; --accent-soft:#17353c; --accent-ink:#a9e3ef; --on-accent:#0a1e24;
+  --good:#5fcb93; --good-bg:#16352a; --warn:#e6b450; --warn-bg:#3b2f14; --bad:#f0897a; --bad-bg:#3e1e19;
+  --bar-l:64%; color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  background:var(--bg); color:var(--ink); font:400 15px/1.55 var(--f-body);
+  padding-block:28px 72px;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap{max-width:760px;margin:0 auto}
+h1{font:600 38px/1.05 var(--f-display);letter-spacing:-.01em;margin:0 0 10px;text-wrap:balance}
+h2{font:600 22px/1.2 var(--f-display);margin:0;text-wrap:balance}
+h3{font:600 15px/1.3 var(--f-body);margin:0}
+p{margin:0}
+.lede{color:var(--ink-2);max-width:62ch}
+.stage{margin-top:44px}
+.stage-head{display:flex;align-items:center;gap:12px;margin:0 0 8px}
+.num{font:500 13px var(--f-mono);color:var(--accent-ink);background:var(--accent-soft);border-radius:6px;padding:3px 8px}
+.stage .lede{margin:0 0 16px}
+.strip{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}
+.pill{font:500 13px var(--f-body);padding:6px 11px;border-radius:8px;background:var(--surface);border:1px solid var(--line);color:var(--ink-2);font-variant-numeric:tabular-nums}
+.pill b{color:var(--ink);font-weight:600}
+.pill.good{background:var(--good-bg);border-color:transparent;color:var(--ink)}
+.pill.bad{background:var(--bad-bg);border-color:transparent;color:var(--ink)}
+.pill.warn{background:var(--warn-bg);border-color:transparent;color:var(--ink)}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{font:500 14px var(--f-body);padding:9px 14px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);cursor:pointer}
+.btn:hover{border-color:var(--ink-3)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.small{padding:6px 11px;font-size:13px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+.tab{font:400 12px var(--f-mono);padding:6px 10px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.tab[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.tab .dot{width:7px;height:7px;border-radius:50%;background:var(--bad)}
+.code{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow-x:auto}
+.code-in{min-width:max-content;padding:8px 0}
+.ln{display:grid;grid-template-columns:40px 4px 1fr;font:400 12.5px/1.7 var(--f-mono);transition:opacity .15s}
+.ln .n{color:var(--ink-3);text-align:right;padding-right:10px;user-select:none}
+.ln .bar{background:hsl(var(--h) 55% var(--bar-l))}
+.ln code{display:block;white-space:pre;padding:0 14px 0 12px;background:hsl(var(--h) 60% 50% / .1);font:inherit}
+.ln code em{font:500 11px var(--f-body);font-style:normal;margin-left:12px;color:var(--ink-2)}
+.ln.un .bar{background:var(--bad)}
+.ln.un code{background:var(--bad-bg)}
+.ln.dim{opacity:.28}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.chip{display:inline-flex;align-items:center;gap:7px;font:400 12px var(--f-mono);padding:5px 9px;border:1px solid var(--line);background:var(--surface);border-radius:6px;cursor:pointer;color:var(--ink)}
+.chip i{width:9px;height:9px;border-radius:2px;background:hsl(var(--h) 55% var(--bar-l))}
+.chip small{color:var(--ink-3);font-size:11px}
+.chip[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.chip.un i{background:var(--bad)}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:8px;margin:14px 0 0}
+.m{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:10px 12px}
+.m b{display:block;font:600 24px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.m span{font-size:12px;color:var(--ink-2)}
+.checks{display:grid;gap:7px;margin:14px 0 0}
+.check{display:flex;gap:9px;align-items:flex-start;font-size:14px}
+.check svg{flex:none;margin-top:2px}
+.callout{border-radius:10px;padding:13px 15px;font-size:14px;margin-top:14px}
+.callout.bad{background:var(--bad-bg)}
+.callout.good{background:var(--good-bg)}
+.callout.warn{background:var(--warn-bg)}
+.callout.plain{background:var(--surface);border:1px solid var(--line)}
+.callout strong{font-weight:600}
+.callout .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:10px}
+.callout code,.mono{font:400 12.5px var(--f-mono)}
+select{font:400 13px var(--f-mono);padding:7px 9px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);max-width:100%}
+.flow{border:1px solid var(--line);background:var(--surface);border-radius:10px;margin-bottom:8px;overflow:hidden}
+.flow-h{display:flex;width:100%;align-items:center;gap:10px;padding:12px 14px;background:none;border:0;text-align:left;cursor:pointer}
+.flow-h .name{font:500 14px var(--f-mono)}
+.flow-h .meta{margin-left:auto;font-size:12px;color:var(--ink-2)}
+.step.plain{font:400 14px var(--f-body)}
+.name.plain{font:500 15px var(--f-body)!important}
+.brow{padding:8px 0;border-top:1px solid var(--line)}
+.brow:first-of-type{border-top:0}
+.brow .k{font-weight:600;font-size:14px}
+.brow .v{font-size:14px;color:var(--ink-2)}
+.brow .v b{color:var(--ink);font-weight:500}
+.chev{width:16px;height:16px;flex:none;color:var(--ink-3);transition:transform .15s}
+.flow-h[aria-expanded="true"] .chev{transform:rotate(90deg)}
+.steps{border-top:1px solid var(--line)}
+.step{display:flex;align-items:center;gap:8px;width:100%;padding:9px 14px 9px calc(14px + var(--d) * 18px);border:0;border-top:1px solid var(--line);background:none;text-align:left;cursor:pointer;font:400 13px var(--f-mono)}
+.step:first-child{border-top:0}
+.step[aria-pressed="true"]{background:var(--accent-soft)}
+.step .idx{color:var(--ink-3);font-size:11px;min-width:18px}
+.tag{font:500 11px var(--f-body);padding:2px 7px;border-radius:5px;background:var(--surface-2);color:var(--ink-2);white-space:nowrap}
+.tag.acc{background:var(--accent-soft);color:var(--accent-ink)}
+.tag.warn{background:var(--warn-bg);color:var(--ink)}
+.tag.bad{background:var(--bad-bg);color:var(--ink)}
+.tag.good{background:var(--good-bg);color:var(--ink)}
+.tag.m{font:400 12px var(--f-mono);display:inline-block;margin:0 6px 6px 0;border:0;padding:3px 8px;border-radius:6px}
+.tag.r{background:var(--accent-soft);color:var(--accent-ink)}
+.tag.w{background:var(--bad-bg);color:var(--ink)}
+.detail{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:15px 16px;margin-top:12px}
+.detail .head{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.detail .head .f{font:400 12px var(--f-mono);color:var(--ink-3)}
+.src{margin:12px 0;border:1px solid var(--line);border-radius:8px;background:var(--bg);overflow-x:auto}
+.src .code-in{padding:6px 0}
+.lab{font-size:12px;color:var(--ink-2);margin:12px 0 6px}
+.seg{display:inline-grid;grid-template-columns:1fr 1fr;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;max-width:100%}
+.seg button{padding:9px 14px;background:var(--surface);border:0;font:500 14px var(--f-body);color:var(--ink-2);cursor:pointer}
+.seg button+button{border-left:1px solid var(--line-strong)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.card{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.card-h{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-bottom:8px}
+.card-h .name{font:500 14px var(--f-mono)}
+.diffs{display:grid;gap:10px;margin-top:10px}
+.diff-k{font:500 12px var(--f-mono);margin-bottom:4px}
+.dl{display:block;font:400 12.5px/1.55 var(--f-mono);white-space:pre-wrap;word-break:break-word;padding:2px 9px;border-radius:4px}
+.dl.rm{background:var(--bad-bg)}
+.dl.ad{background:var(--good-bg)}
+.dl.ctx{color:var(--ink-3)}
+.sub{font-size:13px;color:var(--ink-2)}
+.hint{font-size:13px;color:var(--ink-3);margin-top:10px}
+.foot{margin-top:48px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:18px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+@media (max-width:480px){h1{font-size:32px}.step{flex-wrap:wrap}}
+</style>
+<style>
+.inp{font:400 15px var(--f-body);width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink)}
+.row2{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:12px 0}
+.si{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--line);font-size:14px}
+.si:first-child{border-top:0}
+.si .idx{font:500 11px var(--f-mono);color:var(--ink-3);min-width:18px}
+.si .lbl{flex:1;min-width:0}
+.ib{width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;border:1px solid var(--line);background:var(--surface);cursor:pointer;color:var(--ink-2);font-size:15px;line-height:1}
+.ib:hover{border-color:var(--ink-3)}
+.ib:disabled{opacity:.35;cursor:default}
+.tr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding:9px 14px 9px calc(14px + var(--d) * 20px);border-top:1px solid var(--line);font-size:14px}
+.tr:first-child{border-top:0}
+.tr.cons{color:var(--ink-2)}
+.pal-l{font-size:12px;color:var(--ink-2);margin:14px 0 6px}
+.chip.add{font:500 13px var(--f-body)}
+pre.gen{margin:10px 0 0;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font:400 12.5px/1.6 var(--f-mono);overflow-x:auto}
+.tag.newfp{background:var(--warn-bg);color:var(--ink)}
+</style>
+
+</style>
+<style>
+.player{display:flex;gap:8px;align-items:center;margin:14px 0 6px}
+.player .btn{min-width:44px;padding:8px 12px}
+input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;align-items:start;margin-top:10px}
+.pane{border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.pane-h{padding:9px 14px;font:600 12px var(--f-body);letter-spacing:.04em;text-transform:uppercase;color:var(--ink-2);border-bottom:1px solid var(--line);background:var(--surface-2)}
+.strow{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;width:100%;padding:9px 14px 9px calc(14px + var(--d) * 18px);border:0;border-top:1px solid var(--line);background:none;text-align:left;cursor:pointer;font:400 14px var(--f-body);color:var(--ink)}
+.pane-h+.strow{border-top:0}
+.strow.cur{background:var(--accent-soft)}
+.strow.fut{opacity:.4}
+.strow.static{cursor:default}
+.strow .i{font:500 11px var(--f-mono);color:var(--ink-3);min-width:18px}
+.srow{display:grid;grid-template-columns:minmax(92px,34%) 1fr;gap:8px;padding:9px 14px;border-top:1px solid var(--line);font-size:14px;overflow-wrap:anywhere}
+.pane-h+.srow{border-top:0}
+.srow .k{color:var(--ink-2)}
+.srow.hi{background:var(--accent-soft)}
+.srow .by{display:block;font-size:12px;color:var(--accent-ink)}
+.srow .jump{all:unset;cursor:pointer;color:var(--accent-ink);text-decoration:underline;font-size:13px}
+.cmp3{display:grid;grid-template-columns:minmax(78px,26%) 1fr 1fr;border-top:1px solid var(--line);font-size:14px}
+.cmp3>div{padding:9px 12px;overflow-wrap:anywhere}
+.cmp3 .d{background:var(--accent-soft)}
+.cmp3 .k{color:var(--ink-2)}
+.glance{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 0}
+.gl{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 12px;cursor:pointer;text-align:left;font:400 14px var(--f-body);color:var(--ink)}
+.gl small{display:block;color:var(--ink-2);font-size:12px}
+.gl[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.fact{padding:11px 14px;border-top:1px solid var(--line);font-size:14px}
+.pane-h+.fact{border-top:0}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>Flow control</h1>
+    <p class="lede">Version control tracks files. Flow control tracks what your product does. Three changes arrive at once. A text merge accepts all of them. Flow control runs every journey and tells you where changes meet.</p>
+    <div id="strip" class="strip"></div>
+  </header>
+
+  <section class="stage" id="s1">
+    <div class="stage-head"><span class="num">1</span><h2>Three changes</h2></div>
+    <p class="lede">Each was written separately and each looks fine on its own. Pick which ones to merge.</p>
+    <div id="m1"></div>
+  </section>
+
+  <section class="stage">
+    <div class="stage-head"><span class="num">2</span><h2>What happens when they meet</h2></div>
+    <p class="lede">Every journey is run with no changes, with each change alone, and with the selection merged. Differences that can be explained by one change alone are fine. Where two changes decide the same thing, or something appears only when they are together, it is shown here.</p>
+    <div id="m2"></div>
+  </section>
+
+  <section class="stage">
+    <div class="stage-head"><span class="num">3</span><h2>Record what should be true</h2></div>
+    <p class="lede">When changes disagree, a person states the intent. That statement is stored and checked from then on, so the same collision is caught next time.</p>
+    <div id="m3"></div>
+  </section>
+
+  <div class="foot">
+    <span class="sub">Everything here runs locally. Nothing is sent anywhere.</span>
+    <button class="btn" id="reset">Reset</button>
+  </div>
+</div>
+
+<script>
+var ORDER = ['bus.js', 'flags.js', 'auth.js', 'billing.js', 'mailer.js', 'agent.js', 'ui.js', 'routes.js'];
+
+var SRC = {
+  'bus.js': [
+    '// A tiny event bus. Handlers are looked up by name at runtime.',
+    'const handlers = {};',
+    '',
+    'function on(evt, fn) { handlers[evt] = (handlers[evt] || []).concat([fn]); }',
+    '',
+    'function emit(evt) { (handlers[evt] || []).forEach(function (fn) { fn(); }); }'
+  ].join('\n'),
+  'flags.js': [
+    '// Feature flags live in state.',
+    'function isEnabled(name) { return !!S.flags[name]; }'
+  ].join('\n'),
+  'auth.js': [
+    '// Sign-up and sessions.',
+    'function validateForm(f) {',
+    "  if (f.email.indexOf('@') < 0) { throw new Error('bad email'); }",
+    '  return f;',
+    '}',
+    '',
+    'function createUser(f) {',
+    "  const id = 'u' + (Object.keys(S.users).length + 1);",
+    '  S.users = Object.assign({}, S.users, { [id]: { email: f.email } });',
+    "  S.plans = Object.assign({}, S.plans, { [id]: { plan: 'free', interval: 'month' } });",
+    '  return id;',
+    '}',
+    '',
+    "function issueSid(id) { S.sid = 'sid-' + id; }",
+    '',
+    "function loadSession() { S.user = S.sid.replace('sid-', ''); }"
+  ].join('\n'),
+  'billing.js': [
+    '// Pricing and plan changes.',
+    'function resolvePrice(plan) {',
+    "  const table = isEnabled('newPricing') ? { pro: 24 } : { pro: 20 };",
+    '  return table[plan];',
+    '}',
+    '',
+    'function chargeCard(amount) { S.charged = (S.charged || 0) + amount; }',
+    '',
+    'function applyPlanChange(plan) {',
+    "  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: 'month' } });",
+    "  emit('plan_changed');",
+    '}',
+    '',
+    'function planGuard(action) {',
+    "  if (S.plans[S.user].plan === 'free') { throw new Error('upgrade required for ' + action); }",
+    '}'
+  ].join('\n'),
+  'mailer.js': [
+    '// Email. The plan-changed handler is wired by name.',
+    'function sendEmail(kind) {',
+    '  const u = S.users[S.user];',
+    "  S.outbox = (S.outbox || []).concat([kind + ' -> ' + u.email]);",
+    '}',
+    '',
+    "function onPlanChanged() { sendEmail('plan-changed'); }",
+    '',
+    "on('plan_changed', onPlanChanged);"
+  ].join('\n'),
+  'agent.js': [
+    '// The agent: prompt, tools and reply.',
+    'function buildSystemPrompt() {',
+    "  const base = 'You help a ' + S.plans[S.user].plan + ' user.';",
+    "  S.prompt = isEnabled('betaUi') ? base + ' Beta on.' : base;",
+    '}',
+    '',
+    'function pickTools() {',
+    "  S.tools = S.plans[S.user].plan === 'free' ? ['search'] : ['search', 'code'];",
+    '}',
+    '',
+    "function streamReply() { S.reply = 'ok:' + S.prompt.length + ':' + S.tools.length; }"
+  ].join('\n'),
+  'ui.js': [
+    '// The header badge.',
+    'function renderHeader() { S.header = S.plans[S.user].plan.toUpperCase(); }'
+  ].join('\n'),
+  'routes.js': [
+    '// User actions. Each one is a journey.',
+    'function signUp(f) {',
+    '  validateForm(f);',
+    '  const id = createUser(f);',
+    '  issueSid(id);',
+    '  loadSession();',
+    "  sendEmail('welcome');",
+    '  renderHeader();',
+    '}',
+    '',
+    'function logIn(f) {',
+    '  validateForm(f);',
+    "  issueSid('u1');",
+    '  loadSession();',
+    '  renderHeader();',
+    '}',
+    '',
+    'function upgradePlan(plan) {',
+    '  loadSession();',
+    '  chargeCard(resolvePrice(plan));',
+    '  applyPlanChange(plan);',
+    '  renderHeader();',
+    '}',
+    '',
+    'function askAgent() {',
+    '  loadSession();',
+    "  planGuard('agent');",
+    '  buildSystemPrompt();',
+    '  pickTools();',
+    '  streamReply();',
+    '}',
+    '',
+    'function cancelPlan() {',
+    '  loadSession();',
+    "  applyPlanChange('free');",
+    '  renderHeader();',
+    '}'
+  ].join('\n')
+};
+
+var PATCH = [
+  { file: 'billing.js',
+    find: '  return table[plan];',
+    rep: "  return table[plan] * (S.interval === 'year' ? 10 : 1);" },
+  { file: 'billing.js',
+    find: "  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: 'month' } });",
+    rep: "  const interval = S.interval || 'month';\n  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: interval } });" },
+  { file: 'mailer.js',
+    find: "[kind + ' -> ' + u.email]",
+    rep: "[kind + (S.interval ? ' (' + S.interval + ')' : '') + ' -> ' + u.email]" }
+];
+
+var NEWFILES = {
+  'seed.js': [
+    '// One-off script that seeds annual prices.',
+    'function seedAnnualPrices() {',
+    '  S.annualPrices = { pro: 240 };',
+    '}'
+  ].join('\n')
+};
+
+function base(o) {
+  o = o || {};
+  var s = {
+    users: { u1: { email: 'a@x.com' } },
+    plans: { u1: o.plan || { plan: 'free', interval: 'month' } },
+    sid: 'sid-u1',
+    user: 'u1',
+    flags: { newPricing: true, betaUi: true }
+  };
+  if (o.interval) s.interval = o.interval;
+  return s;
+}
+
+var JOURNEYS = [
+  { id: 'sign-up', entry: 'signUp', args: [{ email: 'new@x.com' }], init: function () { return base(); } },
+  { id: 'log-in', entry: 'logIn', args: [{ email: 'a@x.com' }], init: function () { return base(); } },
+  { id: 'upgrade-plan', entry: 'upgradePlan', args: ['pro'], init: function () { return base({ interval: 'year' }); } },
+  { id: 'ask-the-agent', entry: 'askAgent', args: [], init: function () { return base({ plan: { plan: 'pro', interval: 'month' } }); } },
+  { id: 'cancel-plan', entry: 'cancelPlan', args: [], init: function () { return base({ interval: 'year', plan: { plan: 'pro', interval: 'year' } }); } }
+];
+
+function parseFile(name, src, asg) {
+  var lines = src.split('\n'), spans = [], i, j, k;
+  for (i = 0; i < lines.length; i++) {
+    var m = /^function\s+(\w+)/.exec(lines[i]);
+    if (!m) continue;
+    var depth = 0, started = false;
+    for (j = i; j < lines.length; j++) {
+      var t = lines[j].replace(/\/\/.*$/, '');
+      for (var c = 0; c < t.length; c++) {
+        if (t[c] === '{') { depth++; started = true; }
+        else if (t[c] === '}') depth--;
+      }
+      if (started && depth === 0) break;
+    }
+    spans.push({ name: m[1], start: i, end: j });
+    i = j;
+  }
+  var own = lines.map(function () { return null; });
+  spans.forEach(function (s) { for (var q = s.start; q <= s.end; q++) own[q] = s.name; });
+  spans.forEach(function (s) {
+    var q = s.start - 1;
+    while (q >= 0 && own[q] === null && /^\s*(\/\/.*)?$/.test(lines[q])) { own[q] = s.name; q--; }
+  });
+  var support = name + ' (support)', unplaced = [], hand = {};
+  for (k = 0; k < lines.length; k++) {
+    if (own[k] !== null) continue;
+    if (asg && asg[k]) { own[k] = asg[k]; hand[k] = true; }
+    else if (/^\w+\(.*\);?\s*$/.test(lines[k])) unplaced.push(k);
+    else own[k] = support;
+  }
+  var slices = [], by = {};
+  for (k = 0; k < lines.length; k++) {
+    var n = own[k];
+    if (n === null) continue;
+    if (!by[n]) { by[n] = { name: n, file: name, kind: n === support ? 'support' : 'fn', idx: [], text: [], hand: 0 }; slices.push(by[n]); }
+    by[n].idx.push(k);
+    by[n].text.push(lines[k]);
+    if (hand[k]) by[n].hand++;
+  }
+  slices.forEach(function (s) { s.from = s.idx[0] + 1; s.to = s.idx[s.idx.length - 1] + 1; });
+  return {
+    name: name, src: src, lines: lines, spans: spans, own: own, slices: slices, by: by, support: support,
+    unplaced: unplaced, unplacedText: unplaced.map(function (u) { return lines[u]; }), hand: hand
+  };
+}
+
+function printFile(p) {
+  var out = [];
+  p.slices.forEach(function (s) { s.idx.forEach(function (k, i) { out[k] = s.text[i]; }); });
+  p.unplaced.forEach(function (k, i) { out[k] = p.unplacedText[i]; });
+  return out.join('\n');
+}
+
+function ledger(p) {
+  var placed = 0;
+  p.slices.forEach(function (s) { placed += s.idx.length; });
+  return {
+    total: p.lines.length, placed: placed, unplaced: p.unplaced.length,
+    complete: placed + p.unplaced.length === p.lines.length,
+    roundTrip: printFile(p) === p.src
+  };
+}
+
+function fileOrder(files) {
+  return ORDER.filter(function (n) { return files[n]; }).concat(Object.keys(files).filter(function (n) { return ORDER.indexOf(n) < 0; }));
+}
+
+function parseAll(files, asgAll) {
+  var out = {};
+  fileOrder(files).forEach(function (n) { out[n] = parseFile(n, files[n], (asgAll || {})[n]); });
+  return out;
+}
+
+function inject(p) {
+  var L = p.lines.slice();
+  p.spans.forEach(function (s) {
+    var e = L[s.end], eb = e.lastIndexOf('}');
+    L[s.end] = e.slice(0, eb) + '}finally{__x();}}' + e.slice(eb + 1);
+    var b = L[s.start], sb = b.indexOf('{');
+    L[s.start] = b.slice(0, sb + 1) + '__e("' + s.name + '");try{' + b.slice(sb + 1);
+  });
+  return L.join('\n');
+}
+
+function runJourney(parsed, jr) {
+  var code = Object.keys(parsed).map(function (n) { return inject(parsed[n]); }).join('\n');
+  var trace = [], boot = [], stack = [], foot = {}, booting = true;
+  var raw = jr.init();
+  function rec(kind, key) {
+    var f = stack[stack.length - 1];
+    if (!f) return;
+    var o = foot[f] || (foot[f] = { r: {}, w: {} });
+    o[kind][key] = 1;
+  }
+  var S = new Proxy(raw, {
+    get: function (t, k) { if (typeof k === 'string') rec('r', k); return t[k]; },
+    set: function (t, k, v) { rec('w', k); t[k] = v; return true; }
+  });
+  function __e(n) {
+    var ev = { name: n, depth: stack.length, parent: stack[stack.length - 1] || null };
+    (booting ? boot : trace).push(ev);
+    stack.push(n);
+  }
+  function __x() { stack.pop(); }
+  var names = ['signUp', 'logIn', 'upgradePlan', 'askAgent', 'cancelPlan'];
+  var api = new Function('S', '__e', '__x', code + '\nreturn {' + names.join(',') + '};')(S, __e, __x);
+  booting = false;
+  var err = null, ret = null;
+  try { var r = api[jr.entry].apply(null, jr.args); ret = r === undefined ? null : r; } catch (e) { err = String(e && e.message || e); }
+  var snap = {};
+  Object.keys(raw).sort().forEach(function (k) { snap[k] = JSON.stringify(raw[k]); });
+  return { trace: trace, boot: boot, foot: foot, snap: snap, ret: ret, err: err };
+}
+
+function deriveFlows(parsed) {
+  return JOURNEYS.map(function (jr) {
+    var r = runJourney(parsed, jr), seen = {}, steps = [];
+    r.trace.forEach(function (ev) {
+      if (ev.depth === 0 || seen[ev.name]) return;
+      seen[ev.name] = 1;
+      steps.push({ name: ev.name, depth: ev.depth, parent: ev.parent });
+    });
+    return { id: jr.id, entry: jr.entry, steps: steps, run: r };
+  });
+}
+
+function footprints(flows) {
+  var fp = {};
+  flows.forEach(function (f) {
+    Object.keys(f.run.foot).forEach(function (n) {
+      var o = fp[n] || (fp[n] = { r: {}, w: {} });
+      Object.keys(f.run.foot[n].r).forEach(function (k) { o.r[k] = 1; });
+      Object.keys(f.run.foot[n].w).forEach(function (k) { o.w[k] = 1; });
+    });
+  });
+  return fp;
+}
+
+function coverage(flows) {
+  var c = {};
+  flows.forEach(function (f) {
+    f.run.trace.forEach(function (ev) { c[ev.name] = 1; });
+    f.run.boot.forEach(function (ev) { c[ev.name] = 1; });
+  });
+  return c;
+}
+
+function applyPatch(files) {
+  var out = {};
+  Object.keys(files).forEach(function (k) { out[k] = files[k]; });
+  PATCH.forEach(function (p) {
+    if (out[p.file].indexOf(p.find) < 0) throw new Error('patch target missing in ' + p.file);
+    out[p.file] = out[p.file].split(p.find).join(p.rep);
+  });
+  Object.keys(NEWFILES).forEach(function (k) { out[k] = NEWFILES[k]; });
+  return out;
+}
+
+function sliceMap(parsed) {
+  var m = {};
+  Object.keys(parsed).forEach(function (f) { parsed[f].slices.forEach(function (s) { m[s.name] = s; }); });
+  return m;
+}
+
+function lineDiff(a, b) {
+  return {
+    removed: a.filter(function (l) { return b.indexOf(l) < 0; }),
+    added: b.filter(function (l) { return a.indexOf(l) < 0; })
+  };
+}
+
+function changedSlices(baseParsed, newParsed) {
+  var bm = sliceMap(baseParsed), nm = sliceMap(newParsed), out = [];
+  Object.keys(nm).forEach(function (n) {
+    var s = nm[n];
+    if (s.kind === 'support') return;
+    var b = bm[n];
+    if (!b) { out.push({ name: n, file: s.file, isNew: true, removed: [], added: s.text }); return; }
+    if (b.text.join('\n') !== s.text.join('\n')) {
+      var d = lineDiff(b.text, s.text);
+      out.push({ name: n, file: s.file, isNew: false, removed: d.removed, added: d.added });
+    }
+  });
+  return out;
+}
+
+function behaviorDiff(a, b) {
+  var keys = {}, out = [];
+  Object.keys(a.snap).forEach(function (k) { keys[k] = 1; });
+  Object.keys(b.snap).forEach(function (k) { keys[k] = 1; });
+  Object.keys(keys).sort().forEach(function (k) {
+    if (a.snap[k] !== b.snap[k]) out.push({ key: k, before: a.snap[k], after: b.snap[k] });
+  });
+  if (a.err !== b.err) out.push({ key: 'error', before: String(a.err), after: String(b.err) });
+  return out;
+}
+
+function review(baseParsed, patchedParsed, baseFlows, changed, forkOnly, intended) {
+  var names = {};
+  changed.forEach(function (c) { names[c.name] = 1; });
+  return JOURNEYS.map(function (jr, i) {
+    var useNew = forkOnly === null || forkOnly === jr.id;
+    var bf = baseFlows[i];
+    var run = runJourney(useNew ? patchedParsed : baseParsed, jr);
+    var touched = useNew ? bf.steps.map(function (s) { return s.name; }).concat([bf.entry]).filter(function (n) { return names[n]; }) : [];
+    var beh = behaviorDiff(bf.run, run);
+    var widened = [];
+    touched.forEach(function (n) {
+      var o = run.foot[n], p = bf.run.foot[n] || { r: {}, w: {} };
+      if (!o) return;
+      Object.keys(o.r).forEach(function (k) { if (!p.r[k]) widened.push({ slice: n, kind: 'reads', key: k }); });
+      Object.keys(o.w).forEach(function (k) { if (!p.w[k]) widened.push({ slice: n, kind: 'changes', key: k }); });
+    });
+    var status;
+    if (!touched.length) status = 'untouched';
+    else if (beh.length && intended.indexOf(jr.id) < 0) status = 'unexpected';
+    else if (beh.length) status = 'intended';
+    else status = 'identical';
+    return { id: jr.id, status: status, touched: touched, behavior: beh, widened: widened, run: run };
+  });
+}
+
+if (typeof module !== 'undefined') {
+  module.exports = { SRC: SRC, PATCH: PATCH, NEWFILES: NEWFILES, JOURNEYS: JOURNEYS, parseFile: parseFile, parseAll: parseAll, printFile: printFile, ledger: ledger, deriveFlows: deriveFlows, footprints: footprints, coverage: coverage, applyPatch: applyPatch, sliceMap: sliceMap, changedSlices: changedSlices, review: review, runJourney: runJourney, inject: inject };
+}
+
+/* ---------- Flow control UI ---------- */
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  var PLAIN = {
+    resolvePrice: 'Look up the price', applyPlanChange: 'Switch their plan', chargeCard: 'Charge their card', streamReply: 'Send the agent’s reply'
+  };
+  var JT = { 'sign-up': 'A new person signs up', 'log-in': 'Someone logs back in', 'upgrade-plan': 'A free user upgrades to Pro, yearly', 'ask-the-agent': 'A Pro user asks the agent', 'cancel-plan': 'A Pro user cancels' };
+  var SL = { users: 'Account list', plans: 'Their plan', sid: 'Login session', user: 'Who is signed in', flags: 'Feature switches', outbox: 'Emails sent', charged: 'Money charged', prompt: 'Agent instructions', tools: 'Agent tools', reply: 'Agent reply', header: 'Header badge', interval: 'Billing period', error: 'How it ended' };
+  function P(n) { return PLAIN[n] || n; }
+  function lab(k) { return SL[k] || k; }
+  function fmt(key, j) {
+    if (j === undefined) return 'not set';
+    if (key === 'error') return j === 'null' ? 'no error' : j;
+    var v; try { v = JSON.parse(j); } catch (e) { return j; }
+    if (key === 'plans') return Object.keys(v).map(function (u) { return v[u].plan + ' plan, billed ' + (v[u].interval === 'year' ? 'yearly' : 'monthly'); }).join('; ') || 'no plans';
+    if (key === 'charged') return v === null ? 'not a number' : '$' + v;
+    if (key === 'outbox') return v.length ? v.map(function (x) { return '“' + x + '”'; }).join(', ') : 'none';
+    if (Array.isArray(v)) return v.join(', ');
+    if (typeof v === 'object' && v) return JSON.stringify(v);
+    return String(v);
+  }
+
+  /* ---- the three changes, each written independently ---- */
+  var CHANGES = {
+    A: { name: 'Annual plans', blurb: 'A yearly price is ten times the monthly one, and a customer keeps the billing period they chose.', reps: [
+      { file: 'billing.js', find: '  return table[plan];', rep: "  return table[plan] * (S.interval === 'year' ? 10 : 1);" },
+      { file: 'billing.js', find: "  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: 'month' } });", rep: "  const interval = S.interval || 'month';\n  S.plans = Object.assign({}, S.plans, { [S.user]: { plan: plan, interval: interval } });" }
+    ] },
+    B: { name: 'Loyalty discount', blurb: 'Every card charge takes 20% off.', reps: [
+      { file: 'billing.js', find: 'function chargeCard(amount) { S.charged = (S.charged || 0) + amount; }', rep: 'function chargeCard(amount) { S.charged = (S.charged || 0) + Math.round(amount * 80) / 100; }' }
+    ] },
+    C: { name: 'Friendlier agent reply', blurb: 'The agent’s reply starts with the customer’s plan.', reps: [
+      { file: 'agent.js', find: "S.reply = 'ok:' + S.prompt.length", rep: "S.reply = 'ok:' + S.plans[S.user].plan + ':' + S.prompt.length" }
+    ] }
+  };
+  var IDS = ['A', 'B', 'C'];
+
+  function applySet(ids) {
+    var out = {}; Object.keys(SRC).forEach(function (k) { out[k] = SRC[k]; });
+    ids.forEach(function (id) {
+      CHANGES[id].reps.forEach(function (p) {
+        if (out[p.file].indexOf(p.find) < 0) throw new Error('change ' + id + ' does not apply');
+        out[p.file] = out[p.file].split(p.find).join(p.rep);
+      });
+    });
+    return out;
+  }
+  var RC = {};
+  function runs(ids) {
+    var key = ids.join(''); if (RC[key]) return RC[key];
+    var parsed = parseAll(applySet(ids));
+    return (RC[key] = JOURNEYS.map(function (jr) { return runJourney(parsed, jr); }));
+  }
+  var TC = {};
+  function info(id) {
+    if (TC[id]) return TC[id];
+    var ch = changedSlices(parseAll(SRC), parseAll(applySet([id]))), names = ch.map(function (c) { return c.name; }), base = runs([]);
+    var tj = JOURNEYS.filter(function (jr, i) { return base[i].trace.some(function (e) { return names.indexOf(e.name) >= 0; }); }).map(function (jr) { return jr.id; });
+    return (TC[id] = { names: names, files: ch.map(function (c) { return c.file; }), journeys: tj });
+  }
+  function val(run, key) { return key === 'error' ? String(run.err) : run.snap[key]; }
+
+  function evaluate(ids) {
+    var R0 = runs([]), RS = runs(ids), RX = ids.map(function (id) { return runs([id]); });
+    return JOURNEYS.map(function (jr, i) {
+      var dx = ids.map(function (id, k) { return behaviorDiff(R0[i], RX[k][i]); });
+      var owners = {}; dx.forEach(function (d, k) { d.forEach(function (x) { (owners[x.key] = owners[x.key] || []).push(k); }); });
+      var coll = [], inter = [], keys = {};
+      [R0[i], RS[i]].concat(RX.map(function (r) { return r[i]; })).forEach(function (r) { Object.keys(r.snap).forEach(function (k) { keys[k] = 1; }); });
+      keys.error = 1;
+      Object.keys(owners).forEach(function (key) {
+        if (owners[key].length > 1) coll.push({ key: key, base: val(R0[i], key), singles: owners[key].map(function (k) { return { id: ids[k], v: val(RX[k][i], key) }; }), together: val(RS[i], key) });
+      });
+      Object.keys(keys).forEach(function (key) {
+        var o = owners[key]; if (o && o.length > 1) return;
+        var exp = !o ? val(R0[i], key) : val(RX[o[0]][i], key), act = val(RS[i], key);
+        if (act !== exp) inter.push({ key: key, expected: exp, actual: act });
+      });
+      var status = coll.length ? 'collision' : inter.length ? 'interaction' : dx.some(function (d) { return d.length; }) ? 'changed' : 'unchanged';
+      var touched = ids.some(function (id) { return info(id).journeys.indexOf(jr.id) >= 0; });
+      return { id: jr.id, status: status, coll: coll, inter: inter, per: dx, touched: touched };
+    });
+  }
+
+  var st = { sel: ['A', 'B', 'C'], decision: null };
+
+  function pairInfo(x, y) {
+    var a = info(x), b = info(y);
+    var sameFn = a.names.filter(function (n) { return b.names.indexOf(n) >= 0; });
+    var sameFile = a.files.filter(function (f, i) { return b.files.indexOf(f) >= 0; });
+    var shared = a.journeys.filter(function (j) { return b.journeys.indexOf(j) >= 0; });
+    var res = evaluate([x, y]), coll = [];
+    res.forEach(function (r) { r.coll.forEach(function (c) { if (coll.indexOf(c.key) < 0) coll.push(c.key); }); });
+    return { x: x, y: y, sameFn: sameFn, sameFile: sameFile.length > 0, shared: shared, coll: coll, inter: res.some(function (r) { return r.inter.length; }) };
+  }
+
+  function m1() {
+    var h = '<div class="grid2" style="margin-top:0">';
+    IDS.forEach(function (id) {
+      var c = CHANGES[id], inf = info(id), on = st.sel.indexOf(id) >= 0;
+      h += '<div class="pane"><div class="pane-h">Change ' + id + '</div><div class="fact"><b>' + esc(c.name) + '</b><div class="sub" style="margin-top:4px">' + esc(c.blurb) + '</div>' +
+        '<div class="lab" style="margin-bottom:4px">Edits</div>' + inf.names.map(function (n) { return '<span class="tag m" style="background:var(--surface-2)">' + esc(P(n)) + '</span>'; }).join('') +
+        '<div class="lab" style="margin:0 0 4px">Reaches</div>' + inf.journeys.map(function (j) { return '<span class="tag m r">' + esc(JT[j]) + '</span>'; }).join('') +
+        '<div class="row2" style="margin-bottom:0"><button class="btn small ' + (on ? 'primary' : '') + '" data-act="tog" data-v="' + id + '" aria-pressed="' + on + '">' + (on ? 'Included in the merge' : 'Left out') + '</button></div></div></div>';
+    });
+    h += '</div><div class="lab">Pair by pair</div><div class="pane">';
+    [['A', 'B'], ['A', 'C'], ['B', 'C']].forEach(function (pr) {
+      var p = pairInfo(pr[0], pr[1]);
+      h += '<div class="fact"><b>' + pr[0] + ' + ' + pr[1] + '</b><div class="sub" style="margin-top:4px">' +
+        'Text merge: ' + (p.sameFn.length ? 'conflict in ' + esc(p.sameFn.map(P).join(', ')) : 'clean' + (p.sameFile ? ' (same file, different functions)' : '')) + '.<br>' +
+        'Flow control: ' + (!p.shared.length ? 'independent. They reach different journeys, so nothing needed running.' : p.coll.length ? '<b style="color:var(--ink)">they both decide ' + esc(p.coll.map(lab).join(', ').toLowerCase()) + '</b>, in ' + esc(p.shared.map(function (j) { return JT[j]; }).join(', ')) + '.' : 'they share a journey, so both were run. No overlap found.') +
+        '</div></div>';
+    });
+    $('m1').innerHTML = h + '</div>';
+  }
+
+  function strip() {
+    var ids = st.sel;
+    if (ids.length < 2) { $('strip').innerHTML = '<span class="pill">Select two or more changes</span>'; return; }
+    var r = evaluate(ids), c = r.filter(function (x) { return x.status === 'collision'; }).length, n = r.filter(function (x) { return x.status === 'interaction'; }).length;
+    $('strip').innerHTML = '<span class="pill">' + ids.length + ' changes merged</span><span class="pill good">Text merge: clean</span>' +
+      (c ? '<span class="pill warn"><b>' + c + '</b> journey' + (c > 1 ? 's' : '') + ' where changes collide</span>' : '<span class="pill good">No collisions</span>') + (n ? '<span class="pill warn"><b>' + n + '</b> only together</span>' : '');
+  }
+
+  var SL2 = { collision: 'Both changes decide this', interaction: 'Only appears together', changed: 'Changed, no overlap' };
+  function m2() {
+    var ids = st.sel;
+    if (ids.length < 2) { $('m2').innerHTML = '<p class="sub">Include at least two changes above to see how they meet.</p>'; return; }
+    var res = evaluate(ids), h = '', same = [];
+    res.forEach(function (r) {
+      if (r.status === 'unchanged') { same.push(JT[r.id]); return; }
+      h += '<div class="card"><div class="card-h"><span class="name plain" style="font:500 15px var(--f-body)">' + esc(JT[r.id]) + '</span><span class="tag ' + (r.status === 'changed' ? '' : 'warn') + '">' + SL2[r.status] + '</span></div>';
+      r.coll.forEach(function (c) {
+        h += '<div class="lab" style="margin-top:0">' + esc(lab(c.key)) + '</div><div class="pane">' +
+          '<div class="srow"><div class="k">As it was</div><div>' + esc(fmt(c.key, c.base)) + '</div></div>' +
+          c.singles.map(function (s) { return '<div class="srow"><div class="k">' + esc(CHANGES[s.id].name) + ' alone</div><div>' + esc(fmt(c.key, s.v)) + '</div></div>'; }).join('') +
+          '<div class="srow hi"><div class="k">Merged</div><div>' + esc(fmt(c.key, c.together)) + '<span class="by">a result neither author saw</span></div></div></div>';
+      });
+      r.inter.forEach(function (x) {
+        h += '<div class="lab">' + esc(lab(x.key)) + '</div><div class="pane"><div class="srow"><div class="k">Expected from the changes alone</div><div>' + esc(fmt(x.key, x.expected)) + '</div></div><div class="srow hi"><div class="k">Merged</div><div>' + esc(fmt(x.key, x.actual)) + '</div></div></div>';
+      });
+      var collKeys = r.coll.map(function (c) { return c.key; });
+      r.per.forEach(function (d, k) {
+        var rows = d.filter(function (x) { return collKeys.indexOf(x.key) < 0; });
+        if (!rows.length) return;
+        h += '<div class="lab">' + esc(CHANGES[ids[k]].name) + ' on its own</div>' + rows.map(function (x) { return '<div class="brow"><div class="k">' + esc(lab(x.key)) + '</div><div class="v">was <b>' + esc(fmt(x.key, x.before)) + '</b>, now <b>' + esc(fmt(x.key, x.after)) + '</b></div></div>'; }).join('');
+      });
+      h += '</div>';
+    });
+    if (same.length) h += '<p class="sub"><strong>No difference:</strong> ' + esc(same.join(', ')) + '.</p>';
+    $('m2').innerHTML = h;
+  }
+
+  function m3() {
+    var ids = st.sel;
+    var res = ids.length >= 2 ? evaluate(ids) : [];
+    var up = res.filter(function (r) { return r.id === 'upgrade-plan'; })[0];
+    var coll = up && up.coll.filter(function (c) { return c.key === 'charged'; })[0];
+    if (!coll) { $('m3').innerHTML = '<p class="sub">Nothing to decide for this selection. Include both A and B above to see a collision that needs an answer.</p>'; return; }
+    var annual = coll.singles.filter(function (s) { return s.id === 'A'; })[0].v, together = coll.together;
+    var h = '<div class="callout plain"><strong>The question.</strong> The loyalty discount and annual pricing both decide what a customer is charged. Merged, an annual upgrade is charged ' + esc(fmt('charged', together)) + '. Should the discount apply to annual prices?</div><div class="row2">' +
+      '<button class="btn ' + (st.decision === 'both' ? 'primary' : '') + '" data-act="dec" data-v="both">Yes, discounts apply to annual prices too</button>' +
+      '<button class="btn ' + (st.decision === 'monthly' ? 'primary' : '') + '" data-act="dec" data-v="monthly">No, discounts are for monthly only</button></div>';
+    if (st.decision) {
+      var expected = st.decision === 'both' ? Math.round(JSON.parse(annual) * 80) / 100 : JSON.parse(annual);
+      var ok = JSON.parse(together) === expected;
+      h += '<div class="card"><div class="card-h"><h3>Recorded</h3><span class="tag ' + (ok ? 'good' : 'acc') + '">' + (ok ? 'Holds on the merged code' : 'Does not hold yet') + '</span></div>' +
+        '<p>' + (st.decision === 'both' ? 'A discount applies to annual prices as well as monthly ones.' : 'A discount applies to monthly prices only.') + '</p>' +
+        '<p class="sub" style="margin-top:6px">Checked on <b style="color:var(--ink);font-weight:500">' + esc(JT['upgrade-plan']) + '</b>: the statement predicts ' + esc(fmt('charged', JSON.stringify(expected))) + ', and the merged code charges ' + esc(fmt('charged', together)) + '.' +
+        (ok ? ' From now on, any change that breaks this is flagged, whoever makes it.' : ' One of the changes needs another edit before this merge matches the decision. The statement stays recorded and is checked on every future change.') + '</p></div>';
+    }
+    $('m3').innerHTML = h;
+  }
+
+  function all() { strip(); m1(); m2(); m3(); }
+  document.querySelector('.wrap').addEventListener('click', function (e) {
+    var t = e.target.closest('[data-act]'); if (!t) return;
+    var a = t.getAttribute('data-act'), v = t.getAttribute('data-v');
+    if (a === 'tog') { var i = st.sel.indexOf(v); if (i < 0) st.sel.push(v); else st.sel.splice(i, 1); st.sel.sort(); st.decision = null; all(); }
+    else if (a === 'dec') { st.decision = v; m3(); }
+  });
+  $('reset').addEventListener('click', function () { st = { sel: ['A', 'B', 'C'], decision: null }; all(); });
+
+  try { new Function('return 1')(); all(); }
+  catch (err) { ['m1', 'm2', 'm3'].forEach(function (id) { $(id).innerHTML = '<div class="callout warn">This page runs the example app live, and this viewer blocks running generated code. Open it in a regular browser tab to see it work.</div>'; }); }
+})();
+</script>
+
+</body></html>
