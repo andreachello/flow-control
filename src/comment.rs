@@ -4,11 +4,11 @@
 //! decisions always give the same comment.
 
 use crate::change::{compare, JState, Report};
-use crate::source::{changed_paths, Source};
+use crate::source::changed_paths;
 use crate::util::{fnv64, human};
 use crate::vcs::Vcs;
 use crate::words::{change_key, evidence, grounded, Words};
-use crate::{lift_source, Lift};
+use crate::Lift;
 use anyhow::{bail, Context, Result};
 use regex::Regex;
 use std::collections::{BTreeMap, BTreeSet};
@@ -93,9 +93,14 @@ pub fn own_steps(l: &Lift, fi: usize) -> impl Iterator<Item = &crate::flows::Ste
 
 /// What a journey does now, by behaviour: reformatting leaves it the same.
 pub fn fingerprint(l: &Lift, id: &str) -> String {
-    let Some(fi) = l.flows.iter().position(|f| f.id == id) else { return "gone".into() };
+    l.journey(id).map(|fi| fingerprint_of(l, fi)).unwrap_or_else(|| "gone".into())
+}
+
+/// The same for a journey already found, which is how the far side of a rename is reached.
+pub fn fingerprint_of(l: &Lift, fi: usize) -> String {
     let at = own_steps(l, fi).map(|s| s.at).chain(crate::change::constants(l, fi));
-    let mut v: Vec<String> = at.map(|r| format!("{}={}", l.repo.sid(r), l.repo.slice(r).shape)).collect();
+    // By permanent id, so moving a function does not read as changing what the journey does.
+    let mut v: Vec<String> = at.map(|r| format!("{}={}", l.uids.step(&l.repo.sid(r)), l.repo.slice(r).shape)).collect();
     v.sort();
     fnv64(&v.join("\n"))
 }
@@ -170,6 +175,9 @@ pub fn items(r: &Report) -> Vec<Item> {
                 facts.extend(f.facts.iter().map(|x| format!("{of}{x}")));
             }
             let weight = j.edited.len() + j.added.len() + j.removed.len() + 2 * (j.now_changes.len() + j.no_longer_changes.len()) + if j.state == JState::Changed { 0 } else { 3 };
+            if let Some(w) = &j.was {
+                facts.insert(0, format!("renamed from {w}"));
+            }
             Item { id: j.id.clone(), title: j.title.clone(), state: j.state.clone(), facts, steps: j.edited.iter().chain(&j.added).chain(&j.removed).cloned().collect(), weight, key: String::new(), sentence: None, undo: None, also: vec![] }
         })
         .collect();
@@ -235,7 +243,8 @@ pub fn between<R>(v: &mut Vcs, base: &str, head: Option<&str>, f: impl FnOnce(&L
             v.lift_rev(h)?;
             (None, v.other(changed_paths(&v.root, &b, h)?))
         }
-        None => (Some(lift_source(&Source::Dir(v.root.clone()), &v.out)?), v.changed_since(&b)?),
+        // Compared with the last saved snapshot, so a rename in progress already reads as one.
+        None => (Some(v.now()?.0), v.changed_since(&b)?),
     };
     let before = v.cached(&b).context("lifted above")?;
     let after = match (&now, &h) {
@@ -313,7 +322,9 @@ pub fn write_with(before: &Lift, after: &Lift, r: &Report, asked: Option<String>
     for d in &new {
         match &d.journey {
             Some(j) => {
-                let Some(i) = all.iter().find(|i| &i.id == j) else { continue };
+                // A decision stays with its journey through a rename.
+                let j = after.journey(j).map(|fi| after.flows[fi].id.as_str()).unwrap_or(j);
+                let Some(i) = all.iter().find(|i| i.id == j) else { continue };
                 if d.mark.as_deref() == Some(fingerprint(after, j).as_str()) {
                     c.decided.push(i.title.clone());
                 } else {

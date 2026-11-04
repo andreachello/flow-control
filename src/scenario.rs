@@ -161,6 +161,17 @@ pub struct Check {
     pub merged: Outcome,
     /// The merge matches an outcome a person recorded earlier.
     pub matches_recorded: bool,
+    /// What each side produced before the merge, kept so a changed merge can be judged again
+    /// without running them again.
+    #[serde(default)]
+    pub sides: Option<Sides>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Sides {
+    pub base: Outcome,
+    pub ours: Outcome,
+    pub theirs: Outcome,
 }
 
 impl Check {
@@ -225,8 +236,39 @@ pub fn check_merge(v: &Vcs, p: &Plan, base: &str) -> Result<Vec<Check>> {
         let keys: BTreeSet<&String> = b.keys().chain(o.keys()).chain(t.keys()).chain(m.keys()).chain(b2.keys()).collect();
         let unstable: Vec<String> = keys.iter().filter(|k| b.get(**k) != b2.get(**k)).map(|k| k.to_string()).collect();
         let findings: Vec<Finding> = keys.iter().filter(|k| !unstable.contains(k)).filter_map(|k| judge(k, b.get(*k), o.get(*k), t.get(*k), m.get(*k))).collect();
-        let matches_recorded = recorded(&v.root, &v.out, &s.name).map(|r| r.iter().filter(|(k, _)| !unstable.contains(k)).all(|(k, val)| m.get(k) == Some(val))).unwrap_or(false);
-        out.push(Check { scenario: s.name.clone(), journey: s.journey.clone(), findings, unstable, merged: m, matches_recorded });
+        let matches_recorded = matches_recorded(v, &s.name, &unstable, &m);
+        out.push(Check { scenario: s.name.clone(), journey: s.journey.clone(), findings, unstable, merged: m, matches_recorded, sides: Some(Sides { base: b, ours: o, theirs: t }) });
+    }
+    Ok(out)
+}
+
+fn matches_recorded(v: &Vcs, name: &str, unstable: &[String], m: &Outcome) -> bool {
+    recorded(&v.root, &v.out, name).map(|r| r.iter().filter(|(k, _)| !unstable.contains(k)).all(|(k, val)| m.get(k) == Some(val))).unwrap_or(false)
+}
+
+/// The merge changed after it was checked: run it again from `commit` and judge the new result
+/// against what each side already produced. A check that cannot be run again stays as it was.
+pub fn recheck(v: &Vcs, checks: &[Check], commit: &str) -> Result<Vec<Check>> {
+    let cfg = crate::config::load(&v.root)?;
+    let tree = Tree::new(&v.root, commit)?;
+    let mut out = vec![];
+    for c in checks {
+        let (Some(sides), Some(s)) = (&c.sides, cfg.scenario.iter().find(|s| s.name == c.scenario)) else {
+            out.push(c.clone());
+            continue;
+        };
+        let m = run(&tree.path, s, "merged")?;
+        let (b, o, t) = (&sides.base, &sides.ours, &sides.theirs);
+        let keys: BTreeSet<&String> = b.keys().chain(o.keys()).chain(t.keys()).chain(m.keys()).collect();
+        let findings: Vec<Finding> = keys
+            .iter()
+            .filter(|k| !c.unstable.contains(*k))
+            .filter_map(|k| judge(k, b.get(*k), o.get(*k), t.get(*k), m.get(*k)))
+            // Someone changed the code and it now does what one side does: that settles it.
+            .filter(|f| !(f.kind == Kind::BothDecide && (f.merged == f.ours || f.merged == f.theirs)))
+            .collect();
+        let matches_recorded = matches_recorded(v, &c.scenario, &c.unstable, &m);
+        out.push(Check { findings, merged: m, matches_recorded, ..c.clone() });
     }
     Ok(out)
 }

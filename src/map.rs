@@ -21,8 +21,10 @@ fn step(kind: &str, label: String, sid: &str, facts: Vec<String>, before: Option
 }
 
 /// A journey's steps in order: those it runs now, with those it stopped running at their old place.
-fn journey_steps(a: &Lift, b: &Lift, id: &str, title: &str, r: &Report, names: &Names) -> Vec<Value> {
-    let (x, y) = (a.flows.iter().position(|f| f.id == id), b.flows.iter().position(|f| f.id == id));
+pub fn journey_steps(a: &Lift, b: &Lift, id: &str, title: &str, r: &Report, names: &Names) -> Vec<Value> {
+    let y = b.flows.iter().position(|f| f.id == id);
+    // Across a rename the two ends share an id, not a name.
+    let x = y.and_then(|i| a.by_uid(&b.flows[i].uid)).or_else(|| a.flows.iter().position(|f| f.id == id));
     let was: BTreeMap<&str, &str> = r.functions.iter().filter_map(|f| f.before.as_deref().map(|p| (f.sid.as_str(), p))).collect();
     let facts_of = |sid: &str| r.functions.iter().find(|f| f.sid == sid).map(|f| f.facts.clone()).unwrap_or_default();
     let old: Vec<(String, SRef)> = x.map(|i| own_steps(a, i).map(|s| (a.repo.sid(s.at), s.at)).collect()).unwrap_or_default();

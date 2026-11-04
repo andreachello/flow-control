@@ -29,6 +29,10 @@ pub enum JState {
 #[derive(Debug, Clone)]
 pub struct JourneyChange {
     pub id: String,
+    /// The permanent id, the same before and after a rename.
+    pub uid: String,
+    /// The name it had before this change, when it was renamed.
+    pub was: Option<String>,
     pub title: String,
     pub state: JState,
     pub edited: Vec<String>,
@@ -147,9 +151,11 @@ pub fn constants(l: &Lift, fi: usize) -> Vec<(usize, usize)> {
 /// Compare snapshot `a` (before) with `b` (after).
 pub fn compare(a: &Lift, b: &Lift, names: &Names, other_files: Vec<String>) -> Report {
     let mut rep = Report { other_files, ..Default::default() };
-    let ai: BTreeMap<&str, usize> = a.flows.iter().enumerate().map(|(i, f)| (f.id.as_str(), i)).collect();
-    let bi: BTreeMap<&str, usize> = b.flows.iter().enumerate().map(|(i, f)| (f.id.as_str(), i)).collect();
-    let ids: BTreeSet<&str> = ai.keys().chain(bi.keys()).copied().collect();
+    // Paired by permanent id, so a renamed journey is the same journey. Listed by today's name.
+    let ai: BTreeMap<&str, usize> = a.flows.iter().enumerate().map(|(i, f)| (f.uid.as_str(), i)).collect();
+    let bi: BTreeMap<&str, usize> = b.flows.iter().enumerate().map(|(i, f)| (f.uid.as_str(), i)).collect();
+    let mut ids: Vec<(&str, &str)> = bi.iter().map(|(u, &i)| (b.flows[i].id.as_str(), *u)).chain(ai.iter().filter(|(u, _)| !bi.contains_key(*u)).map(|(u, &i)| (a.flows[i].id.as_str(), *u))).collect();
+    ids.sort();
 
     // Functions that moved or were renamed: gone in one place, new in another, same name in another
     // file or the same behaviour under another name.
@@ -158,7 +164,15 @@ pub fn compare(a: &Lift, b: &Lift, names: &Names, other_files: Vec<String>) -> R
     let new: Vec<&String> = lb.keys().filter(|k| !la.contains_key(*k)).collect();
     let mut moved: BTreeMap<String, String> = BTreeMap::new();
     let name = |sid: &str| sid.rsplit('#').next().unwrap_or("").to_string();
+    // What the permanent ids already tie together needs no looking for.
+    let by_uid: BTreeMap<&str, &String> = new.iter().map(|n| (b.uids.step(n), *n)).collect();
     for g in &gone {
+        if let Some(n) = by_uid.get(a.uids.step(g)) {
+            moved.insert((*g).clone(), (*n).clone());
+        }
+    }
+    let unlinked: Vec<&&String> = gone.iter().filter(|g| !moved.contains_key(**g)).collect();
+    for g in unlinked {
         let (_, _, gs) = &la[*g];
         let hit = new
             .iter()
@@ -184,11 +198,11 @@ pub fn compare(a: &Lift, b: &Lift, names: &Names, other_files: Vec<String>) -> R
             }
         }
     }
-    for id in ids {
+    for (id, uid) in ids {
         let title = journey_title(names, id);
-        match (ai.get(id), bi.get(id)) {
-            (None, Some(_)) => rep.journeys.push(JourneyChange { id: id.into(), title, state: JState::New, edited: vec![], added: vec![], removed: vec![], now_changes: vec![], no_longer_changes: vec![] }),
-            (Some(_), None) => rep.journeys.push(JourneyChange { id: id.into(), title, state: JState::Gone, edited: vec![], added: vec![], removed: vec![], now_changes: vec![], no_longer_changes: vec![] }),
+        match (ai.get(uid), bi.get(uid)) {
+            (None, Some(_)) => rep.journeys.push(JourneyChange { id: id.into(), uid: uid.into(), was: None, title, state: JState::New, edited: vec![], added: vec![], removed: vec![], now_changes: vec![], no_longer_changes: vec![] }),
+            (Some(_), None) => rep.journeys.push(JourneyChange { id: id.into(), uid: uid.into(), was: None, title, state: JState::Gone, edited: vec![], added: vec![], removed: vec![], now_changes: vec![], no_longer_changes: vec![] }),
             (Some(&x), Some(&y)) => {
                 let (sa, sb) = (steps(a, x, &moved), steps(b, y, &BTreeMap::new()));
                 let mut edited: Vec<String> = sb.iter().filter(|(k, v)| sa.get(*k).map(|w| w.1 != v.1).unwrap_or(false)).map(|(_, v)| step_label(names, b, v.0)).collect();
@@ -198,10 +212,11 @@ pub fn compare(a: &Lift, b: &Lift, names: &Names, other_files: Vec<String>) -> R
                 let (wa, wb) = (writes(a, x), writes(b, y));
                 let now_changes: Vec<String> = wb.difference(&wa).map(|k| key_label(k)).collect();
                 let no_longer_changes: Vec<String> = wa.difference(&wb).map(|k| key_label(k)).collect();
-                if edited.is_empty() && added.is_empty() && removed.is_empty() && now_changes.is_empty() && no_longer_changes.is_empty() {
+                let was = Some(a.flows[x].id.clone()).filter(|w| w != id);
+                if was.is_none() && edited.is_empty() && added.is_empty() && removed.is_empty() && now_changes.is_empty() && no_longer_changes.is_empty() {
                     rep.untouched += 1;
                 } else {
-                    rep.journeys.push(JourneyChange { id: id.into(), title, state: JState::Changed, edited, added, removed, now_changes, no_longer_changes });
+                    rep.journeys.push(JourneyChange { id: id.into(), uid: uid.into(), was, title, state: JState::Changed, edited, added, removed, now_changes, no_longer_changes });
                 }
             }
             (None, None) => {}
@@ -300,6 +315,9 @@ pub fn render(r: &Report) -> String {
         o += &format!("{} {} differently:\n", changed.len(), if changed.len() == 1 { "journey works" } else { "journeys work" });
         for j in &changed {
             o += &format!("  {}\n", j.title);
+            if let Some(w) = &j.was {
+                o += &format!("      renamed from: {w}\n");
+            }
             if !j.edited.is_empty() {
                 o += &format!("      changed: {}\n", list(&j.edited, 4));
             }
@@ -402,6 +420,9 @@ pub fn compact(r: &Report) -> String {
     }
     let n = r.journeys.len();
     let mut o = format!("{} changed, {} untouched\n", if n == 1 { "1 journey".to_string() } else { format!("{n} journeys") }, r.untouched);
+    for j in r.journeys.iter().filter(|j| j.was.is_some()).take(5) {
+        o += &format!("Renamed: {} is now {}\n", j.was.as_deref().unwrap_or(""), j.id);
+    }
     for (state, word) in [(JState::New, "New journey"), (JState::Gone, "Journey removed")] {
         for j in r.journeys.iter().filter(|j| j.state == state).take(5) {
             o += &format!("{word}: {}\n", j.title);

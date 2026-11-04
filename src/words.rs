@@ -92,7 +92,10 @@ pub fn request_id(request: Option<&str>) -> String {
 }
 
 pub fn change_key(before: &Lift, after: &Lift, id: &str) -> String {
-    fnv64(&format!("{id}\n{}\n{}", fingerprint(before, id), fingerprint(after, id)))
+    // `before` has never heard of a journey's new name: its permanent id is what they share.
+    let was = after.journey(id).and_then(|fi| before.by_uid(&after.flows[fi].uid));
+    let old = was.map(|fi| crate::comment::fingerprint_of(before, fi)).unwrap_or_else(|| fingerprint(before, id));
+    fnv64(&format!("{id}\n{old}\n{}", fingerprint(after, id)))
 }
 
 pub fn slice_of(l: &Lift, sid: &str) -> Option<SRef> {

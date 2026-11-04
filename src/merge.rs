@@ -53,6 +53,9 @@ pub struct MergeState {
     pub checks: Vec<crate::scenario::Check>,
     #[serde(default)]
     pub accepted: Vec<String>,
+    /// The folder those results came from. When it differs from the folder now, they are out of date.
+    #[serde(default)]
+    pub judged: String,
 }
 
 #[derive(Debug, Default)]
@@ -728,6 +731,12 @@ fn step(v: &mut Vcs, ours: &str, theirs: &str, quiet: bool, poison: &mut Poison)
             p.collisions.push(collision(path, None, None, None));
             continue;
         }
+        // Facts, not text: both sides' renames stay, and the result does not depend on who merges.
+        if path == crate::ids::FILE {
+            let text = |rev: &str, here: bool| text_of(rev, path, here).unwrap_or_default();
+            p.files.insert(path.clone(), Some(crate::ids::merge(&text(&base, b.is_some()), &text(ours, o.is_some()), &text(theirs, t.is_some()))));
+            continue;
+        }
         let mut mode = None;
         if let (Some(eo), Some(et)) = (o, t) {
             let m = if b.map(|x| &x.0) == Some(&eo.0) { et.0.clone() } else { eo.0.clone() };
@@ -934,7 +943,8 @@ pub fn apply_checked(v: &Vcs, p: &Plan, theirs_name: &str, checks: Vec<crate::sc
     let heads: String = p.heads.iter().map(|h| format!("{h}\n")).collect();
     std::fs::write(v.git_path("MERGE_HEAD"), heads)?;
     std::fs::write(v.git_path("MERGE_MSG"), format!("Merge {theirs_name}\n"))?;
-    let st = MergeState { theirs: p.theirs.clone(), theirs_name: theirs_name.to_string(), written, collisions: p.collisions.clone(), checks, accepted: vec![] };
+    let judged = if checks.is_empty() { String::new() } else { folder_tree(v)? };
+    let st = MergeState { theirs: p.theirs.clone(), theirs_name: theirs_name.to_string(), written, collisions: p.collisions.clone(), checks, accepted: vec![], judged };
     std::fs::write(v.merge_state_path(), serde_json::to_string_pretty(&st)?)?;
     Ok(())
 }
@@ -1026,11 +1036,72 @@ pub fn resolve(v: &Vcs, what: &str, side: &str) -> Result<String> {
 }
 
 /// A person accepts what the merge does in a scenario. It is recorded and checked from then on.
+/// The folder as a git tree, read the way a save reads it, without touching the real index. The
+/// flow document is left out: it follows from the code, and accepting a result writes to it.
+fn folder_tree(v: &Vcs) -> Result<String> {
+    let index = std::env::temp_dir().join(format!("flow-index-{}-{}", std::process::id(), TMP.fetch_add(1, std::sync::atomic::Ordering::SeqCst)));
+    let path = index.to_string_lossy().to_string();
+    let env = [("GIT_INDEX_FILE", path.as_str())];
+    let tree = (|| -> Result<String> {
+        std::fs::copy(v.git_path("index"), &index)?;
+        run(&v.root, &["add", "-A"], &env, None)?;
+        run(&v.root, &["rm", "-r", "-q", "--cached", "--ignore-unmatch", "--", &v.out], &env, None)?;
+        Ok(run(&v.root, &["write-tree"], &env, None)?.trim().to_string())
+    })();
+    let _ = std::fs::remove_file(&index);
+    tree
+}
+
+/// Take back recorded outcomes: to the last saved one, or to none if there never was one.
+fn forget_accepted(v: &Vcs, names: &[String]) -> Result<()> {
+    for n in names {
+        let rel = format!("{}/outcomes/{n}.json", v.out);
+        if run(&v.root, &["cat-file", "-e", &format!("HEAD:{rel}")], &[], None).is_ok() {
+            restore(v, "HEAD", std::slice::from_ref(&rel))?;
+        } else {
+            let _ = std::fs::remove_file(v.root.join(&rel));
+        }
+    }
+    Ok(())
+}
+
+/// If the folder changed since the merge's scenarios last ran, run them again on the folder as it
+/// is now. Returns what ran, with the branch being merged; nothing if the results still stand.
+pub fn refresh(v: &Vcs) -> Result<Option<(Vec<crate::scenario::Check>, String)>> {
+    let path = v.merge_state_path();
+    if !path.exists() {
+        return Ok(None);
+    }
+    let mut st: MergeState = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
+    if st.checks.is_empty() {
+        return Ok(None);
+    }
+    let now = folder_tree(v)?;
+    if now == st.judged {
+        return Ok(None);
+    }
+    let commit = commit_tree(v, &now, &["HEAD"])?;
+    let fresh = crate::scenario::recheck(v, &st.checks, &commit)?;
+    // An acceptance covers one result. If the code now gives another, the person never saw it.
+    let (stale, kept): (Vec<String>, Vec<String>) = std::mem::take(&mut st.accepted).into_iter().partition(|n| {
+        // Values that differ on every run, like timestamps, say nothing about the result.
+        let of = |l: &[crate::scenario::Check]| l.iter().find(|c| &c.scenario == n).map(|c| c.merged.iter().filter(|(k, _)| !c.unstable.contains(k)).map(|(k, v)| (k.clone(), v.clone())).collect::<Vec<_>>());
+        of(&st.checks) != of(&fresh)
+    });
+    st.accepted = kept;
+    forget_accepted(v, &stale)?;
+    st.checks = fresh.clone();
+    st.judged = now;
+    std::fs::write(&path, serde_json::to_string_pretty(&st)?)?;
+    Ok(Some((fresh, st.theirs_name)))
+}
+
 pub fn accept(v: &Vcs, name: &str) -> Result<()> {
     let path = v.merge_state_path();
     if !path.exists() {
         bail!("no merge in progress");
     }
+    refresh(v)?;
     let mut st: MergeState = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
     let Some(c) = st.checks.iter().find(|c| c.scenario == name) else { bail!("no scenario called {name} ran in this merge") };
     let mut o = c.merged.clone();
@@ -1050,6 +1121,7 @@ pub fn abort(v: &Vcs) -> Result<()> {
     }
     let st: MergeState = serde_json::from_str(&std::fs::read_to_string(&path)?)?;
     restore(v, "HEAD", &st.written)?;
+    forget_accepted(v, &st.accepted)?;
     for f in ["MERGE_HEAD", "MERGE_MSG"] {
         let _ = std::fs::remove_file(v.git_path(f));
     }

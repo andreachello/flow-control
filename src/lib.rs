@@ -22,7 +22,11 @@ pub mod universal;
 pub mod accuracy;
 pub mod packages;
 pub mod facts;
+pub mod ids;
+pub mod journeys;
+pub mod titles;
 pub mod scenario;
+pub mod serve;
 pub mod comment;
 pub mod map;
 pub mod words;
@@ -36,6 +40,45 @@ pub struct Lift {
     pub graph: repo::Graph,
     pub flows: Vec<flows::Flow>,
     pub out: output::Lifted,
+    /// The renames recorded in this snapshot, and the permanent ids they give.
+    pub ids: ids::Ids,
+    pub uids: ids::Uids,
+    problems: Vec<String>,
+}
+
+impl Lift {
+    /// The journey with this name, or the one that took over from it after a rename.
+    pub fn journey(&self, key: &str) -> Option<usize> {
+        self.flows.iter().position(|f| f.id == key).or_else(|| {
+            let was = self.ids.was(key);
+            self.flows.iter().position(|f| was.contains(&f.uid.as_str()))
+        })
+    }
+
+    pub fn by_uid(&self, uid: &str) -> Option<usize> {
+        self.flows.iter().position(|f| f.uid == uid)
+    }
+}
+
+/// Give a lift its permanent ids and render it. The parsing is not repeated.
+pub fn stamp(l: &mut Lift, ids: ids::Ids) {
+    let mut problems = l.problems.clone();
+    let steps: Vec<String> = l.repo.files.iter().enumerate().flat_map(|(fi, f)| (0..f.slices.len()).map(move |si| (fi, si))).map(|r| l.repo.sid(r)).collect();
+    let uids = ids.resolve(l.flows.iter().map(|f| f.id.as_str()).collect(), steps.iter().map(String::as_str).collect(), &mut problems);
+    for f in l.flows.iter_mut() {
+        f.uid = uids.journeys[&f.id].clone();
+    }
+    l.ids = ids;
+    l.uids = uids;
+    for s in &l.repo.cfg.scenario {
+        let Some(j) = &s.journey else { continue };
+        if !l.flows.iter().any(|f| &f.id == j) {
+            if let Some(fi) = l.journey(j) {
+                problems.push(format!("scenario {:?} names {j:?}, which is now {:?}. Update flow.toml", s.name, l.flows[fi].id));
+            }
+        }
+    }
+    l.out = output::render(&l.repo, &l.graph, &l.flows, &l.uids, &problems);
 }
 
 pub fn lift(root: &Path, out_dir: &str) -> Result<Lift> {
@@ -51,14 +94,17 @@ pub fn lift_source(src: &source::Source, out_dir: &str) -> Result<Lift> {
 pub fn lift_opts(src: &source::Source, out_dir: &str, no_grammars: bool) -> Result<Lift> {
     let repo = repo::Repo::from_source_opts(src, out_dir, no_grammars)?;
     let graph = repo::Graph::build(&repo);
-    let (mut entries, problems) = flows::entries(&repo);
+    let (mut entries, mut problems) = flows::entries(&repo);
     flows::commands(&repo, &graph, &mut entries);
     if entries.is_empty() {
         entries = flows::roots(&repo, &graph);
     }
     let flows = flows::build(&repo, &graph, &entries);
-    let out = output::render(&repo, &graph, &flows, &problems);
-    Ok(Lift { repo, graph, flows, out })
+    let (ids, bad) = ids::Ids::parse(&src.read(ids::FILE).unwrap_or_default());
+    problems.extend(bad);
+    let mut l = Lift { out: output::Lifted::default(), repo, graph, flows, ids: ids::Ids::default(), uids: ids::Uids::default(), problems };
+    stamp(&mut l, ids);
+    Ok(l)
 }
 
 /// Generated files currently on disk in the output folder.

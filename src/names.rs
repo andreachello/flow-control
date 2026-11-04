@@ -52,7 +52,24 @@ impl Names {
         if !p.exists() {
             return Ok(Names::default());
         }
-        serde_json::from_str(&std::fs::read_to_string(p)?).with_context(|| format!("reading {}", p.display()))
+        let mut n: Names = serde_json::from_str(&std::fs::read_to_string(p)?).with_context(|| format!("reading {}", p.display()))?;
+        n.follow(&p.with_file_name(crate::ids::FILE));
+        Ok(n)
+    }
+    /// A name stays with what it names through a rename.
+    fn follow(&mut self, ids: &Path) {
+        let (ids, _) = crate::ids::Ids::parse(&std::fs::read_to_string(ids).unwrap_or_default());
+        for w in &ids.lines {
+            let Some(was) = &w.was else { continue };
+            for k in ids.lines.iter().filter(|l| l.id == w.id).filter_map(|l| l.key.as_ref()) {
+                if let Some(n) = self.journeys.get(was).cloned() {
+                    self.journeys.entry(k.clone()).or_insert(n);
+                }
+                if let Some(n) = self.steps.get(was).cloned() {
+                    self.steps.entry(k.clone()).or_insert(n);
+                }
+            }
+        }
     }
     pub fn save(&self, p: &Path) -> Result<()> {
         std::fs::write(p, serde_json::to_string_pretty(self)? + "\n")?;
@@ -73,7 +90,7 @@ pub struct Options {
     pub all: bool,
 }
 
-fn doc_of(l: &Lift, r: (usize, usize)) -> String {
+pub fn doc_of(l: &Lift, r: (usize, usize)) -> String {
     let f = &l.repo.files[r.0];
     let mut out = vec![];
     for &n in &l.repo.slice(r).lines {

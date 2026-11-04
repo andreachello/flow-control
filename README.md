@@ -6,6 +6,43 @@ AI changes too many files at once for anyone to review by reading diffs. Flow co
 
 The `prototypes/` folder holds the seven browser prototypes from the design conversation. They run on a toy app. This crate is the first real build: a fast, deterministic lifter in Rust that reads TypeScript repos.
 
+## Get started
+
+Flow works inside any git repo. Install it, then connect the project once:
+
+```bash
+cargo install --git https://github.com/andreachello/flow-control --locked
+
+cd your-project
+flow lift                  # read the code and write flows/
+git add flows
+git commit -m "Add flow"
+flow hook install          # connect Claude Code on this machine
+flow name                  # optional: plain names for journeys and steps
+```
+
+Install flow before running `flow hook install`, because the hook stores the path to it. Add `--force` when updating an older copy. Then start a new Claude Code session in the repo. For Codex, `flow hook install` prints what to add by hand.
+
+Next.js journeys are found automatically. In anything else, declare them in [`flow.toml`](#flowtoml).
+
+Then work with your agent as usual:
+
+1. Ask for a change. When the turn ends, flow shows which journeys changed and flags anything you did not ask for.
+2. Answer any question it raises with `flow decide "<journey>" yes`, or `flow decide "<journey>" no "what it should do"`.
+3. Run `flow diff` to see the change step by step in the browser.
+4. Run `flow save -m "Annual plans"`, then `git push`.
+
+`flow save` is a normal git commit of everything in the folder, including `flows/` and `decisions.md`. Branches, pushes and deploys stay plain git. If you use `git commit` yourself, run `flow lift` first, or `flow check` will fail.
+
+Add these lines to `CLAUDE.md`, or to `AGENTS.md` for Codex, along with the `decisions.md` line `flow hook install` prints there:
+
+```markdown
+- Commit with `flow save -m "message"`, not `git commit`.
+- Do not run `flow decide` or edit decisions.md unless I ask. Those answers are mine.
+```
+
+Nothing in flow stops an agent from answering its own question, so the second line matters.
+
 ## What it does today
 
 `flow lift` reads every TypeScript and JavaScript file with tree-sitter and writes a flow document to `flows/`, meant to be committed:
@@ -14,6 +51,8 @@ The `prototypes/` folder holds the seven browser prototypes from the design conv
 - `_ledger.yaml` gives every line exactly one owner. Placed plus unplaced equals the total, and the slices print back to each file byte for byte. A statement that runs when a file loads, outside any function, is unplaced: the lifter will not guess where it belongs.
 - `_slices.yaml` lists every slice, the flows that run it, and the code no flow reaches.
 - `_index.yaml` holds the counts and a fingerprint. The same repo always lifts to the same bytes.
+
+Every journey and step also has a permanent `uid`, so a rename continues a history instead of ending one. See [Permanent ids](#permanent-ids).
 
 Journeys are found by convention: Next.js route handlers, pages (with their layouts, loading and error boundaries, and `generateMetadata`), metadata routes, server actions, Pages Router files and middleware. Anything else can be declared in `flow.toml`.
 
@@ -42,7 +81,7 @@ journey = "POST /api/upgrade"
 run = "node scenarios/upgrade.mjs"
 ```
 
-`flow run` runs them and compares with the recorded outcome; `flow run --record` records it. When a merge meets in a journey, flow checks out four real versions (where the branches split, each side, and the merged tree), runs the scenario on each, and compares every value. It reports values both sides decide, values that appear only when merged, and merges that fail when neither side did. Values that differ between two identical runs, like timestamps, are ignored. A disagreement blocks `flow save` until someone changes the code or runs `flow accept <scenario>`, which records the result so it is checked from then on. A meet with no scenario stays a warning, and flow says so. Installed dependencies are shared into the checkouts; databases and outside services are whatever the scenario sets up.
+`flow run` runs them and compares with the recorded outcome; `flow run --record` records it. When a merge meets in a journey, flow checks out four real versions (where the branches split, each side, and the merged tree), runs the scenario on each, and compares every value. It reports values both sides decide, values that appear only when merged, and merges that fail when neither side did. Values that differ between two identical runs, like timestamps, are ignored. A disagreement blocks `flow save` until someone changes the code or runs `flow accept <scenario>`, which records the result so it is checked from then on. If the code changes during the merge, `flow save` and `flow accept` run the scenario again on the folder as it is, so a fix clears the block, and an acceptance only stands while the code gives that same result. When both sides decide a value, changing the code so it does what one side does settles it. A meet with no scenario stays a warning, and flow says so. Installed dependencies are shared into the checkouts; databases and outside services are whatever the scenario sets up.
 
 ## One comment per change
 
@@ -138,12 +177,16 @@ The check on who commented matters on a public repo: without it, anyone could wr
 
 ```
 flow lift                  # write flows/
+flow rename <old> <new>    # say one journey or step continues another
 flow check                 # for CI: exit 1 if flows/ is stale or a line has no owner
 flow show "POST /api/upgrade"
 flow ledger                # files with unplaced lines
 flow ledger lib/mailer.ts  # owner of every line
+flow journeys              # Claude groups requests into what people come to do, in flow.journeys.json
+flow titles                # Claude writes one short sentence per change, in flow.titles.json
 flow name                  # Claude proposes plain names into flow.names.json
 flow view                  # open the journeys in the browser
+flow serve [repos...]      # your projects on localhost: changes, files and journeys
 flow run [name] [--record] # run scenarios, compare with recorded outcomes
 flow accept <scenario>     # accept what a merge does
 flow comment [base] [head] --asked "..."     # one short comment on a change
@@ -191,6 +234,44 @@ A file renamed on one side and edited on the other keeps the edit at its new pat
 
 `flow view` opens every journey in the browser with those names, and falls back to names guessed from the code.
 
+## Journeys and requests
+
+A page, an action and a route are each one request. A journey is what those requests add up to: the thing a person came to do, like "Add a house" or "Upgrade to Pro". The code shows which requests lead to which, but not what anyone is trying to do, so `flow journeys` asks Claude to group them into at most 6 journeys, and anything no person starts goes in "Behind the scenes". The result is `flow.journeys.json`, meant to be committed and read: rename a journey or move a request by editing it.
+
+Running it again only places new requests, in the journeys you already have, so titles and colours stay put. A request stays listed after its code is gone, so old changes still read as the journey they belonged to. Nothing asks Claude when a page loads, and the lifter never reads the file: a journey only groups what the lift found. Until the file exists, `flow serve` shows single requests and says so.
+
+`flow titles` does the same for the list of changes: one short sentence per commit in `flow.titles.json`, or "Nothing changes for people." Edit any of them by hand. A commit without a title shows its message.
+
+## In the browser
+
+`flow serve` shows your projects on `http://localhost:4000`. Each project opens to its changes, day by day, with the journeys each one reached. A change opens to its files and diff beside what it changes for people, most far-reaching first, and each change leads to its code and its place in the journey.
+
+```
+flow serve                              # the repository you are in
+flow serve ~/Coding/shop ~/Coding/blog  # and these, as a list of projects
+flow serve --port 4100
+```
+
+It only reads: everything comes from git and from lifts in memory, nothing is written to a repo, and it answers only on this machine. A change is shown as `git diff` shows it, so renames are detected the way git detects them, while journeys come from the lifts. The list comes from git at once, and what each change reached follows a moment later, because working that out takes two lifts. Next.js routes are only found at the top of a repo, so a monorepo's `apps/web/app/` shows server actions but not its pages and routes.
+
+## Permanent ids
+
+A journey's name comes from the code, so moving a route changes it. Its `uid` does not. `flow history`, `flow status`, `flow comment` and `flow affected` pair journeys by `uid`, so a route moved from `/api/charge` to `/api/pay` reads as one journey renamed, with its history, decisions and plain names intact. `flow history` finds it by either name.
+
+An id is the hash of the name the journey or step was born with, so every clone and branch gets the same id with nothing stored, and a repo that never renames anything has no extra file. Renames go in `flow.ids.jsonl`, which is committed and reviewed. It is written by `flow lift` and `flow save`, never by `flow status` or `flow comment`, which only show what they would record. Merges combine it as a set of facts, so a merge gives the same result in either direction.
+
+A rename is recorded only when the code proves it, by comparing with the last saved snapshot:
+
+- The same code under another name, when that is the only possible match.
+- The same name in another file, when that is the only possible match and at least half the lines are shared. A shared name alone proves nothing: every route handler is called POST.
+- A journey whose entry point was linked this way, or stayed put under a new `id` in `flow.toml`.
+
+Anything else stays one journey gone and one new, and `flow lift` says so. `flow rename <old> <new>` settles it by hand, for a journey or a step.
+
+A name given up can be reused: a new route at the old path is a new journey with its own id. A decision written against that name then applies to the new route, not the renamed one, because a name in use comes first. A scenario still naming an old journey is reported in `_index.yaml`, since `flow.toml` is yours to edit.
+
+A rename committed with plain `git commit` skips the comparison, so it shows as gone and new. `flow check` fails on that commit because `flows/` is stale. Run `flow rename <old> <new>` to rejoin the history from then on; the commits in between keep the id they were lifted with. Renames from before this feature are not rejoined automatically either.
+
 ## flow.toml
 
 ```toml
@@ -224,6 +305,5 @@ Calls on values are followed by where the value came from: `new X()` or `: X` fo
 2. Run every journey on two commits and report what each one now does differently.
 3. Collisions: run each change alone and merged to find where changes decide the same thing.
 4. A local web UI built from the prototype screens: the journey player, before and after, and collisions.
-5. Permanent flow and step IDs stored in the flow document, so renames do not break history.
 
 `cargo test` runs the parser tests and the demo fixture in `fixtures/demo`, a TypeScript port of the prototype app.

@@ -317,7 +317,10 @@ pub struct Step {
 
 #[derive(Debug, Clone)]
 pub struct Flow {
+    /// What the journey is called today. Can change.
     pub id: String,
+    /// What it is across every rename. Never changes. Set by `crate::stamp`.
+    pub uid: String,
     pub slug: String,
     pub kind: &'static str,
     pub entry: SRef,
@@ -367,7 +370,7 @@ pub fn build(repo: &Repo, g: &Graph, entries: &[Entry]) -> Vec<Flow> {
                 k += 1;
             }
             let _ = repo;
-            Flow { id: e.id.clone(), slug: sl, kind: e.kind, entry: e.at, steps, outside, unresolved, not_followed }
+            Flow { id: e.id.clone(), uid: String::new(), slug: sl, kind: e.kind, entry: e.at, steps, outside, unresolved, not_followed }
         })
         .collect()
 }

@@ -76,9 +76,88 @@ fn a_clean_text_merge_is_caught_by_running_it() {
     assert!(!String::from_utf8_lossy(&Command::new("git").arg("-C").arg(&d).args(["worktree", "list"]).output().unwrap().stdout).contains("flow-tree"));
 }
 
+/// Start the $192 merge, so saving is blocked.
+fn blocked(name: &str) -> (PathBuf, Vcs) {
+    let d = demo(name);
+    let mut v = open(&d);
+    let p = merge::plan(&mut v, "loyalty").unwrap();
+    let checks = scenario::check_merge(&v, &p, &p.base).unwrap();
+    merge::apply_checked(&v, &p, "loyalty", checks).unwrap();
+    assert!(v.save("Merge").unwrap_err().to_string().contains("nobody has accepted"));
+    (d, v)
+}
+
+fn worktrees(d: &Path) -> String {
+    String::from_utf8_lossy(&Command::new("git").arg("-C").arg(d).args(["worktree", "list"]).output().unwrap().stdout).to_string()
+}
+
 #[test]
-fn a_merge_that_breaks_when_neither_side_did_is_caught() {
-    let d = Path::new(env!("CARGO_TARGET_TMPDIR")).join("sc-broken");
+fn fixing_the_code_during_a_merge_unblocks_it() {
+    let (d, mut v) = blocked("sc-fix");
+    // Drop the discount: the merge now charges what this side charges, so the two sides are settled.
+    edit(&d, "lib/billing.mjs", "return amount * 0.8;", "return amount;");
+    v.save("Merge, no discount on annual").unwrap();
+    assert!(!worktrees(&d).contains("flow-tree"), "no stray checkouts");
+    assert!(!v.merge_state_path().exists());
+}
+
+#[test]
+fn an_edit_that_changes_nothing_stays_blocked() {
+    let (d, mut v) = blocked("sc-noop");
+    write(&d, "lib/billing.mjs", &(std::fs::read_to_string(d.join("lib/billing.mjs")).unwrap() + "\n// A comment.\n"));
+    assert!(v.save("Merge").unwrap_err().to_string().contains("nobody has accepted"));
+}
+
+#[test]
+fn accepting_records_what_the_code_does_now_not_what_the_merge_did() {
+    let (d, mut v) = blocked("sc-accept-now");
+    edit(&d, "lib/billing.mjs", "return amount * 0.8;", "return amount * 0.5;");
+    assert!(v.save("Merge").is_err(), "120 is neither side, so someone must still decide");
+    merge::accept(&v, "upgrade").unwrap();
+    v.save("Merge, half price").unwrap();
+    assert_eq!(scenario::recorded(&d, "flows", "upgrade").unwrap()["charged"], "120");
+}
+
+#[test]
+fn changing_the_code_after_accepting_takes_the_acceptance_back() {
+    let (d, mut v) = blocked("sc-accept-stale");
+    merge::accept(&v, "upgrade").unwrap();
+    assert_eq!(scenario::recorded(&d, "flows", "upgrade").unwrap()["charged"], "192");
+    edit(&d, "lib/billing.mjs", "return amount * 0.8;", "return amount * 0.5;");
+    let e = v.save("Merge").unwrap_err().to_string();
+    assert!(e.contains("nobody has accepted"), "{e}");
+    assert!(scenario::recorded(&d, "flows", "upgrade").is_none(), "192 no longer describes the code");
+    // Accepting a result the code does not change keeps standing.
+    let (d, mut v) = blocked("sc-accept-keep");
+    merge::accept(&v, "upgrade").unwrap();
+    write(&d, "notes.txt", "Unrelated.\n");
+    v.save("Merge").unwrap();
+    assert_eq!(scenario::recorded(&d, "flows", "upgrade").unwrap()["charged"], "192");
+}
+
+#[test]
+fn undoing_a_merge_takes_back_what_was_accepted_in_it() {
+    let (d, v) = blocked("sc-accept-abort");
+    merge::accept(&v, "upgrade").unwrap();
+    merge::abort(&v).unwrap();
+    assert!(scenario::recorded(&d, "flows", "upgrade").is_none());
+}
+
+#[test]
+fn a_merge_that_breaks_can_be_repaired_in_place() {
+    let d = broken("sc-repair");
+    let mut v = open(&d);
+    let p = merge::plan(&mut v, "one").unwrap();
+    let c = scenario::check_merge(&v, &p, &p.base).unwrap();
+    merge::apply_checked(&v, &p, "one", c).unwrap();
+    assert!(v.save("Merge").is_err());
+    edit(&d, "s.mjs", "if (v === 30)", "if (v === 31)");
+    v.save("Merge, repaired").unwrap();
+}
+
+/// Two branches that each work, and fail when merged.
+fn broken(name: &str) -> PathBuf {
+    let d = Path::new(env!("CARGO_TARGET_TMPDIR")).join(name);
     let _ = std::fs::remove_dir_all(&d);
     let lib = "export function a() {\n  return 1;\n}\n\nexport function b() {\n  return 2;\n}\n";
     write(&d, "lib/x.mjs", lib);
@@ -95,6 +174,12 @@ fn a_merge_that_breaks_when_neither_side_did_is_caught() {
     git(&d, &["checkout", "-q", "main"]);
     edit(&d, "lib/x.mjs", "return 2;", "return 20;");
     open(&d).save("b").unwrap();
+    d
+}
+
+#[test]
+fn a_merge_that_breaks_when_neither_side_did_is_caught() {
+    let d = broken("sc-broken");
     let mut v = open(&d);
     let p = merge::plan(&mut v, "one").unwrap();
     let c = scenario::check_merge(&v, &p, &p.base).unwrap();

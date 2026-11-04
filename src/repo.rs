@@ -150,6 +150,9 @@ impl Repo {
                     && !rel.ends_with(".d.ts")
                     && !rel.starts_with(&format!("{out_norm}/"))
                     && rel != "flow.names.json"
+                    && rel != crate::journeys::FILE
+                    && rel != crate::titles::FILE
+                    && rel != crate::ids::FILE
                     && !cfg.ignore.iter().any(|p| rel.starts_with(p.as_str()))
             })
             .collect();

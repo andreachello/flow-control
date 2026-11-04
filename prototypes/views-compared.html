@@ -523,12 +523,268 @@ button:active:not([disabled]){transform:scale(.97)}
 .key summary:hover{color:var(--ink)}
 .tw td.where{overflow-wrap:anywhere;font-size:13.5px}
 .tw td.res{display:table-cell;padding:8px 12px;white-space:nowrap}
+/* how it works */
+#p-how{padding-top:20px}
+.pane code{font:12.5px var(--f-code)}
+#p-how{padding-top:20px}
+#p-how .combo{margin-bottom:12px}
+#p-how .combo .player{padding:18px 22px}
+.hjoin{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:520px}
+.hjoin > .pane{border:0;border-radius:0;box-shadow:none;overflow:visible;background:none;min-width:0}
+.hjoin > .pane.hterm{background:var(--sheet-2);border-left:1px solid var(--rule)}
+.hjoin .colh{border-bottom:0;padding-bottom:4px}
+.hjoin .colh h2{font-size:15px}
+.hterm .tty{padding:20px 24px}
+.hterm .tl.warn{background:var(--warn-soft)}
+.hterm .ver{background:var(--sheet)}
+.hfoot{margin:14px 4px 0}
+.hfoot summary{width:auto}
+.hfoot code{font:12.5px var(--f-code)}
+.chain{list-style:none;margin:0;padding:24px 28px 22px 24px;display:grid;gap:24px}
+.chain li{position:relative;padding-left:26px;min-width:0}
+.chain li::before{content:"";position:absolute;left:0;top:5px;width:11px;height:11px;border-radius:50%;background:var(--ink);box-shadow:0 0 0 4px var(--sheet)}
+.chain li::after{content:"";position:absolute;left:5px;top:18px;bottom:-26px;width:1.5px;background:var(--rule)}
+.chain li:last-child::after{display:none}
+.chain h3{font-size:13.5px;font-weight:500;color:var(--ink-3);margin:0 0 7px;line-height:1.5}
+.chain .ask{margin:0;padding:0;font-size:19px;line-height:1.35}
+.chain .code{padding:0;border-radius:10px;overflow:hidden;box-shadow:inset 0 0 0 1px var(--rule)}
+.reach{display:flex;flex-wrap:wrap;gap:8px}
+.jp{display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;font-weight:600;font-size:14.5px;box-shadow:inset 0 0 0 1px var(--rule)}
+.jp i{width:14px;height:5px;border-radius:3px}
+.rest{margin:9px 0 0;font-size:13.5px;color:var(--ink-3)}
+@media (max-width:1000px){ .hjoin{grid-template-columns:minmax(0,1fr);min-height:0} .hjoin > .pane.hterm{border-left:0;border-top:1px solid var(--rule)} }
+.ask{margin:0;padding:16px 20px 4px;font-size:17px;font-weight:500;letter-spacing:-.012em}
+.tty{padding:12px 20px 18px;font:12.5px/1.65 var(--f-code);font-variant-ligatures:none}
+.tl{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 -8px;padding:0 8px;border-radius:6px;color:var(--ink-2)}
+.tl.cmd{color:var(--ink);font-weight:600;margin-top:12px}
+.tl.cmd:first-child{margin-top:0}
+.tl.key{color:var(--ink);font-weight:500}
+.tl.warn{background:var(--warn-soft);color:var(--ink)}
+.tl.bad{background:var(--signal-soft);color:var(--signal)}
+.tl.ok{background:var(--ok-soft);color:var(--add-ink)}
+.strips{padding:6px 20px 16px;display:grid;gap:18px}
+.pane .sub + .strips{padding-top:8px}
+.colh + .strips{padding-top:16px}
+.jrh{display:flex;align-items:center;gap:8px;font-size:14.5px}
+.jrh i{width:14px;height:5px;border-radius:3px}
+.jrh b{font-weight:600}
+.tag{margin-left:auto;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px}
+.tag.ok{background:var(--ok-soft);color:var(--add-ink)}
+.tag.warn{background:var(--warn-soft);color:var(--ink)}
+.tag.bad{background:var(--signal-soft);color:var(--signal)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:9px}
+.chip{font-size:12.5px;padding:3px 9px;border-radius:8px;background:var(--sheet-2);color:var(--ink-3)}
+.chip.you{background:var(--a);color:#fff;font-weight:500}
+.chip.mate{background:var(--b);color:#fff;font-weight:500}
+.chip.ping{animation:chipIn .45s ease-out both}
+@keyframes chipIn{from{transform:scale(.8);opacity:.3}60%{transform:scale(1.07)}}
+.by{font-size:12.5px;font-weight:600;padding:2px 9px;border-radius:999px;color:#fff}
+.by.you{background:var(--a)}.by.mate{background:var(--b)}
+.answers{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 20px 4px}
+.ans{padding:12px 14px;border-radius:12px;box-shadow:inset 0 0 0 1px var(--rule)}
+.ans.on{box-shadow:inset 0 0 0 1.5px var(--ink)}
+.ans b{font-weight:600}
+.ans p{margin:2px 0 0;font-size:13.5px;color:var(--ink-2)}
+.commit{padding:16px 20px 4px}
+.commit b{font-weight:600}
+.commit pre{margin:8px 0 0;font:12.5px/1.65 var(--f-code);color:var(--ink-2);white-space:pre-wrap;overflow-wrap:anywhere}
+.commit mark{background:var(--ok-soft);color:var(--add-ink);border-radius:4px;padding:1px 3px}
+.four{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;padding:16px 20px 4px}
+.ver{padding:10px 12px;border-radius:12px;background:var(--sheet-2)}
+.ver span{display:block;font-size:12.5px;color:var(--ink-3)}
+.ver code{display:block;margin-top:2px;font:600 14px var(--f-code);font-variant-ligatures:none}
+.ver.bad{background:var(--signal-soft)}.ver.bad span,.ver.bad code{color:var(--signal)}
+@media (max-width:640px){ .four{grid-template-columns:repeat(2,minmax(0,1fr))} .answers{grid-template-columns:1fr} }
+/* explore: files, then the diff, then the part of the flow it touches */
+#p-explore{padding-top:20px;margin-bottom:-60px}
+.ex3{display:grid;grid-template-columns:236px minmax(0,1fr) 320px;gap:12px;height:calc(100vh - 172px);min-height:480px}
+.ex3 > .sheet{min-height:0;display:flex;flex-direction:column}
+.ex-tree{overflow-y:auto;padding:12px 8px;font-size:13.5px}
+.tt{padding:0 10px 8px;font-weight:600;font-size:13.5px}
+.tdir{padding-top:5px;padding-bottom:5px;color:var(--ink-3)}
+.tfile{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;background:none;border:0;border-radius:8px;padding-top:5px;padding-bottom:5px;padding-right:10px;text-align:left;color:var(--ink-2)}
+.tfile:hover{background:var(--sheet-2)}
+.tfile.on{background:var(--sheet-2);color:var(--ink);font-weight:500}
+.tfile.ch span{color:var(--ink);font-weight:500}
+.tfile small{font-size:12px;white-space:nowrap}
+.tfile small i{font-style:normal}
+.ex-head{display:flex;align-items:center;gap:12px;min-height:50px;padding:8px 20px;border-bottom:1px solid var(--rule);flex:none}
+.ex-head b{font:500 13.5px var(--f-code);overflow-wrap:anywhere}
+.ex-head .same{margin-left:auto;font-size:13px;color:var(--ink-3);white-space:nowrap}
+.seg{margin-left:auto;display:inline-flex;gap:2px;padding:3px;background:var(--sheet-2);border-radius:10px;flex:none}
+.seg button{border:0;background:none;border-radius:8px;padding:3px 10px;font-size:13px;color:var(--ink-2)}
+.seg button.on{background:var(--sheet);color:var(--ink);box-shadow:0 1px 2px rgba(24,24,27,.08)}
+.ex-body{flex:1;min-height:0;overflow:auto}
+.ex-flow{overflow-y:auto}
+.fl-h{padding:14px 18px 6px}
+.fl-j{display:flex;flex-direction:column;gap:3px;font-size:14px;font-weight:500}
+.fl-j span{display:inline-flex;align-items:center;gap:8px}
+.fl-j i{width:14px;height:5px;border-radius:3px}
+.fl-h small{display:block;margin-top:5px;color:var(--ink-3);font-size:12.5px}
+.row.sel:not(.add):not(.del){background:var(--sheet-2)}
+.ex-bar{display:flex;align-items:center;gap:8px;min-height:32px;margin-bottom:12px;font-size:13.5px}
+.bar-c{color:var(--ink-2);text-decoration:none}
+.bar-c:hover{color:var(--ink);text-decoration:underline;text-underline-offset:2px}
+.bar-sl{color:var(--ink-3)}
+.cp{position:relative;min-width:0}
+.bar-now{display:inline-flex;align-items:center;gap:8px;max-width:100%;padding:4px 10px;border:1px solid var(--rule);border-radius:8px;background:var(--sheet);font-size:13.5px;font-weight:600;color:var(--ink);cursor:pointer}
+.bar-now:hover{background:var(--sheet-2)}
+.bar-now .chev{margin:0 1px 2px;transform:rotate(45deg)}
+.bar-now .chev.up{margin-bottom:-2px;transform:rotate(225deg)}
+.bar-pos{margin-left:auto;font-size:13px;color:var(--ink-3)}
+.bar-s{padding:4px 10px;border:1px solid var(--rule);border-radius:8px;background:var(--sheet);font-weight:500;color:var(--ink);text-decoration:none}
+a.bar-s:hover{background:var(--sheet-2)}
+.bar-s.off{background:none;color:var(--ink-3)}
+.cp-menu{position:absolute;z-index:6;top:36px;left:0;width:340px;max-width:calc(100vw - 32px);padding:5px;border:1px solid var(--rule);border-radius:12px;background:var(--sheet);box-shadow:0 1px 2px rgba(24,24,27,.05),0 12px 32px rgba(24,24,27,.14)}
+.cp-menu button{display:block;width:100%;padding:6px 9px;border:0;border-radius:8px;background:none;text-align:left}
+.cp-menu button:hover,.cp-menu button.on{background:var(--sheet-2)}
+.cp-menu b{display:block;font-size:13.5px;font-weight:500;line-height:1.3;color:var(--ink)}
+.cp-menu span{display:block;margin-top:1px;font-size:12px;color:var(--ink-3)}
+.ex-cards{display:none;max-width:900px;margin-inline:auto}
+.is-log .hfoot{max-width:900px;margin-inline:auto}
+.ghl-top{display:flex;align-items:center;gap:10px;padding:2px 0 12px}
+.ghl-top h2{margin:0;font-size:22px;font-weight:600;letter-spacing:-.012em}
+.ghl-n{margin-left:auto;font-size:13px;color:var(--ink-3)}
+.ghl{position:relative;padding-left:22px}
+.ghl::before{content:"";position:absolute;left:5px;top:8px;bottom:24px;width:2px;background:var(--rule)}
+.ghl-day{position:relative;padding-bottom:16px}
+.ghl-day::before{content:"";position:absolute;left:-21px;top:5px;width:10px;height:10px;border-radius:50%;background:var(--ink-2);box-shadow:0 0 0 3px var(--paper)}
+.ghl-day.quiet::before{background:var(--paper);box-shadow:inset 0 0 0 2px var(--ink-3),0 0 0 3px var(--paper)}
+.ghl-day h3{margin:0 0 7px;font-size:13px;font-weight:500;line-height:20px;color:var(--ink-3)}
+.ghl-day ol{list-style:none;margin:0;padding:0;border:1px solid var(--rule);border-radius:8px;background:var(--sheet);overflow:hidden}
+.ghc{position:relative;padding:12px 12px 12px 16px;cursor:pointer}
+.ghc + .ghc{border-top:1px solid var(--rule)}
+.ghc-line{display:flex;align-items:center;gap:16px}
+.ghc-main{flex:1;min-width:0}
+.ghc-t{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.ghc-title{padding:0;border:0;background:none;font-size:15px;font-weight:600;line-height:1.35;letter-spacing:-.008em;text-align:left;color:var(--ink);cursor:pointer}
+.ghc.quiet .ghc-title{font-weight:400;color:var(--ink-3)}
+.ghc-js{flex:none;display:flex;gap:4px}
+.ghc-js .bdg,.ghl-key .bdg{width:20px;height:20px;box-shadow:none}
+.ghc-js .bdg + .bdg{margin-left:0}
+.ghc-js .bdg.off{background:none!important;color:var(--ink-3);box-shadow:inset 0 0 0 1px var(--rule);opacity:.55}
+.ghl-key{display:flex;flex-wrap:wrap;gap:6px 14px;padding:0 0 18px;font-size:12.5px;color:var(--ink-2)}
+.ghl-key > span{display:inline-flex;align-items:center;gap:6px}
+.ghc:hover{background:var(--sheet-2)}
+.ghc-r{flex:none;display:flex;align-items:center;justify-content:flex-end;gap:12px;width:128px;font-size:12.5px;color:var(--ink-3)}
+.ghc-who{display:inline-flex;align-items:center;gap:6px;color:var(--ink-2)}
+.ghc-av{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--sheet-2);box-shadow:inset 0 0 0 1px var(--rule);font-size:10.5px;font-weight:600;color:var(--ink-2)}
+.ghc-sha{position:relative;display:inline-flex;color:var(--ink-3);opacity:0;transition:opacity .1s}
+.ghc:hover .ghc-sha,.ghc-sha:focus-within{opacity:1}
+.ghc-r .chev{margin:0 4px 0 0}
+.ghc-r .chev.up{transform:rotate(45deg)}
+.ghc-code{display:inline-block;margin-top:8px;font-size:13px;font-weight:500;color:var(--ink);text-underline-offset:2px}
+.ghc-sha code{position:absolute;right:calc(100% + 4px);top:50%;z-index:3;padding:3px 7px;border-radius:6px;background:var(--ink);color:var(--sheet);font:12px var(--f-code);white-space:nowrap;opacity:0;pointer-events:none;transform:translateY(-50%);transition:opacity .1s}
+.ghc-sha:hover code,.ghc-sha:focus-within code{opacity:1}
+.ghc-sha button{display:grid;place-items:center;width:26px;height:26px;padding:0;border:0;border-radius:7px;background:none;color:var(--ink-3);cursor:pointer}
+.ghc-sha button:hover{background:var(--sheet-2);color:var(--ink)}
+.ghc-body{margin-top:10px;padding-top:10px;border-top:1px solid var(--rule)}
+.ghc-body p{margin:0;max-width:66ch;font-size:14.5px;line-height:1.95}
+.ghc-body .part{cursor:inherit}
+.ghc-title:focus-visible,.ghc-sha button:focus-visible{outline:2px solid var(--l-su);outline-offset:1px}
+@media (max-width:760px){ .ghc-line{flex-direction:column;align-items:flex-start;gap:8px} .ghc-r{width:auto} .ghc-sha{opacity:1} }
+@media (prefers-reduced-motion: reduce){ .ghc-sha,.ghc-sha code{transition:none} }
+.tpr{display:block;width:100%;background:none;border:0;border-radius:8px;padding:7px 10px 8px;margin-bottom:6px;text-align:left;color:var(--ink)}
+.tpr:hover,.tpr.on{background:var(--sheet-2)}
+.ex-fh{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;background:var(--sheet);border:0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:9px 20px;text-align:left;font:500 13px var(--f-code);color:var(--ink);cursor:pointer}
+.ex-fh:first-child{border-top:0}
+.ex-fh:hover{background:var(--sheet-2)}
+.ex-fh small{font:12.5px var(--f-ui);color:var(--ink-3);white-space:nowrap}
+.ex-fh small i{font-style:normal}
+.tpr b{display:block;font-size:14px;font-weight:600;line-height:1.3}
+.tpr span{display:block;font-size:12.5px;color:var(--ink-3)}
+.tpr-m code{font:12px var(--f-code)}
+.tpr i{font-style:normal}
+.tchg{gap:10px;padding-left:10px;min-width:0}
+.tchg > span{display:flex;align-items:baseline;gap:6px;min-width:0}
+.tchg b{font-weight:500;color:var(--ink);white-space:nowrap}
+.tchg em{font-style:normal;font-size:12px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.ex-tree .tt{margin-top:14px;padding-top:12px;border-top:1px solid var(--rule)}
+.row.pick{cursor:pointer}
+.row.own.pick:hover{color:var(--ink)}
+.row.own:focus-visible{outline:2px solid var(--l-su);outline-offset:-2px}
+.row.act:not(.own){box-shadow:inset 3px 0 0 var(--ink)}
+.row.own.act{color:var(--ink)}
+.fl-scope{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:12px 18px 0}
+.fl-scope b{font:600 13px var(--f-code);overflow-wrap:anywhere}
+.fl-scope button{flex:none;background:none;border:0;padding:0;font-size:12.5px;color:var(--ink-2);text-decoration:underline;text-underline-offset:2px}
+.fl-empty{padding:18px}
+.fl-empty b{font-size:14px;font-weight:600}
+.fl-empty p{margin:6px 0 0;font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+.fl-h{padding:16px 18px 14px}
+.fl-h h3{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0;font-size:14.5px;font-weight:600;letter-spacing:-.005em;color:var(--ink)}
+.fl-h h3{font-size:13px;font-weight:500;color:var(--ink-3)}
+.fl-head{margin:6px 0 0;font-size:15.5px;font-weight:600;line-height:1.3;letter-spacing:-.012em;color:var(--ink)}
+.fl-prose{margin:10px 0 0;font-size:16px;line-height:1.95;letter-spacing:-.005em;text-wrap:pretty}
+.part{cursor:pointer;border-radius:4px;text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--ink) 22%,transparent);text-decoration-thickness:2px;text-underline-offset:4px;transition:text-decoration-color .12s}
+.part:hover,.part.on{text-decoration-color:var(--ink)}
+.part:focus-visible{outline:2px solid var(--l-su);outline-offset:2px}
+.bdgs{display:inline-flex;vertical-align:-5px;margin-left:5px;cursor:pointer}
+.bdg{display:grid;place-items:center;width:22px;height:22px;border-radius:50%;color:var(--sheet);box-shadow:0 0 0 2px var(--sheet)}
+.bdg + .bdg{margin-left:-6px}
+.fl-h{position:relative}
+.fl-open{position:absolute;z-index:5;left:12px;right:12px;padding:12px 14px 14px;border-radius:14px;background:var(--sheet);border:1px solid var(--rule);box-shadow:0 1px 2px rgba(24,24,27,.05),0 12px 32px rgba(24,24,27,.14)}
+.fl-open.pop{animation:cardin .16s ease-out}
+@keyframes cardin{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.caret{position:absolute;top:-6px;width:10px;height:10px;background:var(--sheet);border-left:1px solid var(--rule);border-top:1px solid var(--rule);border-radius:2px 0 0 0;transform:rotate(45deg)}
+.fo-top{display:flex;align-items:center;gap:8px}
+.fo-b{display:inline-flex}
+.fo-j{font-size:12.5px;font-weight:500;color:var(--ink-2)}
+.fo-x{display:grid;place-items:center;width:24px;height:24px;margin:-2px -6px -2px auto;padding:0;border:0;border-radius:7px;background:none;color:var(--ink-3)}
+.fo-x:hover{background:var(--sheet-2);color:var(--ink)}
+.fl-open p{margin:10px 0 0;font-size:15px;font-weight:600;line-height:1.35;letter-spacing:-.008em;text-wrap:pretty}
+.fl-open dl{margin:10px 0 0;padding-top:10px;border-top:1px solid var(--rule);font-size:12.5px;line-height:1.4}
+.fl-open dl div{display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px;margin-top:4px}
+.fl-open dl div:first-child{margin-top:0}
+.fl-open dt{color:var(--ink-3)}
+.fl-open dd{margin:0;color:var(--ink);overflow-wrap:anywhere}
+.fl-open dd code{font:12px var(--f-code)}
+.fo-code{display:block;width:100%;margin-top:12px;padding:7px 10px;border:0;border-radius:9px;background:var(--ink);color:var(--sheet);font-size:13px;font-weight:500}
+.fo-code:hover{opacity:.88}
+.fo-x:focus-visible,.fo-code:focus-visible{outline:2px solid var(--l-su);outline-offset:2px}
+.fl-who{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.fl-who span{display:inline-flex;align-items:center;gap:6px;padding:2px 9px 2px 7px;border-radius:999px;background:var(--sheet-2);font-size:12px;line-height:18px;color:var(--ink-2)}
+.fl-who i{width:7px;height:7px;border-radius:50%}
+.fl-all{margin-top:18px;padding-top:14px;border-top:1px solid var(--rule)}
+.fl-all h4{margin:0 0 4px;font-size:13px;font-weight:500;color:var(--ink-3)}
+.fl-all ol{list-style:none;margin:0 -8px;padding:0}
+.fl-jr{display:flex;align-items:center;gap:9px;width:100%;padding:6px 8px;border:0;border-radius:9px;background:none;text-align:left;color:var(--ink)}
+button.fl-jr:hover{background:var(--sheet-2)}
+.fl-jr .bdg{flex:none;box-shadow:none}
+.fl-jr b{font-size:13.5px;font-weight:500}
+.fl-jr small{margin-left:auto;font-size:12.5px;color:var(--ink-3);white-space:nowrap}
+.fl-jr.same b{color:var(--ink-3)}
+.fl-jr.same .bdg{opacity:.45}
+.chev{flex:none;width:6px;height:6px;margin:0 3px 0 1px;border-right:1.5px solid var(--ink-3);border-bottom:1.5px solid var(--ink-3);transform:rotate(-45deg);transition:transform .15s}
+.chev.up{transform:rotate(45deg)}
+.fl-all ol.tl{list-style:none;margin:4px 0 10px 18px;padding:0 0 0 15px;border-left:2px solid var(--c)}
+.tl-s{position:relative}
+.tl-s::before{content:"";position:absolute;left:-20.5px;top:10px;width:9px;height:9px;border-radius:50%;background:var(--sheet);box-shadow:inset 0 0 0 2px var(--c)}
+.tl-s.ed::before{background:var(--signal);box-shadow:0 0 0 3px var(--sheet)}
+.tl-s.add::before{background:var(--add-ink);box-shadow:0 0 0 3px var(--sheet)}
+.tl-s.del::before{background:var(--sheet);box-shadow:inset 0 0 0 2px var(--ink-3)}
+.tl-s button{display:block;width:100%;padding:5px 6px;border:0;border-radius:7px;background:none;text-align:left;color:var(--ink-2)}
+.tl-s button:hover{background:var(--sheet-2)}
+.tl-s b{display:block;font-size:13px;font-weight:400;line-height:1.35}
+.tl-s.ed b,.tl-s.add b{font-weight:600;color:var(--ink)}
+.tl-s.del b{text-decoration:line-through;color:var(--ink-3)}
+.tl-s span{display:block;margin-top:1px;font-size:12.5px;line-height:1.35;color:var(--ink-2)}
+.tl-s em{font-style:normal;font-weight:500}
+.tl-s.add em{color:var(--add-ink)}
+.tl-fold{padding:3px 6px;font-size:12px;color:var(--ink-3)}
+@media (prefers-reduced-motion: reduce){ .chev{transition:none} }
+.ex-flow{overflow:hidden}
+.fl-h{flex:1;min-height:0;overflow-y:auto}
+@media (max-width:1080px){ .ex-flow,.fl-h{overflow:visible} }
+@media (prefers-reduced-motion: reduce){ .part{transition:none} .fl-open.pop{animation:none} }
+.own-p{margin-left:10px;font-weight:400}
+@media (max-width:1080px){ .ex3{grid-template-columns:minmax(0,1fr);height:auto} .ex-tree{max-height:240px} .ex-body{overflow:visible} }
 </style>
 </head>
 <body>
 <nav><div class="in">
   <div class="brand"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v18M12 3v8a4 4 0 0 0 4 4h3" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="12" cy="11" r="3" fill="#e8a200"/></svg>Flow control</div>
-  <button class="theme" id="theme" aria-label="Switch light or dark">Light</button><div class="tabs" id="tabs"><a href="#overview">Overview</a><a href="#file">File</a><a href="#diff">Diff</a><a href="#flow">Flow</a><a href="#merge">Merge</a></div>
+  <button class="theme" id="theme" aria-label="Switch light or dark">Light</button><div class="tabs" id="tabs"><a href="#overview">Overview</a><a href="#how">How it works</a><a href="#commits">Changes</a><a href="#explore">Explore</a><a href="#merge">Merge</a></div>
 </div></nav>
 
 <div class="wrap">
@@ -547,26 +803,21 @@ button:active:not([disabled]){transform:scale(.97)}
   </div>
 </section>
 
-<section class="page" id="p-file">
-  <div class="head"><h1>File view</h1><p>Every line has one owner. The dots show which journeys run it.</p></div>
-  <div class="sheet xbox solo" id="fx"></div>
-  <div class="sheet solo"><div class="ftabs" id="ftabs"></div><div class="code" id="fv"></div></div>
+<section class="page" id="p-how">
+  <div class="sheet combo"><div class="player" id="h-player"></div></div>
+  <div class="sheet hjoin" id="h-stage"></div>
+  <details class="key hfoot"><summary>Every terminal here is real output from flow on the demo app. What do journey and scenario mean?</summary><p>A <b>journey</b> is something a user does. The terminal calls journeys by their route: POST /api/cancel is Cancel plan, and POST /api/upgrade is Upgrade to Pro. A <b>scenario</b> is a short script that runs a journey and prints what happened. A person writes it once and names it in flow.toml. This one signs in a yearly Pro user, cancels, and prints the plan, interval and header. After <code>flow hook install</code>, Claude Code and Codex pass your request to flow by themselves. This run typed it with <code>--asked</code>.</p></details>
 </section>
 
-<section class="page" id="p-diff">
-  <div class="head"><h1>Diff view</h1><p>What git shows, and what it can't: who runs the changed code.</p></div>
-  <div class="sheet xbox solo" id="dx"></div>
-  <div class="sheet solo"><div class="sh"><h2>lib/billing.ts</h2><span class="meta"><span class="ok-t">+1</span> <span class="bad-t">−1</span></span></div>
-    <div class="code wrapcode" id="dv"></div><div class="legend" id="dv-runs"></div></div>
-</section>
-
-<section class="page" id="p-flow">
-  <div class="head"><h1>Flow view</h1><p>Pick a stop to see its code, the journeys that run it, and the state it touches.</p></div>
-  <div class="sheet xbox" id="flx"></div>
-  <div class="fl">
-    <div class="sheet"><div class="mapbox" id="fl-map"></div><div class="legend" id="fl-legend"></div></div>
-    <div class="sheet insp" id="insp"></div>
+<section class="page" id="p-explore">
+  <div class="ex-cards" id="ex-cards"></div>
+  <div class="ex-bar" id="ex-bar"></div>
+  <div class="ex3">
+    <nav class="sheet ex-tree" id="ex-tree" aria-label="Files"></nav>
+    <div class="sheet ex-diff"><div class="ex-head" id="ex-head"></div><div class="ex-body" id="ex-body"><div class="code wrapcode" id="ex-file"></div></div></div>
+    <div class="sheet ex-flow" id="ex-flow"></div>
   </div>
+  <details class="key hfoot"><summary>How to read this</summary><p>The left column is every file, with the changed one marked. The middle column is what a git diff shows. The right column is what a diff can't show: the only part of the flow this edit touches. Each colored line is a <b>journey</b>, and each stop on it is a function it runs, in call order. A capsule is a function both journeys share, and the red one is the function that changed. Dotted lines are steps left out, the way a diff leaves out unchanged lines. Click a stop to open its code.</p></details>
 </section>
 
 <section class="page" id="p-merge"><div class="mlayout">
@@ -727,6 +978,14 @@ export function legacyExport() {
   return Object.keys(plugins);
 }`, own:[[1,5,"plugins"],[6,9,"runPlugin"],[10,14,"legacyExport"]] },
 };
+Object.assign(SRC, {
+"app/api/agent/route.ts": { lines:"import { loadSession } from \"@/lib/auth\";\nimport { planGuard } from \"@/lib/billing\";\nimport * as agent from \"@/lib/agent\";\n\n// A Pro user asks the agent.\nexport async function POST() {\n  loadSession();\n  planGuard(\"agent\");\n  agent.buildSystemPrompt();\n  agent.pickTools();\n  agent.streamReply();\n  return Response.json({ ok: true });\n}", own:[[1,13]] },
+"app/api/cancel/route.ts": { lines:"import { loadSession } from \"@/lib/auth\";\nimport { applyPlanChange } from \"@/lib/billing\";\nimport { renderHeader } from \"@/lib/ui\";\n\n// A Pro user cancels.\nexport async function POST() {\n  loadSession();\n  applyPlanChange(\"free\");\n  renderHeader();\n  return Response.json({ ok: true });\n}", own:[[1,11]] },
+"app/api/login/route.ts": { lines:"import { validateForm, issueSid, loadSession } from \"@/lib/auth\";\nimport { renderHeader } from \"@/lib/ui\";\n\n// Someone logs back in.\nexport async function POST(req: Request) {\n  validateForm(await req.json());\n  issueSid(\"u1\");\n  loadSession();\n  renderHeader();\n  return Response.json({ ok: true });\n}", own:[[1,11]] },
+"app/api/plugin/route.ts": { lines:"import { runPlugin } from \"@/lib/plugins\";\n\n// Run a plugin chosen by the request.\nexport async function GET(req: Request) {\n  const name = new URL(req.url).searchParams.get(\"name\") ?? \"summarize\";\n  return Response.json({ out: runPlugin(name) });\n}", own:[[1,7]] },
+"app/api/signup/route.ts": { lines:"import { validateForm, createUser, issueSid, loadSession } from \"@/lib/auth\";\nimport { sendEmail } from \"@/lib/mailer\";\nimport { renderHeader } from \"@/lib/ui\";\n\n// A new person signs up.\nexport async function POST(req: Request) {\n  const f = validateForm(await req.json());\n  const id = createUser(f);\n  issueSid(id);\n  loadSession();\n  sendEmail(\"welcome\");\n  renderHeader();\n  return Response.json({ ok: true });\n}", own:[[1,14]] },
+"app/api/upgrade/route.ts": { lines:"import { loadSession } from \"@/lib/auth\";\nimport { chargeCard, resolvePrice, applyPlanChange } from \"@/lib/billing\";\nimport { renderHeader } from \"@/lib/ui\";\n\n// A free user upgrades to Pro.\nexport async function POST(req: Request) {\n  const { plan } = await req.json();\n  loadSession();\n  chargeCard(resolvePrice(plan));\n  applyPlanChange(plan);\n  renderHeader();\n  return Response.json({ ok: true });\n}", own:[[1,13]] },
+});
 for (const f of Object.values(SRC)) f.lines = f.lines.split("\n");
 const STN = {};
 for (const [path,f] of Object.entries(SRC)) for (const [a,b,n] of f.own) if (n && n!=="unplaced") STN[n] = { file:path, a, b };
@@ -841,13 +1100,14 @@ const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /* ---------------- code blocks ---------------- */
 function fileHTML(path, o = {}){
-  const f = SRC[path]; let h = "", gi = 0;
+  const f = o.file || SRC[path]; let h = "", gi = 0;
   f.lines.forEach((t, i) => {
     const n = i+1, w = f.own.find(([a,b]) => n>=a && n<=b) || [n,n]; const fn = w[2];
     let first = w[0]; while (first < w[1] && !f.lines[first-1].trim()) first++;
     if (n===w[0] && fn && o.owners) h += `<div class="row own" ${fn!=="unplaced"?`data-fn="${fn}"`:''}>${fn==="unplaced"?"No owner: runs when the file loads":fn}</div>`;
+    if (o.inline && o.inline[n]) { h += o.inline[n]; return; }
     const isEd = o.edited && fn===o.edited;
-    const cls = ["row", isEd ? "ed":"", isEd && o.glow ? "glow":"", fn==="unplaced"?"unpl":""].join(" ");
+    const cls = ["row", isEd ? "ed":"", isEd && o.glow ? "glow":"", fn==="unplaced"?"unpl":"", o.sel && fn===o.sel ? "sel":""].join(" ");
     const chg = o.changed && o.changed[n];
     h += `<div class="${cls}" ${isEd&&o.glow?`style="animation-delay:${(gi++)*.07}s"`:''} ${fn&&fn!=="unplaced"?`data-fn="${fn}"`:''}><span class="dots">${n===first&&fn&&LAYER[fn]?dots(fn):""}</span><span class="ln">${n}</span><span class="mk">${chg?`<span style="color:var(--signal);display:inline-block" class="${o.glow?'pop':''}">●</span>`:''}</span><span>${hl(t)||" "}</span></div>`;
   });
@@ -934,40 +1194,217 @@ function stopNote(fn){
 }
 
 /* ---------------- file & diff ---------------- */
-let curFile = "lib/billing.ts";
-function renderFile(){
-  document.getElementById("ftabs").innerHTML = Object.keys(SRC).map(p => `<button class="${p===curFile?'on':''}" data-p="${p}">${p.replace("lib/","")}</button>`).join("");
-  document.querySelectorAll("#ftabs button").forEach(b => b.onclick = () => { curFile = b.dataset.p; renderFile(); });
-  document.getElementById("fx").innerHTML = xbox("How to read it", "Each function owns its lines, including the blank line and comments just above it. Imports and the file's opening comment belong to the file, not to a journey. The colored dots beside a function are the journeys that run it.", "In this file", FILE_NOTES[curFile]);
-  document.getElementById("fv").innerHTML = fileHTML(curFile, { owners:true, edited: curFile==="lib/billing.ts" ? "applyPlanChange" : null, changed: curFile==="lib/billing.ts" ? {16:1} : null });
-  linkHover(document.getElementById("p-file"));
+// A real history of the demo app, newest first: git diff for the code, flow lift before and after each commit for the journeys.
+const COMMITS = [{"id":"a762388","date":"4 Nov","title":"Let people pay yearly","files":[{"path":"app/api/upgrade/route.ts","status":"M","add":5,"del":2,"hunks":[["@","@@ -1,12 +1,15 @@"],[" ",1,1,"import { loadSession } from \"@/lib/auth\";",null,null],[" ",2,2,"import { chargeCard, resolvePrice, applyPlanChange } from \"@/lib/billing\";",null,null],["+","",3,"import { prorate } from \"@/lib/proration\";",null,null],["+","",4,"import { S } from \"@/lib/state\";",null,null],[" ",3,5,"import { renderHeader } from \"@/lib/ui\";",null,null],[" ",4,6,"",null,"POST /api/upgrade"],[" ",5,7,"// A free user upgrades to Pro.",null,"POST /api/upgrade"],[" ",6,8,"export async function POST(req: Request) {",null,"POST /api/upgrade"],["-",7,"","  const { plan } = await req.json();",null,"POST /api/upgrade"],["+","",9,"  const { plan, interval } = await req.json();",", interval","POST /api/upgrade"],[" ",8,10,"  loadSession();",null,"POST /api/upgrade"],["-",9,"","  chargeCard(resolvePrice(plan));",null,"POST /api/upgrade"],["+","",11,"  S.interval = interval;",null,"POST /api/upgrade"],["+","",12,"  chargeCard(prorate(resolvePrice(plan)));",null,"POST /api/upgrade"],[" ",10,13,"  applyPlanChange(plan);",null,"POST /api/upgrade"],[" ",11,14,"  renderHeader();",null,"POST /api/upgrade"],[" ",12,15,"  return Response.json({ ok: true });",null,"POST /api/upgrade"]],"full":[[" ",1,1,"import { loadSession } from \"@/lib/auth\";",null,null],[" ",2,2,"import { chargeCard, resolvePrice, applyPlanChange } from \"@/lib/billing\";",null,null],["+","",3,"import { prorate } from \"@/lib/proration\";",null,null],["+","",4,"import { S } from \"@/lib/state\";",null,null],[" ",3,5,"import { renderHeader } from \"@/lib/ui\";",null,null],[" ",4,6,"",null,"POST /api/upgrade"],[" ",5,7,"// A free user upgrades to Pro.",null,"POST /api/upgrade"],[" ",6,8,"export async function POST(req: Request) {",null,"POST /api/upgrade"],["-",7,"","  const { plan } = await req.json();",null,"POST /api/upgrade"],["+","",9,"  const { plan, interval } = await req.json();",", interval","POST /api/upgrade"],[" ",8,10,"  loadSession();",null,"POST /api/upgrade"],["-",9,"","  chargeCard(resolvePrice(plan));",null,"POST /api/upgrade"],["+","",11,"  S.interval = interval;",null,"POST /api/upgrade"],["+","",12,"  chargeCard(prorate(resolvePrice(plan)));",null,"POST /api/upgrade"],[" ",10,13,"  applyPlanChange(plan);",null,"POST /api/upgrade"],[" ",11,14,"  renderHeader();",null,"POST /api/upgrade"],[" ",12,15,"  return Response.json({ ok: true });",null,"POST /api/upgrade"],[" ",13,16,"}",null,"POST /api/upgrade"]]},{"path":"lib/agent.ts","status":"M","add":2,"del":1,"hunks":[["@","@@ -3,7 +3,8 @@ import { S } from \"./state\";"],[" ",3,3,"import { isEnabled } from \"./flags\";",null,null],[" ",4,4,"",null,"buildSystemPrompt"],[" ",5,5,"export function buildSystemPrompt() {",null,"buildSystemPrompt"],["-",6,"","  const base = \"You help a \" + S.plans[S.user].plan + \" user.\";",null,"buildSystemPrompt"],["+","",6,"  const p = S.plans[S.user];",null,"buildSystemPrompt"],["+","",7,"  const base = \"You help a \" + p.plan + \" \" + p.interval + \"ly user.\";",null,"buildSystemPrompt"],[" ",7,8,"  S.prompt = isEnabled(\"betaUi\") ? base + \" Beta on.\" : base;",null,"buildSystemPrompt"],[" ",8,9,"}",null,"buildSystemPrompt"],[" ",9,10,"",null,"pickTools"]],"full":[[" ",1,1,"// The agent: prompt, tools and reply.",null,null],[" ",2,2,"import { S } from \"./state\";",null,null],[" ",3,3,"import { isEnabled } from \"./flags\";",null,null],[" ",4,4,"",null,"buildSystemPrompt"],[" ",5,5,"export function buildSystemPrompt() {",null,"buildSystemPrompt"],["-",6,"","  const base = \"You help a \" + S.plans[S.user].plan + \" user.\";",null,"buildSystemPrompt"],["+","",6,"  const p = S.plans[S.user];",null,"buildSystemPrompt"],["+","",7,"  const base = \"You help a \" + p.plan + \" \" + p.interval + \"ly user.\";",null,"buildSystemPrompt"],[" ",7,8,"  S.prompt = isEnabled(\"betaUi\") ? base + \" Beta on.\" : base;",null,"buildSystemPrompt"],[" ",8,9,"}",null,"buildSystemPrompt"],[" ",9,10,"",null,"pickTools"],[" ",10,11,"export function pickTools() {",null,"pickTools"],[" ",11,12,"  S.tools = S.plans[S.user].plan === \"free\" ? [\"search\"] : [\"search\", \"code\"];",null,"pickTools"],[" ",12,13,"}",null,"pickTools"],[" ",13,14,"",null,"streamReply"],[" ",14,15,"export function streamReply() {",null,"streamReply"],[" ",15,16,"  S.reply = \"ok:\" + S.prompt!.length + \":\" + S.tools!.join(\",\");",null,"streamReply"],[" ",16,17,"}",null,"streamReply"]]},{"path":"lib/billing.ts","status":"M","add":3,"del":4,"hunks":[["@","@@ -1,12 +1,11 @@"],[" ",1,1,"// Pricing and plan changes.",null,null],[" ",2,2,"import { S } from \"./state\";",null,null],["-",3,"","import { isEnabled } from \"./flags\";",null,null],[" ",4,3,"import { emit } from \"./bus\";",null,null],[" ",5,4,"import { sendReceipt } from \"./mailer\";",null,null],[" ",6,5,"",null,"resolvePrice"],[" ",7,6,"export function resolvePrice(plan: string) {",null,"resolvePrice"],["-",8,"","  const table: Record<string, number> = isEnabled(\"newPricing\") ? { pro: 24 } : { pro: 20 };","isEnabled(\"newPricing\") ? { pro: 24 } : { pro: 20","resolvePrice"],["-",9,"","  return table[plan];",null,"resolvePrice"],["+","",7,"  const table: Record<string, number> = { pro: 24 };","{ pro: 24","resolvePrice"],["+","",8,"  return S.interval === \"year\" ? table[plan] * 10 : table[plan];","S.interval === \"year\" ? table[plan] * 10 : ","resolvePrice"],[" ",10,9,"}",null,"resolvePrice"],[" ",11,10,"",null,"chargeCard"],[" ",12,11,"export function chargeCard(amount: number) {",null,"chargeCard"],["@","@@ -15,7 +14,7 @@ export function chargeCard(amount: number) {"],[" ",15,14,"}",null,"chargeCard"],[" ",16,15,"",null,"applyPlanChange"],[" ",17,16,"export function applyPlanChange(plan: \"free\" | \"pro\") {",null,"applyPlanChange"],["-",18,"","  S.plans = { ...S.plans, [S.user]: { plan, interval: \"month\" } };",null,"applyPlanChange"],["+","",17,"  S.plans = { ...S.plans, [S.user]: { plan, interval: S.interval ?? \"month\" } };","S.interval ?? ","applyPlanChange"],[" ",19,18,"  emit(\"plan_changed\");",null,"applyPlanChange"],[" ",20,19,"}",null,"applyPlanChange"],[" ",21,20,"",null,"planGuard"]],"full":[[" ",1,1,"// Pricing and plan changes.",null,null],[" ",2,2,"import { S } from \"./state\";",null,null],["-",3,"","import { isEnabled } from \"./flags\";",null,null],[" ",4,3,"import { emit } from \"./bus\";",null,null],[" ",5,4,"import { sendReceipt } from \"./mailer\";",null,null],[" ",6,5,"",null,"resolvePrice"],[" ",7,6,"export function resolvePrice(plan: string) {",null,"resolvePrice"],["-",8,"","  const table: Record<string, number> = isEnabled(\"newPricing\") ? { pro: 24 } : { pro: 20 };","isEnabled(\"newPricing\") ? { pro: 24 } : { pro: 20","resolvePrice"],["-",9,"","  return table[plan];",null,"resolvePrice"],["+","",7,"  const table: Record<string, number> = { pro: 24 };","{ pro: 24","resolvePrice"],["+","",8,"  return S.interval === \"year\" ? table[plan] * 10 : table[plan];","S.interval === \"year\" ? table[plan] * 10 : ","resolvePrice"],[" ",10,9,"}",null,"resolvePrice"],[" ",11,10,"",null,"chargeCard"],[" ",12,11,"export function chargeCard(amount: number) {",null,"chargeCard"],[" ",13,12,"  S.charged = (S.charged ?? 0) + amount;",null,"chargeCard"],[" ",14,13,"  sendReceipt(amount);",null,"chargeCard"],[" ",15,14,"}",null,"chargeCard"],[" ",16,15,"",null,"applyPlanChange"],[" ",17,16,"export function applyPlanChange(plan: \"free\" | \"pro\") {",null,"applyPlanChange"],["-",18,"","  S.plans = { ...S.plans, [S.user]: { plan, interval: \"month\" } };",null,"applyPlanChange"],["+","",17,"  S.plans = { ...S.plans, [S.user]: { plan, interval: S.interval ?? \"month\" } };","S.interval ?? ","applyPlanChange"],[" ",19,18,"  emit(\"plan_changed\");",null,"applyPlanChange"],[" ",20,19,"}",null,"applyPlanChange"],[" ",21,20,"",null,"planGuard"],[" ",22,21,"export function planGuard(action: string) {",null,"planGuard"],[" ",23,22,"  if (S.plans[S.user].plan === \"free\") {",null,"planGuard"],[" ",24,23,"    throw new Error(\"upgrade required for \" + action);",null,"planGuard"],[" ",25,24,"  }",null,"planGuard"],[" ",26,25,"}",null,"planGuard"]]},{"path":"lib/mailer.ts","status":"M","add":2,"del":1,"hunks":[["@","@@ -12,7 +12,8 @@ export function sendReceipt(amount: number) {"],[" ",12,12,"}",null,"sendReceipt"],[" ",13,13,"",null,"onPlanChanged"],[" ",14,14,"function onPlanChanged() {",null,"onPlanChanged"],["-",15,"","  sendEmail(\"plan-changed\");",null,"onPlanChanged"],["+","",15,"  const yearly = S.plans[S.user].interval === \"year\";",null,"onPlanChanged"],["+","",16,"  sendEmail(yearly ? \"plan-changed-yearly\" : \"plan-changed\");",null,"onPlanChanged"],[" ",16,17,"}",null,"onPlanChanged"],[" ",17,18,"",null,null],[" ",18,19,"on(\"plan_changed\", onPlanChanged);",null,null]],"full":[[" ",1,1,"// Email. The plan-changed handler is wired by name.",null,null],[" ",2,2,"import { S } from \"./state\";",null,null],[" ",3,3,"import { on } from \"./bus\";",null,null],[" ",4,4,"",null,"sendEmail"],[" ",5,5,"export function sendEmail(kind: string) {",null,"sendEmail"],[" ",6,6,"  const u = S.users[S.user];",null,"sendEmail"],[" ",7,7,"  S.outbox = [...(S.outbox ?? []), `${kind} -> ${u.email}`];",null,"sendEmail"],[" ",8,8,"}",null,"sendEmail"],[" ",9,9,"",null,"sendReceipt"],[" ",10,10,"export function sendReceipt(amount: number) {",null,"sendReceipt"],[" ",11,11,"  sendEmail(\"receipt for \" + amount);",null,"sendReceipt"],[" ",12,12,"}",null,"sendReceipt"],[" ",13,13,"",null,"onPlanChanged"],[" ",14,14,"function onPlanChanged() {",null,"onPlanChanged"],["-",15,"","  sendEmail(\"plan-changed\");",null,"onPlanChanged"],["+","",15,"  const yearly = S.plans[S.user].interval === \"year\";",null,"onPlanChanged"],["+","",16,"  sendEmail(yearly ? \"plan-changed-yearly\" : \"plan-changed\");",null,"onPlanChanged"],[" ",16,17,"}",null,"onPlanChanged"],[" ",17,18,"",null,null],[" ",18,19,"on(\"plan_changed\", onPlanChanged);",null,null]]},{"path":"lib/plugins.ts","status":"M","add":0,"del":5,"hunks":[["@","@@ -8,8 +8,3 @@ const plugins: Record<string, () => string> = {"],[" ",8,8,"export function runPlugin(name: string) {",null,"runPlugin"],[" ",9,9,"  return plugins[name]();",null,"runPlugin"],[" ",10,10,"}",null,"runPlugin"],["-",11,"","",null,"legacyExport"],["-",12,"","// Nothing calls this any more.",null,"legacyExport"],["-",13,"","export function legacyExport() {",null,"legacyExport"],["-",14,"","  return Object.keys(plugins);",null,"legacyExport"],["-",15,"","}",null,"legacyExport"]],"full":[[" ",1,1,"// Plugins are looked up by name, so no line of code says which one runs.",null,"plugins"],[" ",2,2,"const plugins: Record<string, () => string> = {",null,"plugins"],[" ",3,3,"  summarize: () => \"summary\",",null,"plugins"],[" ",4,4,"  translate: () => \"translation\",",null,"plugins"],[" ",5,5,"  german: () => \"Übersetzung\",",null,"plugins"],[" ",6,6,"};",null,"plugins"],[" ",7,7,"",null,"runPlugin"],[" ",8,8,"export function runPlugin(name: string) {",null,"runPlugin"],[" ",9,9,"  return plugins[name]();",null,"runPlugin"],[" ",10,10,"}",null,"runPlugin"],["-",11,"","",null,"legacyExport"],["-",12,"","// Nothing calls this any more.",null,"legacyExport"],["-",13,"","export function legacyExport() {",null,"legacyExport"],["-",14,"","  return Object.keys(plugins);",null,"legacyExport"],["-",15,"","}",null,"legacyExport"]]},{"path":"lib/proration.ts","status":"A","add":7,"del":0,"hunks":[["@","@@ -0,0 +1,7 @@"],["+","",1,"// Credit for the days left on the old plan.",null,null],["+","",2,"import { S } from \"./state\";",null,null],["+","",3,"",null,"prorate"],["+","",4,"export function prorate(amount: number) {",null,"prorate"],["+","",5,"  const left = S.daysLeft ?? 0;",null,"prorate"],["+","",6,"  return Math.max(0, amount - Math.round((amount * left) / 30));",null,"prorate"],["+","",7,"}",null,"prorate"]],"full":[["+","",1,"// Credit for the days left on the old plan.",null,null],["+","",2,"import { S } from \"./state\";",null,null],["+","",3,"",null,"prorate"],["+","",4,"export function prorate(amount: number) {",null,"prorate"],["+","",5,"  const left = S.daysLeft ?? 0;",null,"prorate"],["+","",6,"  return Math.max(0, amount - Math.round((amount * left) / 30));",null,"prorate"],["+","",7,"}",null,"prorate"]]},{"path":"lib/state.ts","status":"M","add":1,"del":0,"hunks":[["@","@@ -8,6 +8,7 @@ export type State = {"],[" ",8,8,"  user: string;",null,"State"],[" ",9,9,"  flags: Record<string, boolean>;",null,"State"],[" ",10,10,"  interval?: \"month\" | \"year\";",null,"State"],["+","",11,"  daysLeft?: number;",null,"State"],[" ",11,12,"  outbox?: string[];",null,"State"],[" ",12,13,"  charged?: number;",null,"State"],[" ",13,14,"  prompt?: string;",null,"State"]],"full":[[" ",1,1,"// All app state lives in one object. Tests and routes share it, so treat it like a database.",null,"Plan"],[" ",2,2,"export type Plan = { plan: \"free\" | \"pro\"; interval: \"month\" | \"year\" };",null,"Plan"],[" ",3,3,"",null,"State"],[" ",4,4,"export type State = {",null,"State"],[" ",5,5,"  users: Record<string, { email: string }>;",null,"State"],[" ",6,6,"  plans: Record<string, Plan>;",null,"State"],[" ",7,7,"  sid: string;",null,"State"],[" ",8,8,"  user: string;",null,"State"],[" ",9,9,"  flags: Record<string, boolean>;",null,"State"],[" ",10,10,"  interval?: \"month\" | \"year\";",null,"State"],["+","",11,"  daysLeft?: number;",null,"State"],[" ",11,12,"  outbox?: string[];",null,"State"],[" ",12,13,"  charged?: number;",null,"State"],[" ",13,14,"  prompt?: string;",null,"State"],[" ",14,15,"  tools?: string[];",null,"State"],[" ",15,16,"  reply?: string;",null,"State"],[" ",16,17,"  header?: string;",null,"State"],[" ",17,18,"};",null,"State"],[" ",18,19,"",null,"S"],[" ",19,20,"export const S: State = {",null,"S"],[" ",20,21,"  users: { u1: { email: \"a@x.com\" } },",null,"S"],[" ",21,22,"  plans: { u1: { plan: \"free\", interval: \"month\" } },",null,"S"],[" ",22,23,"  sid: \"sid-u1\",",null,"S"],[" ",23,24,"  user: \"u1\",",null,"S"],[" ",24,25,"  flags: { newPricing: true, betaUi: true },",null,"S"],[" ",25,26,"};",null,"S"]]},{"path":"lib/ui.ts","status":"M","add":2,"del":1,"hunks":[["@","@@ -2,5 +2,6 @@ import { S } from \"./state\";"],[" ",2,2,"",null,"renderHeader"],[" ",3,3,"// The header badge.",null,"renderHeader"],[" ",4,4,"export function renderHeader() {",null,"renderHeader"],["-",5,"","  S.header = S.plans[S.user].plan.toUpperCase();",null,"renderHeader"],["+","",5,"  const p = S.plans[S.user];",null,"renderHeader"],["+","",6,"  S.header = p.plan.toUpperCase() + (p.plan === \"pro\" && p.interval === \"year\" ? \" YEARLY\" : \"\");",null,"renderHeader"],[" ",6,7,"}",null,"renderHeader"]],"full":[[" ",1,1,"import { S } from \"./state\";",null,null],[" ",2,2,"",null,"renderHeader"],[" ",3,3,"// The header badge.",null,"renderHeader"],[" ",4,4,"export function renderHeader() {",null,"renderHeader"],["-",5,"","  S.header = S.plans[S.user].plan.toUpperCase();",null,"renderHeader"],["+","",5,"  const p = S.plans[S.user];",null,"renderHeader"],["+","",6,"  S.header = p.plan.toUpperCase() + (p.plan === \"pro\" && p.interval === \"year\" ? \" YEARLY\" : \"\");",null,"renderHeader"],[" ",6,7,"}",null,"renderHeader"]]}],"J":{"li":[{"fn":"POST /api/login","st":" ","by":null},{"fn":"validateForm","st":" ","by":null},{"fn":"issueSid","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"su":[{"fn":"POST /api/signup","st":" ","by":null},{"fn":"validateForm","st":" ","by":null},{"fn":"createUser","st":" ","by":null},{"fn":"issueSid","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"ca":[{"fn":"POST /api/cancel","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"applyPlanChange","st":" ","by":null},{"fn":"emit","st":" ","by":null},{"fn":"onPlanChanged","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"up":[{"fn":"POST /api/upgrade","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"resolvePrice","st":" ","by":null},{"fn":"isEnabled","st":"-","by":"resolvePrice"},{"fn":"prorate","st":"+","by":"POST /api/upgrade"},{"fn":"chargeCard","st":" ","by":null},{"fn":"sendReceipt","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"applyPlanChange","st":" ","by":null},{"fn":"emit","st":" ","by":null},{"fn":"onPlanChanged","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"ag":[{"fn":"POST /api/agent","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"planGuard","st":" ","by":null},{"fn":"buildSystemPrompt","st":" ","by":null},{"fn":"isEnabled","st":" ","by":null},{"fn":"pickTools","st":" ","by":null},{"fn":"streamReply","st":" ","by":null}],"pl":[{"fn":"GET /api/plugin","st":" ","by":null},{"fn":"runPlugin","st":" ","by":null},{"fn":"plugins","st":" ","by":null}]},"W":{"POST /api/login":{"file":"app/api/login/route.ts","r":[],"w":[]},"validateForm":{"file":"lib/auth.ts","r":[],"w":[]},"issueSid":{"file":"lib/auth.ts","r":[],"w":["S.sid"]},"loadSession":{"file":"lib/auth.ts","r":["S.sid"],"w":["S.user"]},"renderHeader":{"file":"lib/ui.ts","r":["S.plans","S.user"],"w":["S.header"]},"POST /api/signup":{"file":"app/api/signup/route.ts","r":[],"w":[]},"createUser":{"file":"lib/auth.ts","r":["S.plans","S.users"],"w":["S.plans","S.users"]},"sendEmail":{"file":"lib/mailer.ts","r":["S.outbox","S.user","S.users"],"w":["S.outbox"]},"POST /api/cancel":{"file":"app/api/cancel/route.ts","r":[],"w":[]},"applyPlanChange":{"file":"lib/billing.ts","r":["S.interval","S.plans","S.user"],"w":["S.plans"]},"emit":{"file":"lib/bus.ts","r":["handlers"],"w":[]},"onPlanChanged":{"file":"lib/mailer.ts","r":["S.plans","S.user"],"w":[]},"POST /api/upgrade":{"file":"app/api/upgrade/route.ts","r":[],"w":["S.interval"]},"resolvePrice":{"file":"lib/billing.ts","r":["S.interval"],"w":[]},"isEnabled":{"file":"lib/flags.ts","r":["S.flags"],"w":[]},"chargeCard":{"file":"lib/billing.ts","r":["S.charged"],"w":["S.charged"]},"sendReceipt":{"file":"lib/mailer.ts","r":[],"w":[]},"prorate":{"file":"lib/proration.ts","r":["S.daysLeft"],"w":[]},"POST /api/agent":{"file":"app/api/agent/route.ts","r":[],"w":[]},"planGuard":{"file":"lib/billing.ts","r":["S.plans","S.user"],"w":[]},"buildSystemPrompt":{"file":"lib/agent.ts","r":["S.plans","S.user"],"w":["S.prompt"]},"pickTools":{"file":"lib/agent.ts","r":["S.plans","S.user"],"w":["S.tools"]},"streamReply":{"file":"lib/agent.ts","r":["S.prompt","S.tools"],"w":["S.reply"]},"GET /api/plugin":{"file":"app/api/plugin/route.ts","r":[],"w":[]},"runPlugin":{"file":"lib/plugins.ts","r":["plugins"],"w":[]},"plugins":{"file":"lib/plugins.ts","r":[],"w":[]}},"over":{"lib/auth.ts":{"lines":["// Sign-up and sessions.","import { S } from \"./state\";","","export function validateForm(f: { email: string }) {","  if (!/@.+\\./.test(f.email)) {","    throw new Error(\"bad email\");","  }","  return f;","}","","export function createUser(f: { email: string }) {","  const id = \"u\" + (Object.keys(S.users).length + 1);","  S.users = { ...S.users, [id]: { email: f.email } };","  S.plans = { ...S.plans, [id]: { plan: \"free\", interval: \"month\" } };","  return id;","}","","export function issueSid(id: string) {","  S.sid = \"sid-\" + id;","}","","export function loadSession() {","  S.user = S.sid.replace(\"sid-\", \"\");","}"],"own":[[1,2],[3,9,"validateForm"],[10,16,"createUser"],[17,20,"issueSid"],[21,24,"loadSession"],[25,25]]}}},{"id":"d982d89","date":"3 Nov","title":"Explain the state object","files":[{"path":"lib/state.ts","status":"M","add":1,"del":1,"hunks":[["@","@@ -1,4 +1,4 @@"],["-",1,"","// All app state lives in one object, like a tiny in-memory database.",", like a tiny in-memory","Plan"],["+","",1,"// All app state lives in one object. Tests and routes share it, so treat it like a database.",". Tests and routes share it, so treat it like a","Plan"],[" ",2,2,"export type Plan = { plan: \"free\" | \"pro\"; interval: \"month\" | \"year\" };",null,"Plan"],[" ",3,3,"",null,"State"],[" ",4,4,"export type State = {",null,"State"]],"full":[["-",1,"","// All app state lives in one object, like a tiny in-memory database.",", like a tiny in-memory","Plan"],["+","",1,"// All app state lives in one object. Tests and routes share it, so treat it like a database.",". Tests and routes share it, so treat it like a","Plan"],[" ",2,2,"export type Plan = { plan: \"free\" | \"pro\"; interval: \"month\" | \"year\" };",null,"Plan"],[" ",3,3,"",null,"State"],[" ",4,4,"export type State = {",null,"State"],[" ",5,5,"  users: Record<string, { email: string }>;",null,"State"],[" ",6,6,"  plans: Record<string, Plan>;",null,"State"],[" ",7,7,"  sid: string;",null,"State"],[" ",8,8,"  user: string;",null,"State"],[" ",9,9,"  flags: Record<string, boolean>;",null,"State"],[" ",10,10,"  interval?: \"month\" | \"year\";",null,"State"],[" ",11,11,"  outbox?: string[];",null,"State"],[" ",12,12,"  charged?: number;",null,"State"],[" ",13,13,"  prompt?: string;",null,"State"],[" ",14,14,"  tools?: string[];",null,"State"],[" ",15,15,"  reply?: string;",null,"State"],[" ",16,16,"  header?: string;",null,"State"],[" ",17,17,"};",null,"State"],[" ",18,18,"",null,"S"],[" ",19,19,"export const S: State = {",null,"S"],[" ",20,20,"  users: { u1: { email: \"a@x.com\" } },",null,"S"],[" ",21,21,"  plans: { u1: { plan: \"free\", interval: \"month\" } },",null,"S"],[" ",22,22,"  sid: \"sid-u1\",",null,"S"],[" ",23,23,"  user: \"u1\",",null,"S"],[" ",24,24,"  flags: { newPricing: true, betaUi: true },",null,"S"],[" ",25,25,"};",null,"S"]]}],"J":{"li":[{"fn":"POST /api/login","st":" ","by":null},{"fn":"validateForm","st":" ","by":null},{"fn":"issueSid","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"su":[{"fn":"POST /api/signup","st":" ","by":null},{"fn":"validateForm","st":" ","by":null},{"fn":"createUser","st":" ","by":null},{"fn":"issueSid","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"ca":[{"fn":"POST /api/cancel","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"applyPlanChange","st":" ","by":null},{"fn":"emit","st":" ","by":null},{"fn":"onPlanChanged","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"up":[{"fn":"POST /api/upgrade","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"resolvePrice","st":" ","by":null},{"fn":"isEnabled","st":" ","by":null},{"fn":"chargeCard","st":" ","by":null},{"fn":"sendReceipt","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"applyPlanChange","st":" ","by":null},{"fn":"emit","st":" ","by":null},{"fn":"onPlanChanged","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"ag":[{"fn":"POST /api/agent","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"planGuard","st":" ","by":null},{"fn":"buildSystemPrompt","st":" ","by":null},{"fn":"isEnabled","st":" ","by":null},{"fn":"pickTools","st":" ","by":null},{"fn":"streamReply","st":" ","by":null}],"pl":[{"fn":"GET /api/plugin","st":" ","by":null},{"fn":"runPlugin","st":" ","by":null},{"fn":"plugins","st":" ","by":null}]},"W":{"POST /api/login":{"file":"app/api/login/route.ts","r":[],"w":[]},"validateForm":{"file":"lib/auth.ts","r":[],"w":[]},"issueSid":{"file":"lib/auth.ts","r":[],"w":["S.sid"]},"loadSession":{"file":"lib/auth.ts","r":["S.sid"],"w":["S.user"]},"renderHeader":{"file":"lib/ui.ts","r":["S.plans","S.user"],"w":["S.header"]},"POST /api/signup":{"file":"app/api/signup/route.ts","r":[],"w":[]},"createUser":{"file":"lib/auth.ts","r":["S.plans","S.users"],"w":["S.plans","S.users"]},"sendEmail":{"file":"lib/mailer.ts","r":["S.outbox","S.user","S.users"],"w":["S.outbox"]},"POST /api/cancel":{"file":"app/api/cancel/route.ts","r":[],"w":[]},"applyPlanChange":{"file":"lib/billing.ts","r":["S.plans","S.user"],"w":["S.plans"]},"emit":{"file":"lib/bus.ts","r":["handlers"],"w":[]},"onPlanChanged":{"file":"lib/mailer.ts","r":[],"w":[]},"POST /api/upgrade":{"file":"app/api/upgrade/route.ts","r":[],"w":[]},"resolvePrice":{"file":"lib/billing.ts","r":[],"w":[]},"isEnabled":{"file":"lib/flags.ts","r":["S.flags"],"w":[]},"chargeCard":{"file":"lib/billing.ts","r":["S.charged"],"w":["S.charged"]},"sendReceipt":{"file":"lib/mailer.ts","r":[],"w":[]},"POST /api/agent":{"file":"app/api/agent/route.ts","r":[],"w":[]},"planGuard":{"file":"lib/billing.ts","r":["S.plans","S.user"],"w":[]},"buildSystemPrompt":{"file":"lib/agent.ts","r":["S.plans","S.user"],"w":["S.prompt"]},"pickTools":{"file":"lib/agent.ts","r":["S.plans","S.user"],"w":["S.tools"]},"streamReply":{"file":"lib/agent.ts","r":["S.prompt","S.tools"],"w":["S.reply"]},"GET /api/plugin":{"file":"app/api/plugin/route.ts","r":[],"w":[]},"runPlugin":{"file":"lib/plugins.ts","r":["plugins"],"w":[]},"plugins":{"file":"lib/plugins.ts","r":[],"w":[]}},"over":{"lib/agent.ts":{"lines":["// The agent: prompt, tools and reply.","import { S } from \"./state\";","import { isEnabled } from \"./flags\";","","export function buildSystemPrompt() {","  const base = \"You help a \" + S.plans[S.user].plan + \" user.\";","  S.prompt = isEnabled(\"betaUi\") ? base + \" Beta on.\" : base;","}","","export function pickTools() {","  S.tools = S.plans[S.user].plan === \"free\" ? [\"search\"] : [\"search\", \"code\"];","}","","export function streamReply() {","  S.reply = \"ok:\" + S.prompt!.length + \":\" + S.tools!.join(\",\");","}"],"own":[[1,3],[4,8,"buildSystemPrompt"],[9,12,"pickTools"],[13,16,"streamReply"],[17,17]]},"lib/auth.ts":{"lines":["// Sign-up and sessions.","import { S } from \"./state\";","","export function validateForm(f: { email: string }) {","  if (!/@.+\\./.test(f.email)) {","    throw new Error(\"bad email\");","  }","  return f;","}","","export function createUser(f: { email: string }) {","  const id = \"u\" + (Object.keys(S.users).length + 1);","  S.users = { ...S.users, [id]: { email: f.email } };","  S.plans = { ...S.plans, [id]: { plan: \"free\", interval: \"month\" } };","  return id;","}","","export function issueSid(id: string) {","  S.sid = \"sid-\" + id;","}","","export function loadSession() {","  S.user = S.sid.replace(\"sid-\", \"\");","}"],"own":[[1,2],[3,9,"validateForm"],[10,16,"createUser"],[17,20,"issueSid"],[21,24,"loadSession"],[25,25]]},"lib/billing.ts":{"lines":["// Pricing and plan changes.","import { S } from \"./state\";","import { isEnabled } from \"./flags\";","import { emit } from \"./bus\";","import { sendReceipt } from \"./mailer\";","","export function resolvePrice(plan: string) {","  const table: Record<string, number> = isEnabled(\"newPricing\") ? { pro: 24 } : { pro: 20 };","  return table[plan];","}","","export function chargeCard(amount: number) {","  S.charged = (S.charged ?? 0) + amount;","  sendReceipt(amount);","}","","export function applyPlanChange(plan: \"free\" | \"pro\") {","  S.plans = { ...S.plans, [S.user]: { plan, interval: \"month\" } };","  emit(\"plan_changed\");","}","","export function planGuard(action: string) {","  if (S.plans[S.user].plan === \"free\") {","    throw new Error(\"upgrade required for \" + action);","  }","}"],"own":[[1,5],[6,10,"resolvePrice"],[11,15,"chargeCard"],[16,20,"applyPlanChange"],[21,26,"planGuard"],[27,27]]},"lib/mailer.ts":{"lines":["// Email. The plan-changed handler is wired by name.","import { S } from \"./state\";","import { on } from \"./bus\";","","export function sendEmail(kind: string) {","  const u = S.users[S.user];","  S.outbox = [...(S.outbox ?? []), `${kind} -> ${u.email}`];","}","","export function sendReceipt(amount: number) {","  sendEmail(\"receipt for \" + amount);","}","","function onPlanChanged() {","  sendEmail(\"plan-changed\");","}","","on(\"plan_changed\", onPlanChanged);"],"own":[[1,3],[4,8,"sendEmail"],[9,12,"sendReceipt"],[13,16,"onPlanChanged"],[17,17],[18,18,"unplaced"],[19,19]]},"lib/plugins.ts":{"lines":["// Plugins are looked up by name, so no line of code says which one runs.","const plugins: Record<string, () => string> = {","  summarize: () => \"summary\",","  translate: () => \"translation\",","  german: () => \"Übersetzung\",","};","","export function runPlugin(name: string) {","  return plugins[name]();","}","","// Nothing calls this any more.","export function legacyExport() {","  return Object.keys(plugins);","}"],"own":[[1,6,"plugins"],[7,10,"runPlugin"],[11,15,"legacyExport"],[16,16]]}}},{"id":"e2bf3ea","date":"2 Nov","title":"List tools in agent replies","files":[{"path":"lib/agent.ts","status":"M","add":1,"del":1,"hunks":[["@","@@ -12,5 +12,5 @@ export function pickTools() {"],[" ",12,12,"}",null,"pickTools"],[" ",13,13,"",null,"streamReply"],[" ",14,14,"export function streamReply() {",null,"streamReply"],["-",15,"","  S.reply = \"ok:\" + S.prompt!.length + \":\" + S.tools!.length;","length","streamReply"],["+","",15,"  S.reply = \"ok:\" + S.prompt!.length + \":\" + S.tools!.join(\",\");","join(\",\")","streamReply"],[" ",16,16,"}",null,"streamReply"]],"full":[[" ",1,1,"// The agent: prompt, tools and reply.",null,null],[" ",2,2,"import { S } from \"./state\";",null,null],[" ",3,3,"import { isEnabled } from \"./flags\";",null,null],[" ",4,4,"",null,"buildSystemPrompt"],[" ",5,5,"export function buildSystemPrompt() {",null,"buildSystemPrompt"],[" ",6,6,"  const base = \"You help a \" + S.plans[S.user].plan + \" user.\";",null,"buildSystemPrompt"],[" ",7,7,"  S.prompt = isEnabled(\"betaUi\") ? base + \" Beta on.\" : base;",null,"buildSystemPrompt"],[" ",8,8,"}",null,"buildSystemPrompt"],[" ",9,9,"",null,"pickTools"],[" ",10,10,"export function pickTools() {",null,"pickTools"],[" ",11,11,"  S.tools = S.plans[S.user].plan === \"free\" ? [\"search\"] : [\"search\", \"code\"];",null,"pickTools"],[" ",12,12,"}",null,"pickTools"],[" ",13,13,"",null,"streamReply"],[" ",14,14,"export function streamReply() {",null,"streamReply"],["-",15,"","  S.reply = \"ok:\" + S.prompt!.length + \":\" + S.tools!.length;","length","streamReply"],["+","",15,"  S.reply = \"ok:\" + S.prompt!.length + \":\" + S.tools!.join(\",\");","join(\",\")","streamReply"],[" ",16,16,"}",null,"streamReply"]]}],"J":{"li":[{"fn":"POST /api/login","st":" ","by":null},{"fn":"validateForm","st":" ","by":null},{"fn":"issueSid","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"su":[{"fn":"POST /api/signup","st":" ","by":null},{"fn":"validateForm","st":" ","by":null},{"fn":"createUser","st":" ","by":null},{"fn":"issueSid","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"ca":[{"fn":"POST /api/cancel","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"applyPlanChange","st":" ","by":null},{"fn":"emit","st":" ","by":null},{"fn":"onPlanChanged","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"up":[{"fn":"POST /api/upgrade","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"resolvePrice","st":" ","by":null},{"fn":"isEnabled","st":" ","by":null},{"fn":"chargeCard","st":" ","by":null},{"fn":"sendReceipt","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"applyPlanChange","st":" ","by":null},{"fn":"emit","st":" ","by":null},{"fn":"onPlanChanged","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"ag":[{"fn":"POST /api/agent","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"planGuard","st":" ","by":null},{"fn":"buildSystemPrompt","st":" ","by":null},{"fn":"isEnabled","st":" ","by":null},{"fn":"pickTools","st":" ","by":null},{"fn":"streamReply","st":" ","by":null}],"pl":[{"fn":"GET /api/plugin","st":" ","by":null},{"fn":"runPlugin","st":" ","by":null},{"fn":"plugins","st":" ","by":null}]},"W":{"POST /api/login":{"file":"app/api/login/route.ts","r":[],"w":[]},"validateForm":{"file":"lib/auth.ts","r":[],"w":[]},"issueSid":{"file":"lib/auth.ts","r":[],"w":["S.sid"]},"loadSession":{"file":"lib/auth.ts","r":["S.sid"],"w":["S.user"]},"renderHeader":{"file":"lib/ui.ts","r":["S.plans","S.user"],"w":["S.header"]},"POST /api/signup":{"file":"app/api/signup/route.ts","r":[],"w":[]},"createUser":{"file":"lib/auth.ts","r":["S.plans","S.users"],"w":["S.plans","S.users"]},"sendEmail":{"file":"lib/mailer.ts","r":["S.outbox","S.user","S.users"],"w":["S.outbox"]},"POST /api/cancel":{"file":"app/api/cancel/route.ts","r":[],"w":[]},"applyPlanChange":{"file":"lib/billing.ts","r":["S.plans","S.user"],"w":["S.plans"]},"emit":{"file":"lib/bus.ts","r":["handlers"],"w":[]},"onPlanChanged":{"file":"lib/mailer.ts","r":[],"w":[]},"POST /api/upgrade":{"file":"app/api/upgrade/route.ts","r":[],"w":[]},"resolvePrice":{"file":"lib/billing.ts","r":[],"w":[]},"isEnabled":{"file":"lib/flags.ts","r":["S.flags"],"w":[]},"chargeCard":{"file":"lib/billing.ts","r":["S.charged"],"w":["S.charged"]},"sendReceipt":{"file":"lib/mailer.ts","r":[],"w":[]},"POST /api/agent":{"file":"app/api/agent/route.ts","r":[],"w":[]},"planGuard":{"file":"lib/billing.ts","r":["S.plans","S.user"],"w":[]},"buildSystemPrompt":{"file":"lib/agent.ts","r":["S.plans","S.user"],"w":["S.prompt"]},"pickTools":{"file":"lib/agent.ts","r":["S.plans","S.user"],"w":["S.tools"]},"streamReply":{"file":"lib/agent.ts","r":["S.prompt","S.tools"],"w":["S.reply"]},"GET /api/plugin":{"file":"app/api/plugin/route.ts","r":[],"w":[]},"runPlugin":{"file":"lib/plugins.ts","r":["plugins"],"w":[]},"plugins":{"file":"lib/plugins.ts","r":[],"w":[]}},"over":{"lib/auth.ts":{"lines":["// Sign-up and sessions.","import { S } from \"./state\";","","export function validateForm(f: { email: string }) {","  if (!/@.+\\./.test(f.email)) {","    throw new Error(\"bad email\");","  }","  return f;","}","","export function createUser(f: { email: string }) {","  const id = \"u\" + (Object.keys(S.users).length + 1);","  S.users = { ...S.users, [id]: { email: f.email } };","  S.plans = { ...S.plans, [id]: { plan: \"free\", interval: \"month\" } };","  return id;","}","","export function issueSid(id: string) {","  S.sid = \"sid-\" + id;","}","","export function loadSession() {","  S.user = S.sid.replace(\"sid-\", \"\");","}"],"own":[[1,2],[3,9,"validateForm"],[10,16,"createUser"],[17,20,"issueSid"],[21,24,"loadSession"],[25,25]]},"lib/billing.ts":{"lines":["// Pricing and plan changes.","import { S } from \"./state\";","import { isEnabled } from \"./flags\";","import { emit } from \"./bus\";","import { sendReceipt } from \"./mailer\";","","export function resolvePrice(plan: string) {","  const table: Record<string, number> = isEnabled(\"newPricing\") ? { pro: 24 } : { pro: 20 };","  return table[plan];","}","","export function chargeCard(amount: number) {","  S.charged = (S.charged ?? 0) + amount;","  sendReceipt(amount);","}","","export function applyPlanChange(plan: \"free\" | \"pro\") {","  S.plans = { ...S.plans, [S.user]: { plan, interval: \"month\" } };","  emit(\"plan_changed\");","}","","export function planGuard(action: string) {","  if (S.plans[S.user].plan === \"free\") {","    throw new Error(\"upgrade required for \" + action);","  }","}"],"own":[[1,5],[6,10,"resolvePrice"],[11,15,"chargeCard"],[16,20,"applyPlanChange"],[21,26,"planGuard"],[27,27]]},"lib/mailer.ts":{"lines":["// Email. The plan-changed handler is wired by name.","import { S } from \"./state\";","import { on } from \"./bus\";","","export function sendEmail(kind: string) {","  const u = S.users[S.user];","  S.outbox = [...(S.outbox ?? []), `${kind} -> ${u.email}`];","}","","export function sendReceipt(amount: number) {","  sendEmail(\"receipt for \" + amount);","}","","function onPlanChanged() {","  sendEmail(\"plan-changed\");","}","","on(\"plan_changed\", onPlanChanged);"],"own":[[1,3],[4,8,"sendEmail"],[9,12,"sendReceipt"],[13,16,"onPlanChanged"],[17,17],[18,18,"unplaced"],[19,19]]},"lib/plugins.ts":{"lines":["// Plugins are looked up by name, so no line of code says which one runs.","const plugins: Record<string, () => string> = {","  summarize: () => \"summary\",","  translate: () => \"translation\",","  german: () => \"Übersetzung\",","};","","export function runPlugin(name: string) {","  return plugins[name]();","}","","// Nothing calls this any more.","export function legacyExport() {","  return Object.keys(plugins);","}"],"own":[[1,6,"plugins"],[7,10,"runPlugin"],[11,15,"legacyExport"],[16,16]]}}},{"id":"bcf0b1c","date":"30 Oct","title":"Email a receipt after payment","files":[{"path":"lib/billing.ts","status":"M","add":2,"del":0,"hunks":[["@","@@ -2,6 +2,7 @@"],[" ",2,2,"import { S } from \"./state\";",null,null],[" ",3,3,"import { isEnabled } from \"./flags\";",null,null],[" ",4,4,"import { emit } from \"./bus\";",null,null],["+","",5,"import { sendReceipt } from \"./mailer\";",null,null],[" ",5,6,"",null,"resolvePrice"],[" ",6,7,"export function resolvePrice(plan: string) {",null,"resolvePrice"],[" ",7,8,"  const table: Record<string, number> = isEnabled(\"newPricing\") ? { pro: 24 } : { pro: 20 };",null,"resolvePrice"],["@","@@ -10,6 +11,7 @@ export function resolvePrice(plan: string) {"],[" ",10,11,"",null,"chargeCard"],[" ",11,12,"export function chargeCard(amount: number) {",null,"chargeCard"],[" ",12,13,"  S.charged = (S.charged ?? 0) + amount;",null,"chargeCard"],["+","",14,"  sendReceipt(amount);",null,"chargeCard"],[" ",13,15,"}",null,"chargeCard"],[" ",14,16,"",null,"applyPlanChange"],[" ",15,17,"export function applyPlanChange(plan: \"free\" | \"pro\") {",null,"applyPlanChange"]],"full":[[" ",1,1,"// Pricing and plan changes.",null,null],[" ",2,2,"import { S } from \"./state\";",null,null],[" ",3,3,"import { isEnabled } from \"./flags\";",null,null],[" ",4,4,"import { emit } from \"./bus\";",null,null],["+","",5,"import { sendReceipt } from \"./mailer\";",null,null],[" ",5,6,"",null,"resolvePrice"],[" ",6,7,"export function resolvePrice(plan: string) {",null,"resolvePrice"],[" ",7,8,"  const table: Record<string, number> = isEnabled(\"newPricing\") ? { pro: 24 } : { pro: 20 };",null,"resolvePrice"],[" ",8,9,"  return table[plan];",null,"resolvePrice"],[" ",9,10,"}",null,"resolvePrice"],[" ",10,11,"",null,"chargeCard"],[" ",11,12,"export function chargeCard(amount: number) {",null,"chargeCard"],[" ",12,13,"  S.charged = (S.charged ?? 0) + amount;",null,"chargeCard"],["+","",14,"  sendReceipt(amount);",null,"chargeCard"],[" ",13,15,"}",null,"chargeCard"],[" ",14,16,"",null,"applyPlanChange"],[" ",15,17,"export function applyPlanChange(plan: \"free\" | \"pro\") {",null,"applyPlanChange"],[" ",16,18,"  S.plans = { ...S.plans, [S.user]: { plan, interval: \"month\" } };",null,"applyPlanChange"],[" ",17,19,"  emit(\"plan_changed\");",null,"applyPlanChange"],[" ",18,20,"}",null,"applyPlanChange"],[" ",19,21,"",null,"planGuard"],[" ",20,22,"export function planGuard(action: string) {",null,"planGuard"],[" ",21,23,"  if (S.plans[S.user].plan === \"free\") {",null,"planGuard"],[" ",22,24,"    throw new Error(\"upgrade required for \" + action);",null,"planGuard"],[" ",23,25,"  }",null,"planGuard"],[" ",24,26,"}",null,"planGuard"]]},{"path":"lib/mailer.ts","status":"M","add":4,"del":0,"hunks":[["@","@@ -7,6 +7,10 @@ export function sendEmail(kind: string) {"],[" ",7,7,"  S.outbox = [...(S.outbox ?? []), `${kind} -> ${u.email}`];",null,"sendEmail"],[" ",8,8,"}",null,"sendEmail"],[" ",9,9,"",null,"sendReceipt"],["+","",10,"export function sendReceipt(amount: number) {",null,"sendReceipt"],["+","",11,"  sendEmail(\"receipt for \" + amount);",null,"sendReceipt"],["+","",12,"}",null,"sendReceipt"],["+","",13,"",null,"onPlanChanged"],[" ",10,14,"function onPlanChanged() {",null,"onPlanChanged"],[" ",11,15,"  sendEmail(\"plan-changed\");",null,"onPlanChanged"],[" ",12,16,"}",null,"onPlanChanged"]],"full":[[" ",1,1,"// Email. The plan-changed handler is wired by name.",null,null],[" ",2,2,"import { S } from \"./state\";",null,null],[" ",3,3,"import { on } from \"./bus\";",null,null],[" ",4,4,"",null,"sendEmail"],[" ",5,5,"export function sendEmail(kind: string) {",null,"sendEmail"],[" ",6,6,"  const u = S.users[S.user];",null,"sendEmail"],[" ",7,7,"  S.outbox = [...(S.outbox ?? []), `${kind} -> ${u.email}`];",null,"sendEmail"],[" ",8,8,"}",null,"sendEmail"],[" ",9,9,"",null,"sendReceipt"],["+","",10,"export function sendReceipt(amount: number) {",null,"sendReceipt"],["+","",11,"  sendEmail(\"receipt for \" + amount);",null,"sendReceipt"],["+","",12,"}",null,"sendReceipt"],["+","",13,"",null,"onPlanChanged"],[" ",10,14,"function onPlanChanged() {",null,"onPlanChanged"],[" ",11,15,"  sendEmail(\"plan-changed\");",null,"onPlanChanged"],[" ",12,16,"}",null,"onPlanChanged"],[" ",13,17,"",null,null],[" ",14,18,"on(\"plan_changed\", onPlanChanged);",null,null]]}],"J":{"li":[{"fn":"POST /api/login","st":" ","by":null},{"fn":"validateForm","st":" ","by":null},{"fn":"issueSid","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"su":[{"fn":"POST /api/signup","st":" ","by":null},{"fn":"validateForm","st":" ","by":null},{"fn":"createUser","st":" ","by":null},{"fn":"issueSid","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"ca":[{"fn":"POST /api/cancel","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"applyPlanChange","st":" ","by":null},{"fn":"emit","st":" ","by":null},{"fn":"onPlanChanged","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"up":[{"fn":"POST /api/upgrade","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"resolvePrice","st":" ","by":null},{"fn":"isEnabled","st":" ","by":null},{"fn":"chargeCard","st":" ","by":null},{"fn":"sendReceipt","st":"+","by":"chargeCard"},{"fn":"sendEmail","st":" ","by":null},{"fn":"applyPlanChange","st":" ","by":null},{"fn":"emit","st":" ","by":null},{"fn":"onPlanChanged","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"ag":[{"fn":"POST /api/agent","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"planGuard","st":" ","by":null},{"fn":"buildSystemPrompt","st":" ","by":null},{"fn":"isEnabled","st":" ","by":null},{"fn":"pickTools","st":" ","by":null},{"fn":"streamReply","st":" ","by":null}],"pl":[{"fn":"GET /api/plugin","st":" ","by":null},{"fn":"runPlugin","st":" ","by":null},{"fn":"plugins","st":" ","by":null}]},"W":{"POST /api/login":{"file":"app/api/login/route.ts","r":[],"w":[]},"validateForm":{"file":"lib/auth.ts","r":[],"w":[]},"issueSid":{"file":"lib/auth.ts","r":[],"w":["S.sid"]},"loadSession":{"file":"lib/auth.ts","r":["S.sid"],"w":["S.user"]},"renderHeader":{"file":"lib/ui.ts","r":["S.plans","S.user"],"w":["S.header"]},"POST /api/signup":{"file":"app/api/signup/route.ts","r":[],"w":[]},"createUser":{"file":"lib/auth.ts","r":["S.plans","S.users"],"w":["S.plans","S.users"]},"sendEmail":{"file":"lib/mailer.ts","r":["S.outbox","S.user","S.users"],"w":["S.outbox"]},"POST /api/cancel":{"file":"app/api/cancel/route.ts","r":[],"w":[]},"applyPlanChange":{"file":"lib/billing.ts","r":["S.plans","S.user"],"w":["S.plans"]},"emit":{"file":"lib/bus.ts","r":["handlers"],"w":[]},"onPlanChanged":{"file":"lib/mailer.ts","r":[],"w":[]},"POST /api/upgrade":{"file":"app/api/upgrade/route.ts","r":[],"w":[]},"resolvePrice":{"file":"lib/billing.ts","r":[],"w":[]},"isEnabled":{"file":"lib/flags.ts","r":["S.flags"],"w":[]},"chargeCard":{"file":"lib/billing.ts","r":["S.charged"],"w":["S.charged"]},"sendReceipt":{"file":"lib/mailer.ts","r":[],"w":[]},"POST /api/agent":{"file":"app/api/agent/route.ts","r":[],"w":[]},"planGuard":{"file":"lib/billing.ts","r":["S.plans","S.user"],"w":[]},"buildSystemPrompt":{"file":"lib/agent.ts","r":["S.plans","S.user"],"w":["S.prompt"]},"pickTools":{"file":"lib/agent.ts","r":["S.plans","S.user"],"w":["S.tools"]},"streamReply":{"file":"lib/agent.ts","r":["S.prompt","S.tools"],"w":["S.reply"]},"GET /api/plugin":{"file":"app/api/plugin/route.ts","r":[],"w":[]},"runPlugin":{"file":"lib/plugins.ts","r":["plugins"],"w":[]},"plugins":{"file":"lib/plugins.ts","r":[],"w":[]}},"over":{"lib/auth.ts":{"lines":["// Sign-up and sessions.","import { S } from \"./state\";","","export function validateForm(f: { email: string }) {","  if (!/@.+\\./.test(f.email)) {","    throw new Error(\"bad email\");","  }","  return f;","}","","export function createUser(f: { email: string }) {","  const id = \"u\" + (Object.keys(S.users).length + 1);","  S.users = { ...S.users, [id]: { email: f.email } };","  S.plans = { ...S.plans, [id]: { plan: \"free\", interval: \"month\" } };","  return id;","}","","export function issueSid(id: string) {","  S.sid = \"sid-\" + id;","}","","export function loadSession() {","  S.user = S.sid.replace(\"sid-\", \"\");","}"],"own":[[1,2],[3,9,"validateForm"],[10,16,"createUser"],[17,20,"issueSid"],[21,24,"loadSession"],[25,25]]},"lib/plugins.ts":{"lines":["// Plugins are looked up by name, so no line of code says which one runs.","const plugins: Record<string, () => string> = {","  summarize: () => \"summary\",","  translate: () => \"translation\",","  german: () => \"Übersetzung\",","};","","export function runPlugin(name: string) {","  return plugins[name]();","}","","// Nothing calls this any more.","export function legacyExport() {","  return Object.keys(plugins);","}"],"own":[[1,6,"plugins"],[7,10,"runPlugin"],[11,15,"legacyExport"],[16,16]]}}},{"id":"11f6ded","date":"29 Oct","title":"Add a German plugin","files":[{"path":"lib/plugins.ts","status":"M","add":1,"del":0,"hunks":[["@","@@ -2,6 +2,7 @@"],[" ",2,2,"const plugins: Record<string, () => string> = {",null,"plugins"],[" ",3,3,"  summarize: () => \"summary\",",null,"plugins"],[" ",4,4,"  translate: () => \"translation\",",null,"plugins"],["+","",5,"  german: () => \"Übersetzung\",",null,"plugins"],[" ",5,6,"};",null,"plugins"],[" ",6,7,"",null,"runPlugin"],[" ",7,8,"export function runPlugin(name: string) {",null,"runPlugin"]],"full":[[" ",1,1,"// Plugins are looked up by name, so no line of code says which one runs.",null,"plugins"],[" ",2,2,"const plugins: Record<string, () => string> = {",null,"plugins"],[" ",3,3,"  summarize: () => \"summary\",",null,"plugins"],[" ",4,4,"  translate: () => \"translation\",",null,"plugins"],["+","",5,"  german: () => \"Übersetzung\",",null,"plugins"],[" ",5,6,"};",null,"plugins"],[" ",6,7,"",null,"runPlugin"],[" ",7,8,"export function runPlugin(name: string) {",null,"runPlugin"],[" ",8,9,"  return plugins[name]();",null,"runPlugin"],[" ",9,10,"}",null,"runPlugin"],[" ",10,11,"",null,"legacyExport"],[" ",11,12,"// Nothing calls this any more.",null,"legacyExport"],[" ",12,13,"export function legacyExport() {",null,"legacyExport"],[" ",13,14,"  return Object.keys(plugins);",null,"legacyExport"],[" ",14,15,"}",null,"legacyExport"]]}],"J":{"li":[{"fn":"POST /api/login","st":" ","by":null},{"fn":"validateForm","st":" ","by":null},{"fn":"issueSid","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"su":[{"fn":"POST /api/signup","st":" ","by":null},{"fn":"validateForm","st":" ","by":null},{"fn":"createUser","st":" ","by":null},{"fn":"issueSid","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"ca":[{"fn":"POST /api/cancel","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"applyPlanChange","st":" ","by":null},{"fn":"emit","st":" ","by":null},{"fn":"onPlanChanged","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"up":[{"fn":"POST /api/upgrade","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"resolvePrice","st":" ","by":null},{"fn":"isEnabled","st":" ","by":null},{"fn":"chargeCard","st":" ","by":null},{"fn":"applyPlanChange","st":" ","by":null},{"fn":"emit","st":" ","by":null},{"fn":"onPlanChanged","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"ag":[{"fn":"POST /api/agent","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"planGuard","st":" ","by":null},{"fn":"buildSystemPrompt","st":" ","by":null},{"fn":"isEnabled","st":" ","by":null},{"fn":"pickTools","st":" ","by":null},{"fn":"streamReply","st":" ","by":null}],"pl":[{"fn":"GET /api/plugin","st":" ","by":null},{"fn":"runPlugin","st":" ","by":null},{"fn":"plugins","st":" ","by":null}]},"W":{"POST /api/login":{"file":"app/api/login/route.ts","r":[],"w":[]},"validateForm":{"file":"lib/auth.ts","r":[],"w":[]},"issueSid":{"file":"lib/auth.ts","r":[],"w":["S.sid"]},"loadSession":{"file":"lib/auth.ts","r":["S.sid"],"w":["S.user"]},"renderHeader":{"file":"lib/ui.ts","r":["S.plans","S.user"],"w":["S.header"]},"POST /api/signup":{"file":"app/api/signup/route.ts","r":[],"w":[]},"createUser":{"file":"lib/auth.ts","r":["S.plans","S.users"],"w":["S.plans","S.users"]},"sendEmail":{"file":"lib/mailer.ts","r":["S.outbox","S.user","S.users"],"w":["S.outbox"]},"POST /api/cancel":{"file":"app/api/cancel/route.ts","r":[],"w":[]},"applyPlanChange":{"file":"lib/billing.ts","r":["S.plans","S.user"],"w":["S.plans"]},"emit":{"file":"lib/bus.ts","r":["handlers"],"w":[]},"onPlanChanged":{"file":"lib/mailer.ts","r":[],"w":[]},"POST /api/upgrade":{"file":"app/api/upgrade/route.ts","r":[],"w":[]},"resolvePrice":{"file":"lib/billing.ts","r":[],"w":[]},"isEnabled":{"file":"lib/flags.ts","r":["S.flags"],"w":[]},"chargeCard":{"file":"lib/billing.ts","r":["S.charged"],"w":["S.charged"]},"POST /api/agent":{"file":"app/api/agent/route.ts","r":[],"w":[]},"planGuard":{"file":"lib/billing.ts","r":["S.plans","S.user"],"w":[]},"buildSystemPrompt":{"file":"lib/agent.ts","r":["S.plans","S.user"],"w":["S.prompt"]},"pickTools":{"file":"lib/agent.ts","r":["S.plans","S.user"],"w":["S.tools"]},"streamReply":{"file":"lib/agent.ts","r":["S.prompt","S.tools"],"w":["S.reply"]},"GET /api/plugin":{"file":"app/api/plugin/route.ts","r":[],"w":[]},"runPlugin":{"file":"lib/plugins.ts","r":["plugins"],"w":[]},"plugins":{"file":"lib/plugins.ts","r":[],"w":[]}},"over":{"lib/auth.ts":{"lines":["// Sign-up and sessions.","import { S } from \"./state\";","","export function validateForm(f: { email: string }) {","  if (!/@.+\\./.test(f.email)) {","    throw new Error(\"bad email\");","  }","  return f;","}","","export function createUser(f: { email: string }) {","  const id = \"u\" + (Object.keys(S.users).length + 1);","  S.users = { ...S.users, [id]: { email: f.email } };","  S.plans = { ...S.plans, [id]: { plan: \"free\", interval: \"month\" } };","  return id;","}","","export function issueSid(id: string) {","  S.sid = \"sid-\" + id;","}","","export function loadSession() {","  S.user = S.sid.replace(\"sid-\", \"\");","}"],"own":[[1,2],[3,9,"validateForm"],[10,16,"createUser"],[17,20,"issueSid"],[21,24,"loadSession"],[25,25]]}}},{"id":"832b86f","date":"28 Oct","title":"Stricter email check","files":[{"path":"lib/auth.ts","status":"M","add":1,"del":1,"hunks":[["@","@@ -2,7 +2,7 @@"],[" ",2,2,"import { S } from \"./state\";",null,null],[" ",3,3,"",null,"validateForm"],[" ",4,4,"export function validateForm(f: { email: string }) {",null,"validateForm"],["-",5,"","  if (f.email.indexOf(\"@\") < 0) {",null,"validateForm"],["+","",5,"  if (!/@.+\\./.test(f.email)) {",null,"validateForm"],[" ",6,6,"    throw new Error(\"bad email\");",null,"validateForm"],[" ",7,7,"  }",null,"validateForm"],[" ",8,8,"  return f;",null,"validateForm"]],"full":[[" ",1,1,"// Sign-up and sessions.",null,null],[" ",2,2,"import { S } from \"./state\";",null,null],[" ",3,3,"",null,"validateForm"],[" ",4,4,"export function validateForm(f: { email: string }) {",null,"validateForm"],["-",5,"","  if (f.email.indexOf(\"@\") < 0) {",null,"validateForm"],["+","",5,"  if (!/@.+\\./.test(f.email)) {",null,"validateForm"],[" ",6,6,"    throw new Error(\"bad email\");",null,"validateForm"],[" ",7,7,"  }",null,"validateForm"],[" ",8,8,"  return f;",null,"validateForm"],[" ",9,9,"}",null,"validateForm"],[" ",10,10,"",null,"createUser"],[" ",11,11,"export function createUser(f: { email: string }) {",null,"createUser"],[" ",12,12,"  const id = \"u\" + (Object.keys(S.users).length + 1);",null,"createUser"],[" ",13,13,"  S.users = { ...S.users, [id]: { email: f.email } };",null,"createUser"],[" ",14,14,"  S.plans = { ...S.plans, [id]: { plan: \"free\", interval: \"month\" } };",null,"createUser"],[" ",15,15,"  return id;",null,"createUser"],[" ",16,16,"}",null,"createUser"],[" ",17,17,"",null,"issueSid"],[" ",18,18,"export function issueSid(id: string) {",null,"issueSid"],[" ",19,19,"  S.sid = \"sid-\" + id;",null,"issueSid"],[" ",20,20,"}",null,"issueSid"],[" ",21,21,"",null,"loadSession"],[" ",22,22,"export function loadSession() {",null,"loadSession"],[" ",23,23,"  S.user = S.sid.replace(\"sid-\", \"\");",null,"loadSession"],[" ",24,24,"}",null,"loadSession"]]}],"J":{"li":[{"fn":"POST /api/login","st":" ","by":null},{"fn":"validateForm","st":" ","by":null},{"fn":"issueSid","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"su":[{"fn":"POST /api/signup","st":" ","by":null},{"fn":"validateForm","st":" ","by":null},{"fn":"createUser","st":" ","by":null},{"fn":"issueSid","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"ca":[{"fn":"POST /api/cancel","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"applyPlanChange","st":" ","by":null},{"fn":"emit","st":" ","by":null},{"fn":"onPlanChanged","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"up":[{"fn":"POST /api/upgrade","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"resolvePrice","st":" ","by":null},{"fn":"isEnabled","st":" ","by":null},{"fn":"chargeCard","st":" ","by":null},{"fn":"applyPlanChange","st":" ","by":null},{"fn":"emit","st":" ","by":null},{"fn":"onPlanChanged","st":" ","by":null},{"fn":"sendEmail","st":" ","by":null},{"fn":"renderHeader","st":" ","by":null}],"ag":[{"fn":"POST /api/agent","st":" ","by":null},{"fn":"loadSession","st":" ","by":null},{"fn":"planGuard","st":" ","by":null},{"fn":"buildSystemPrompt","st":" ","by":null},{"fn":"isEnabled","st":" ","by":null},{"fn":"pickTools","st":" ","by":null},{"fn":"streamReply","st":" ","by":null}],"pl":[{"fn":"GET /api/plugin","st":" ","by":null},{"fn":"runPlugin","st":" ","by":null},{"fn":"plugins","st":" ","by":null}]},"W":{"POST /api/login":{"file":"app/api/login/route.ts","r":[],"w":[]},"validateForm":{"file":"lib/auth.ts","r":[],"w":[]},"issueSid":{"file":"lib/auth.ts","r":[],"w":["S.sid"]},"loadSession":{"file":"lib/auth.ts","r":["S.sid"],"w":["S.user"]},"renderHeader":{"file":"lib/ui.ts","r":["S.plans","S.user"],"w":["S.header"]},"POST /api/signup":{"file":"app/api/signup/route.ts","r":[],"w":[]},"createUser":{"file":"lib/auth.ts","r":["S.plans","S.users"],"w":["S.plans","S.users"]},"sendEmail":{"file":"lib/mailer.ts","r":["S.outbox","S.user","S.users"],"w":["S.outbox"]},"POST /api/cancel":{"file":"app/api/cancel/route.ts","r":[],"w":[]},"applyPlanChange":{"file":"lib/billing.ts","r":["S.plans","S.user"],"w":["S.plans"]},"emit":{"file":"lib/bus.ts","r":["handlers"],"w":[]},"onPlanChanged":{"file":"lib/mailer.ts","r":[],"w":[]},"POST /api/upgrade":{"file":"app/api/upgrade/route.ts","r":[],"w":[]},"resolvePrice":{"file":"lib/billing.ts","r":[],"w":[]},"isEnabled":{"file":"lib/flags.ts","r":["S.flags"],"w":[]},"chargeCard":{"file":"lib/billing.ts","r":["S.charged"],"w":["S.charged"]},"POST /api/agent":{"file":"app/api/agent/route.ts","r":[],"w":[]},"planGuard":{"file":"lib/billing.ts","r":["S.plans","S.user"],"w":[]},"buildSystemPrompt":{"file":"lib/agent.ts","r":["S.plans","S.user"],"w":["S.prompt"]},"pickTools":{"file":"lib/agent.ts","r":["S.plans","S.user"],"w":["S.tools"]},"streamReply":{"file":"lib/agent.ts","r":["S.prompt","S.tools"],"w":["S.reply"]},"GET /api/plugin":{"file":"app/api/plugin/route.ts","r":[],"w":[]},"runPlugin":{"file":"lib/plugins.ts","r":["plugins"],"w":[]},"plugins":{"file":"lib/plugins.ts","r":[],"w":[]}},"over":{}}];
+let PR = COMMITS[0];
+// Plain names, the kind flow name saves to flow.names.json, and what each edit does for a user.
+const STEP_NAME = { loadSession:"Find who's logged in", validateForm:"Check the form", createUser:"Create the account", issueSid:"Start the session",
+  resolvePrice:"Work out the price", isEnabled:"Check a feature flag", prorate:"Credit unused days", chargeCard:"Charge the card", applyPlanChange:"Update the plan",
+  emit:"Announce the plan change", onPlanChanged:"React to the plan change", sendReceipt:"Email the receipt", sendEmail:"Send the email", renderHeader:"Draw the header",
+  planGuard:"Check the plan allows it", buildSystemPrompt:"Write the agent's instructions", pickTools:"Pick the agent's tools", streamReply:"Send the reply", runPlugin:"Run the plugin", plugins:"Find the plugin" };
+const stepName = f => STEP_NAME[f] || (/^(POST|GET) /.test(f) ? "Request comes in" : f);
+// What a person will notice from each commit, the kind of text flow word saves for review.
+const WORDS = {
+  "Let people pay yearly": { head:"Pay yearly for the price of ten months.",
+    heads:{ "app/api/upgrade/route.ts":"Upgrades offer monthly or yearly.", "lib/billing.ts":"New prices, and yearly stays yearly.", resolvePrice:"One Pro price, plus a yearly option." },
+    notice:{ "POST /api/upgrade":"People choose monthly or yearly when they upgrade.", resolvePrice:"Yearly costs ten months' price.", prorate:"Unused days are credited.",
+      isEnabled:"Pro is always 24 a month, with no feature flag.", applyPlanChange:"People stay on their billing period instead of going monthly.",
+      renderHeader:"Yearly Pro customers see PRO YEARLY in the header.", onPlanChanged:"Yearly customers get a different email.", buildSystemPrompt:"The agent knows if the plan is monthly or yearly." },
+    prose:[["People can pay yearly,","POST /api/upgrade"],["for ten months' price,","resolvePrice"],["with unused days credited.","prorate"],["Pro is always 24 a month.","isEnabled"],
+      ["Yearly customers stay yearly,","applyPlanChange"],["get their own email,","onPlanChanged"],["and see it in the header.","renderHeader"],["The agent knows the plan too.","buildSystemPrompt"]] },
+  "Explain the state object": { head:"Nothing changes for people.", quiet:"Only a comment changed, and no journey runs it.", notice:{}, prose:[] },
+  "List tools in agent replies": { head:"Agent replies name their tools.", notice:{ streamReply:"Replies list the tools by name instead of a count." }, prose:[["Replies list the tools by name instead of a count.","streamReply"]] },
+  "Email a receipt after payment": { head:"Everyone who pays gets a receipt.", heads:{ "lib/mailer.ts":"A new email goes out." },
+    notice:{ chargeCard:"Paying now sends a receipt.", sendReceipt:"The receipt email shows the amount." }, prose:[["Paying now sends a receipt,","chargeCard"],["and the email shows the amount.","sendReceipt"]] },
+  "Add a German plugin": { head:"People can load a German plugin.", notice:{ plugins:"There's a new German plugin to load." }, prose:[["There's a new German plugin to load.","plugins"]] },
+  "Stricter email check": { head:"Sign-up and log-in reject more bad emails.", notice:{ validateForm:"An email now needs a dot after the @." }, prose:[["An email now needs a dot after the @.","validateForm"]] },
+};
+let NOTICE = {}, PROSE = [], HEADLINE = {};
+const ICON = { li:"M7 3h6v10H7M3 8h7M8 5l3 3-3 3", su:"M8 3v10M3 8h10", ca:"M4 4l8 8M12 4l-8 8", up:"M8 13V3M4 7l4-4 4 4", ag:"M8 2l1.6 4.4L14 8l-4.4 1.6L8 14l-1.6-4.4L2 8l4.4-1.6z", pl:"M6 2v4M10 2v4M4 6h8v3a4 4 0 0 1-8 0zM8 13v2" };
+const badge = l => `<span class="bdg" style="background:var(--l-${l.id})" title="${l.name}"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${ICON[l.id]}"/></svg></span>`;
+const proseOf = (parts, live) => parts.map(([t, fn]) => { const ls = reachedBy(fn), open = live && exOpen===fn;
+  return (live ? `<span class="part ${open?'on':''}" role="button" tabindex="0" aria-expanded="${open}" data-part="${fn}">${t}</span>` : `<span class="part">${t}</span>`) + `<span class="bdgs" ${live?`data-part="${fn}"`:""}>${ls.map(badge).join("")}</span>`; }).join(" ");
+const reachedBy = fn => LINES.filter(l => stepsOf(l.id).some(s => s.fn===fn && (ALL_EDITS.has(fn) || s.st!==" ")));
+// One change per step, in the order the longest journey runs them.
+function changesIn(on, fns){
+  const seen = new Set();
+  for (const l of [...on].sort((a,b) => stepsOf(b.id).length - stepsOf(a.id).length)) { const h = hitsIn(l, fns); for (const st of stepsOf(l.id)) if (h.has(st.fn) && NOTICE[st.fn]) seen.add(st.fn); }
+  return [...seen];
 }
-function renderDiff(){
-  document.getElementById("dx").innerHTML = xbox("What git shows", "The text that changed in <code>lib/billing.ts</code>: line 16 removed and replaced, with a few unchanged lines around it for context. The header <code>@@ -14,5 +14,5 @@</code> says the hunk starts at line 14 and covers 5 lines before and after.",
-    "What git can't show", "Who runs this code. <code>applyPlanChange</code> is called from <code>app/api/cancel/route.ts</code> and <code>app/api/upgrade/route.ts</code>, files this diff never opens. Flow reads those calls, which is how it lists the two journeys below. On a big change, the diff grows with every line touched; the journey list only grows with what behaves differently.");
-  document.getElementById("dv").innerHTML = diffHTML(EDIT_DIFF, "applyPlanChange");
-  document.getElementById("dv-runs").innerHTML = `<span style="color:var(--ink)">applyPlanChange runs in</span>` + legendHTML(runsIn("applyPlanChange")) + `<span style="color:var(--ink-3)">Git can't show this: the callers live in other files.</span>`;
+// The edited function behind a change. A removed step points to the function that stopped calling it.
+const editOf = fn => ALL_EDITS.has(fn) ? fn : LINES.flatMap(l => stepsOf(l.id)).find(s => s.fn===fn && s.st!==" ").by;
+function proseHTML(on, fns){
+  const parts = scope.all && !scope.fn ? PROSE : changesIn(on, fns).map(fn => [NOTICE[fn], fn]);
+  const para = proseOf(parts, true);
+  const fn = parts.some(p => p[1]===exOpen) ? exOpen : null, ls = fn ? reachedBy(fn) : [];
+  const where = fn ? editOf(fn) : null;
+  const card = fn ? `<div class="fl-open ${exFresh?'pop':''}" role="group" aria-label="This change"><i class="caret"></i>
+    <div class="fo-top"><span class="fo-b">${ls.map(badge).join("")}</span><span class="fo-j">${ls.length===1 ? ls[0].name : `${ls.length} journeys`}</span><button class="fo-x" data-close aria-label="Close"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg></button></div>
+    <p>${NOTICE[fn]}</p>
+    <dl>${ls.length > 1 ? `<div><dt>Journeys</dt><dd>${ls.map(l => l.name).join(", ")}</dd></div>` : ""}<div><dt>Step</dt><dd>${stepName(where)}</dd></div><div><dt>File</dt><dd><code>${PR.W[where].file}</code></dd></div></dl>
+    <button class="fo-code" data-code="${fn}">Show the code</button></div>` : "";
+  const head = parts.length > 1 && (scope.all && !scope.fn ? HEADLINE.all : HEADLINE[scope.fn || scope.file]);
+  return `${head ? `<p class="fl-head">${head}</p>` : ""}<p class="fl-prose">${para}</p>${card}`;
+}
+// Every journey in the app: changed ones first, and each opens to what changes in it.
+// One journey as one line: the steps around each change, in order, with the rest folded like unchanged code in a diff.
+function timelineHTML(l, fns){
+  const h = hitsIn(l, fns), q = stepsOf(l.id).filter(s => s.st!=="-" || h.has(s.fn)), keep = new Set();
+  q.forEach((s, i) => { if (h.has(s.fn)) [i-1, i, i+1].forEach(k => keep.add(k)); });
+  const fold = n => `<li class="tl-fold">${n} step${n===1?"":"s"}</li>`;
+  let out = "", hidden = 0;
+  q.forEach((s, i) => { if (!keep.has(i)) { hidden++; return; } if (hidden) { out += fold(hidden); hidden = 0; }
+    const kind = !h.has(s.fn) ? "" : s.st==="+" ? "add" : s.st==="-" ? "del" : "ed", tag = kind==="add" ? "New step" : kind==="del" ? "Removed step" : "";
+    out += `<li class="tl-s ${kind}"><button data-step="${s.fn}" title="${s.fn}"><b>${stepName(s.fn)}</b>${kind ? `<span>${tag ? `<em>${tag}</em> ` : ""}${NOTICE[s.fn] || ""}</span>` : ""}</button></li>`; });
+  if (hidden) out += fold(hidden);
+  return `<ol class="tl" style="--c:var(--l-${l.id})">${out}</ol>`;
+}
+function journeysHTML(on, fns){
+  const rows = [...on, ...LINES.filter(l => !on.includes(l))].map(l => { const say = on.includes(l) ? changesIn([l], fns) : [], open = exJourney===l.id && say.length;
+    const n = say.length, label = `${badge(l)}<b>${l.name}</b><small>${n ? `${n} change${n===1?"":"s"}` : "No change"}</small>`;
+    return n ? `<li><button class="fl-jr" data-j="${l.id}" aria-expanded="${!!open}">${label}<i class="chev ${open?'up':''}"></i></button>${open ? timelineHTML(l, fns) : ""}</li>` : `<li><div class="fl-jr same">${label}</div></li>`; }).join("");
+  return `<div class="fl-all"><h4>All journeys</h4><ol>${rows}</ol></div>`;
+}
+let exOpen = null, exJourney = null, exFresh = false;
+let curFile = null, selFn = null, exWhole = false;
+// What the right column follows: the whole commit, a changed file, or one function in either. Null when the file has no changes.
+let scope = { all:true };
+let CHG = {}, ALL_EDITS = new Set();
+const editedFns = f => [...new Set(f.hunks.filter(r => r[0]!=="@" && r[0]!==" " && r[5] && r[3].trim()).map(r => r[5]))];
+// Everything Explore shows belongs to one commit.
+function useCommit(i){
+  PR = COMMITS[i]; exCommit = i; CHG = Object.fromEntries(PR.files.map(f => [f.path, f])); ALL_EDITS = new Set(PR.files.flatMap(editedFns));
+  const w = WORDS[PR.title]; NOTICE = w.notice; PROSE = w.prose; HEADLINE = { all:w.head, ...(w.heads || {}) };
+}
+function resetCommit(i){ useCommit(i); curFile = null; selFn = null; exWhole = false; scope = { all:true }; exOpen = null; exJourney = null; exPick = false; }
+function openCommit(i){ exPick = false; const h = "#explore/" + COMMITS[i].id; if (location.hash===h) renderExplore(true); else location.hash = h; }
+let exCommit = 0, exPick = false, exCards = false;
+const exBodies = new Set();
+const stepsOf = id => PR.J[id];
+// The functions in scope. A stop a function now calls, or stopped calling, counts only on the journey where that happened.
+const scopeFns = () => !scope ? [] : scope.fn ? [scope.fn] : scope.all ? [...ALL_EDITS] : editedFns(CHG[scope.file]);
+const hitsIn = (l, fns) => new Set(stepsOf(l.id).filter(s => fns.includes(s.fn) || (s.st!==" " && fns.includes(s.by))).map(s => s.fn));
+
+function treeHTML(){
+  const root = {};
+  for (const p of [...new Set([...Object.keys(SRC), ...Object.keys(PR.over), ...Object.keys(CHG)])]) { let n = root; const parts = p.split("/"); parts.forEach((b,i) => { n = n[b] ||= i===parts.length-1 ? p : {}; }); }
+  // A folder with one thing in it shares a row with that thing, as on GitHub.
+  const fold = (k, v) => { while (typeof v!=="string" && Object.keys(v).length===1) { const [c, x] = Object.entries(v)[0]; k += "/"+c; v = x; } return [k, v]; };
+  const walk = (n, d) => Object.entries(n).map(([k,v]) => fold(k,v)).sort(([a,x],[b,y]) => (typeof x==="string")-(typeof y==="string") || a.localeCompare(b)).map(([k,v]) => {
+    const pad = `style="padding-left:${10+d*14}px"`;
+    if (typeof v!=="string") return `<div class="tdir" ${pad}>${k}</div>${walk(v, d+1)}`;
+    return `<button class="tfile ${v===curFile?'on':''} ${CHG[v]?'ch':''}" data-p="${v}" ${pad}><span>${k}</span></button>`;
+  }).join("");
+  const stat = f => `<small>${f.add?`<i class="ok-t">+${f.add}</i>`:""} ${f.del?`<i class="bad-t">−${f.del}</i>`:""}</small>`;
+  const add = PR.files.reduce((n,f) => n+f.add, 0), del = PR.files.reduce((n,f) => n+f.del, 0);
+  const changes = PR.files.map(f => { const i = f.path.lastIndexOf("/");
+    return `<button class="tfile tchg ${f.path===curFile?'on':''}" data-p="${f.path}" title="${f.path}" ${f.path===curFile?'aria-current="true"':''}><span><b>${f.path.slice(i+1)}</b><em>${f.status==="A"?"new":f.path.slice(0,i)}</em></span>${stat(f)}</button>`; }).join("");
+  return `<button class="tpr ${curFile?'':'on'}" data-commit ${curFile?'':'aria-current="true"'}><b>${PR.title}</b><span class="tpr-m"><code>${PR.id}</code> by Dev</span><span>${PR.date}, ${PR.files.length} file${PR.files.length===1?"":"s"} ${add?`<i class="ok-t">+${add}</i>`:""} ${del?`<i class="bad-t">−${del}</i>`:""}</span></button>${changes}<div class="tt">All files</div>` + walk(root, 0);
 }
 
-/* ---------------- flow page ---------------- */
-let selFn = "applyPlanChange", selLine = null;
-function renderFlow(){
-  const lines = selLine ? { [selLine]:"on" } : null;
-  document.getElementById("fl-map").innerHTML = mapSVG({ lines, edited:{applyPlanChange:true}, selected:selFn });
-  document.getElementById("fl-legend").innerHTML = LINES.map(l => `<span style="cursor:pointer" data-l="${l.id}"><i style="background:var(--l-${l.id})"></i>${selLine===l.id?`<b>${l.name}</b>`:l.name}</span>`).join("") + (selLine?`<span style="cursor:pointer;color:var(--ink-3)" data-l="">Show all</span>`:"");
-  document.querySelectorAll("#fl-map .stop").forEach(g => g.onclick = () => { selFn = g.dataset.fn; renderFlow(); });
-  document.querySelectorAll("#fl-map [data-line], #fl-legend [data-l]").forEach(g => g.onclick = () => { const id = g.dataset.line ?? g.dataset.l; selLine = (id && selLine!==id) ? id : null; renderFlow(); });
-  document.getElementById("flx").innerHTML = xbox("How to read the map", "Each colored line is a journey. It starts at its entry point at the top and runs down through the functions it calls, in call order. A white capsule is a function several journeys share. The red ring marks the function the edit changed.",
-    selLine ? `Showing ${LBY[selLine].name}` : "What to try", selLine ? `${LBY[selLine].stops.length} stops, from <code>${LBY[selLine].route}</code> down to <code>${LBY[selLine].stops.at(-1)}</code>. Faded stops belong to other journeys. Click the name again, or Show all, to bring them back.` : "Click a stop to see its code and what changing it would affect. Click a journey's name to show only that journey.");
-  const note = stopNote(selFn);
-  const s = STN[selFn], st = STATE[selFn] || {}, f = SRC[s.file];
-  document.getElementById("insp").innerHTML = `<div class="body"><div class="fn">${selFn}</div><div class="where">${s.file}, lines ${s.a} to ${s.b}</div>
-    <dl class="kv"><dt>Runs in</dt><dd class="jl">${runsIn(selFn).map(id => `<span><i style="background:var(--l-${id})"></i>${LBY[id].name}</span>`).join("")}</dd>
-    <dt>Reads</dt><dd class="st">${(st.r||[]).join(", ") || '<span style="color:var(--ink-3)">nothing</span>'}</dd>
-    <dt>Changes</dt><dd class="st">${(st.w||[]).join(", ") || '<span style="color:var(--ink-3)">nothing</span>'}</dd></dl></div>
-    <div class="explain"><div><h4>What it is</h4><p>${note.happen}</p></div><div><h4>Why it matters</h4><p>${note.why}</p></div></div>
-    <div class="code wrapcode" style="border-top:1px solid var(--rule)">${f.lines.slice(s.a-1, s.b).map((t,i) => `<div class="row ${selFn==='applyPlanChange'?'ed':''}"><span class="dots"></span><span class="ln">${s.a+i}</span><span class="mk"></span><span>${hl(t)||" "}</span></div>`).join("")}</div>`;
+function changeRows(f, whole){
+  const ed = editedFns(f); let h = "", prev;
+  (whole ? f.full : f.hunks).forEach(r => {
+    if (r[0]==="@") { h += diffHTML([r]); prev = undefined; return; }
+    const fn = r[5];
+    if (fn && fn!==prev && (whole || ed.includes(fn))) h += `<div class="row own" data-fn="${fn}">${fn}<span class="own-p">${stepName(fn)}</span></div>`;
+    prev = fn; h += diffHTML([r], fn);
+  });
+  return h;
 }
+
+// The card opens over the text, just under the phrase it belongs to.
+function placeCard(){
+  const card = document.querySelector("#ex-flow .fl-open"), part = document.querySelector("#ex-flow .part.on"), host = document.querySelector("#ex-flow .fl-h");
+  if (!card || !part || !host) return;
+  const h = host.getBoundingClientRect(), r = [...part.getClientRects()].at(-1), c = card.parentElement.getBoundingClientRect();
+  card.style.top = `${r.bottom - h.top + host.scrollTop + 9}px`;
+  card.querySelector(".caret").style.left = `${Math.max(14, Math.min(r.left - h.left - 12 + Math.min(r.width/2, 30), h.width - 54))}px`;
+}
+function closeCard(){ exOpen = null; const c = document.querySelector("#ex-flow .fl-open"); if (c) c.remove(); document.querySelectorAll("#ex-flow .part.on").forEach(p => { p.classList.remove("on"); p.setAttribute("aria-expanded","false"); }); }
+document.addEventListener("keydown", e => { if (e.key==="Escape" && exOpen) closeCard(); if (e.key==="Escape" && exPick) { exPick = false; renderExplore(); } });
+document.addEventListener("click", e => { if (exPick && e.target.isConnected && !e.target.closest(".ex-bar")) { exPick = false; renderExplore(); } });
+document.addEventListener("click", e => { if (exOpen && e.target.isConnected && !e.target.closest(".fl-open,[data-part]")) closeCard(); });
+
+const COPY_ICON = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="2.75"/><path d="M1 8h4.25M10.75 8H15"/></svg>`;
+const CHECK_ICON = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 8.500l3.200 3.200L13 5"/></svg>`;
+// The history as a commit log. The row says what changes for people, and opens the commit.
+function commitsHTML(){
+  const keep = exCommit, days = [];
+  COMMITS.forEach((c, i) => { useCommit(i); const w = WORDS[c.title], open = exBodies.has(c.id), [n, m] = c.date.split(" ");
+    const reached = LINES.filter(l => stepsOf(l.id).some(s => ALL_EDITS.has(s.fn) || s.st!==" "));
+    const row = `<li class="ghc ${reached.length?'':'quiet'} ${i===keep?'now':''}" data-row="${i}"><div class="ghc-line"><div class="ghc-main"><div class="ghc-t"><button class="ghc-title" data-body="${c.id}" aria-expanded="${open}">${w.head}</button></div></div>
+      <div class="ghc-js" role="img" aria-label="${reached.length ? "Changes " + reached.map(l => l.name).join(", ") : "Changes no journeys"}">${LINES.map(l => { const on = reached.includes(l); return badge(l).replace('class="bdg"', `class="bdg ${on?'':'off'}"`).replace(`title="${l.name}"`, `title="${l.name}: ${on?'changes':'no change'}"`); }).join("")}</div><div class="ghc-r"><span class="ghc-who"><span class="ghc-av" aria-hidden="true">D</span>Dev</span><span class="ghc-sha"><code>${c.id}</code><button data-copy="${c.id}" aria-label="Copy commit id ${c.id}">${COPY_ICON}</button></span><i class="chev ${open?'up':''}"></i></div></div>
+      ${open ? `<div class="ghc-body"><p>${w.prose.length ? proseOf(w.prose, false) : w.quiet}</p><a class="ghc-code" href="#explore/${c.id}">See the code</a></div>` : ""}</li>`;
+    const day = days.at(-1); if (day && day.date===c.date) day.rows.push(row); else days.push({ label:`${m} ${n}, 2026`, date:c.date, quiet:!reached.length, rows:[row] }); });
+  useCommit(keep);
+  return `<div class="ghl-top"><h2>What changed</h2><span class="ghl-n">${COMMITS.length} changes</span></div><div class="ghl-key">${LINES.map(l => `<span>${badge(l)}${l.name}</span>`).join("")}</div>
+    <div class="ghl">${days.map(d => `<section class="ghl-day ${d.quiet?'quiet':''}"><h3>${d.label}</h3><ol>${d.rows.join("")}</ol></section>`).join("")}</div>`;
+}
+
+// Where you are: the commit list, this commit, and the commits on either side of it.
+function barHTML(){
+  const step = (i, label, cls) => COMMITS[i] ? `<a class="bar-s" href="#explore/${COMMITS[i].id}" title="${COMMITS[i].title}">${label}</a>` : `<span class="bar-s off">${label}</span>`;
+  const menu = !exPick ? "" : `<div class="cp-menu">${COMMITS.map((c, i) => `<button class="${i===exCommit?'on':''}" data-c="${i}"><b>${WORDS[c.title].head}</b><span>${c.date}, ${c.title}</span></button>`).join("")}</div>`;
+  return `<a class="bar-c" href="#commits">Changes</a><span class="bar-sl">/</span><div class="cp"><button class="bar-now" data-pick aria-expanded="${exPick}">${PR.title}<i class="chev ${exPick?'up':''}"></i></button>${menu}</div>
+    <span class="bar-pos">${exCommit+1} of ${COMMITS.length}</span>${step(exCommit-1, "Newer")}${step(exCommit+1, "Older")}`;
+}
+
+function renderExplore(jump = false){
+  const grid = document.getElementById("ex-cards"), three = document.querySelector(".ex3");
+  grid.style.display = exCards ? "block" : "none"; three.style.display = exCards ? "none" : ""; document.getElementById("p-explore").classList.toggle("is-log", exCards);
+  const bar = document.getElementById("ex-bar"); bar.style.display = exCards ? "none" : "";
+  if (!exCards) { bar.innerHTML = barHTML(); bar.querySelector("[data-pick]").onclick = () => { exPick = !exPick; renderExplore(); }; bar.querySelectorAll("[data-c]").forEach(b => b.onclick = () => openCommit(+b.dataset.c)); }
+  if (exCards) { grid.innerHTML = commitsHTML(); grid.querySelectorAll("[data-c]").forEach(b => b.onclick = () => openCommit(+b.dataset.c));
+    grid.querySelectorAll("[data-row]").forEach(r => r.onclick = e => { if (e.target.closest("[data-copy],a") || String(getSelection())) return; const id = r.querySelector("[data-body]").dataset.body; if (!exBodies.delete(id)) exBodies.add(id); renderExplore(); });
+    grid.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => { try { navigator.clipboard.writeText(b.dataset.copy).catch(() => {}); } catch {} b.innerHTML = CHECK_ICON; setTimeout(() => { if (b.isConnected) b.innerHTML = COPY_ICON; }, 1500); });
+    return; }
+  document.getElementById("ex-tree").innerHTML = treeHTML();
+  const f = CHG[curFile], whole = f && exWhole, isNew = f && f.status==="A";
+  const stacked = !curFile, base = stacked ? { all:true } : { file:curFile };
+  document.getElementById("ex-head").innerHTML = stacked ? `<b>${PR.files.length===1 ? "1 file" : `All ${PR.files.length} files`}</b>` : `<b>${curFile}</b>` + (!f ? `<span class="same">No changes in this file</span>`
+    : isNew ? `<span class="same">New file</span>`
+    : `<span class="seg"><button class="${whole?'':'on'}" data-w="0">Diff</button><button class="${whole?'on':''}" data-w="1">Whole file</button></span>`);
+  const code = document.getElementById("ex-file"), ed = stacked ? [...ALL_EDITS] : f ? editedFns(f) : [];
+  code.innerHTML = stacked ? PR.files.map(x => `<button class="ex-fh" data-p="${x.path}"><span>${x.path}</span><small>${x.status==="A"?"new ":""}${x.add?`<i class="ok-t">+${x.add}</i> `:""}${x.del?`<i class="bad-t">−${x.del}</i>`:""}</small></button>${changeRows(x, false)}`).join("")
+    : f ? changeRows(f, whole) : fileHTML(curFile, { file:PR.over[curFile], owners:true, sel:selFn && selFn.split(" ")[0] });
+  if (ed.length) code.querySelectorAll(".row[data-fn]").forEach(r => { const fn = r.dataset.fn;
+    if (ed.includes(fn)) { r.classList.add("pick"); if (r.classList.contains("own")) { r.tabIndex = 0; r.setAttribute("role","button"); } }
+    if (scope && scope.fn===fn) r.classList.add("act");
+    if (selFn===fn) r.classList.add("sel"); });
+
+  const fns = scopeFns(), on = LINES.filter(l => hitsIn(l, fns).size);
+  const narrow = scope && scope.fn ? `<div class="fl-scope"><b>${scope.fn}</b><button data-all>${scope.all ? "Show the whole commit" : `Show all of ${scope.file.split("/").pop()}`}</button></div>` : "";
+      document.getElementById("ex-flow").innerHTML = !scope
+    ? `<div class="fl-empty"><b>Nothing changed in this file</b><p>Pick a changed file to see what changes for people.</p></div>`
+    : !on.length ? `${narrow}<div class="fl-empty"><b>No change for people</b><p>No journey runs this code, so nobody will notice.</p></div>`
+    : `${narrow}<div class="fl-h"><h3>What changes for people</h3>${proseHTML(on, fns)}${journeysHTML(on, fns)}</div>`;
+  document.querySelectorAll("#ex-flow [data-part]").forEach(p => { const go = () => { exOpen = exOpen===p.dataset.part ? null : p.dataset.part; exFresh = !!exOpen; const y = document.querySelector("#ex-flow .fl-h").scrollTop; renderExplore(); exFresh = false; document.querySelector("#ex-flow .fl-h").scrollTop = y; placeCard(); };
+    p.onclick = go; if (p.tabIndex===0) p.onkeydown = e => { if (e.key==="Enter" || e.key===" ") { e.preventDefault(); go(); } }; });
+  const code2 = document.querySelector("#ex-flow [data-code]"); if (code2) code2.onclick = () => { const fn = editOf(code2.dataset.code); exOpen = null;
+    curFile = PR.W[fn].file; scope = { file:curFile, fn }; selFn = null; exWhole = false; renderExplore(true); };
+  document.querySelectorAll("#ex-flow [data-j]").forEach(b => b.onclick = () => { exJourney = exJourney===b.dataset.j ? null : b.dataset.j; const y = document.querySelector("#ex-flow .fl-h").scrollTop; renderExplore(); document.querySelector("#ex-flow .fl-h").scrollTop = y; });
+  const shut = document.querySelector("#ex-flow [data-close]"); if (shut) shut.onclick = closeCard;
+  placeCard();
+
+  const open = fn => { const file = PR.W[fn].file; curFile = file; selFn = fn;
+    if (CHG[file] && ALL_EDITS.has(fn)) { scope = { file, fn }; exWhole = false; selFn = null; }
+    else exWhole = !!CHG[file];
+    renderExplore(true); };
+  document.querySelectorAll("#ex-flow [data-step]").forEach(b => b.onclick = () => open(b.dataset.step));
+  const all = document.querySelector("#ex-flow [data-all]"); if (all) all.onclick = () => { scope = scope.all ? { all:true } : { file:scope.file }; renderExplore(); };
+  // Click a function in the diff and the flow narrows to it. Click it again for the whole file.
+  const pick = fn => { scope = scope && scope.fn===fn ? base : { ...base, fn }; selFn = null; renderExplore(); };
+  code.querySelectorAll(".pick").forEach(r => { r.onclick = () => { if (!String(getSelection())) pick(r.dataset.fn); }; if (r.tabIndex===0) r.onkeydown = e => { if (e.key==="Enter" || e.key===" ") { e.preventDefault(); pick(r.dataset.fn); } }; });
+  document.querySelector("#ex-tree [data-commit]").onclick = () => { curFile = null; selFn = null; exWhole = false; scope = { all:true }; renderExplore(); document.getElementById("ex-body").scrollTop = 0; };
+  document.querySelectorAll("#ex-tree [data-p], #ex-file .ex-fh").forEach(b => b.onclick = () => { curFile = b.dataset.p; selFn = null; exWhole = false; scope = CHG[curFile] ? { file:curFile } : null; renderExplore(); document.getElementById("ex-body").scrollTop = 0; });
+  document.querySelectorAll("#ex-head [data-w]").forEach(b => b.onclick = () => { exWhole = b.dataset.w==="1"; renderExplore(true); });
+  linkHover(code);
+  const box = document.getElementById("ex-body"), first = code.querySelector(".row.sel") || code.querySelector(".row.act") || (whole ? code.querySelector(".row.add,.row.del") : null);
+  if (jump) box.scrollTop = first ? box.scrollTop + first.getBoundingClientRect().top - box.getBoundingClientRect().top - 40 : 0;
+}
+
+useCommit(0);
 
 /* ---------------- merge ---------------- */
 const SC = [
@@ -1416,6 +1853,110 @@ function renderMerge(ms, anim){
   document.querySelectorAll("#stage [data-o]").forEach(b => b.onclick = () => { pick = b.dataset.o; pickAnim = true; renderMerge(MP.i, false); pickAnim = false; });
 }
 
+/* ---------------- how it works: one real change, every terminal captured from a real run ---------------- */
+const HOW_ASK = "yearly customers stay on yearly billing when they upgrade";
+const J_CANCEL = ["POST","Load session","Apply plan change","Emit","On plan changed","Send email","Render header"];
+const J_UP = ["POST","Load session","Resolve price","Is enabled","Charge card","Apply plan change","Emit","On plan changed","Send email","Render header"];
+const FIX_DIFF = [["@","@@ -5,2 +5,2 @@"],[" ",5,5,"  const p = S.plans[S.user];"],
+  ["-",6,"",'  S.header = p.plan.toUpperCase() + (p.interval === "year" ? " YEARLY" : "");','p.interval === "year"'],
+  ["+","",6,'  S.header = p.plan.toUpperCase() + (p.plan === "pro" && p.interval === "year" ? " YEARLY" : "");','p.plan === "pro" && p.interval === "year"']];
+
+function ttyHTML(blocks, E){
+  let n = 0;
+  const line = (t, c="") => `<div class="tl ${c} ${E?'enter':''}" style="animation-delay:${.08+(n++)*.03}s">${esc(t) || " "}</div>`;
+  return `<div class="tty">${blocks.map(([cmd, out]) => line("$ "+cmd, "cmd") + out.map(l => Array.isArray(l) ? line(l[0], l[1]) : line(l)).join("")).join("")}</div>`;
+}
+const ttyPane = (blocks, E, delay=.15) => pane(ttyHTML(blocks, E), `hterm ${E?"enter":""}`, delay);
+function stripHTML(name, id, tag, tagCls, steps, marks, E, delay=0){
+  return `<div class="jr ${E?'enter':''}" style="animation-delay:${delay}s"><div class="jrh"><i style="background:var(--l-${id})"></i><b>${name}</b><span class="tag ${tagCls}">${tag}</span></div>
+    <div class="chips">${steps.map((s,i) => `<span class="chip ${marks[s]||''} ${E&&marks[s]?'ping':''}" style="animation-delay:${delay+.3+i*.05}s">${s}</span>`).join("")}</div></div>`;
+}
+function fourHTML(vals, E){
+  return `<div class="four">${vals.map(([who, v, bad], i) => `<div class="ver ${bad?'bad':''} ${E?'enter':''}" style="animation-delay:${.2+i*.45}s"><span>${who}</span><code>${v}</code></div>`).join("")}</div>`;
+}
+
+const HOW = [
+ { label:"Change", say:"You ask for one thing, an agent changes one line, and flow says which journeys that line reaches.",
+   left: E => pane(`<ol class="chain">
+     <li class="${E?'enter':''}" style="animation-delay:.05s"><h3>You ask</h3><p class="ask">${HOW_ASK}</p></li>
+     <li class="${E?'enter':''}" style="animation-delay:.35s"><h3>The agent changes one line of applyPlanChange</h3><div class="code wrapcode">${diffHTML(SC[3].A.diff.filter(r => r[0]==="-" || r[0]==="+"), null, {})}</div></li>
+     <li class="${E?'enter':''}" style="animation-delay:.65s"><h3>Flow follows that function to the journeys that run it</h3><div class="reach"><span class="jp"><i style="background:var(--l-ca)"></i>Cancel plan</span><span class="jp"><i style="background:var(--l-up)"></i>Upgrade to Pro</span></div><p class="rest">Log in, Sign up, Ask the agent and Load a plugin don't run it.</p></li></ol>`),
+   right: E => ttyPane([["flow status",["2 journeys changed, 4 untouched","",["Apply plan change   reaches POST /api/cancel, POST /api/upgrade","key"],"    now uses S, interval"]]], E) },
+
+ { label:"Check", say:"Flow compares the request with what changed, and finds that Cancel plan changed too, though nobody asked for that.",
+   left: E => pane(`<div class="colh"><h2>The journeys this change touches</h2></div><div class="strips">
+     ${stripHTML("Cancel plan","ca","Not asked","warn",J_CANCEL,{"Apply plan change":"you"},E,.1)}
+     ${stripHTML("Upgrade to Pro","up","Asked","ok",J_UP,{"Apply plan change":"you"},E,.35)}</div>
+     <div class="rule">This is the layout <code>flow diff</code> opens in the browser. The match is done on words, with no AI, so the same change always gets the same comment.</div>`, E?"enter":""),
+   right: E => ttyPane([[`flow comment --asked "${HOW_ASK}"`,[
+     "Asked:     "+HOW_ASK,
+     ["Not asked: POST /api/cancel","warn"],["             Apply plan change: now uses S, interval","warn"],["           Is that what you want?","warn"],
+     `             flow decide "POST /api/cancel" yes   or   flow decide "POST /api/cancel" no "what it should do"`,
+     "Changed:   POST /api/upgrade","             Apply plan change: now uses S, interval","Kept:      no earlier decision was touched"]]], E) },
+
+ { label:"Decide", say:"You answer once, the answer is saved in the repo, and flow won't ask again unless the journey changes again.",
+   left: E => pane(`<div class="colh"><h2>Your two answers</h2></div><div class="answers">
+     <div class="ans on ${E?'enter':''}" style="animation-delay:.1s"><b>Yes</b><p>Keep what it does now. This run answered yes.</p></div>
+     <div class="ans ${E?'enter':''}" style="animation-delay:.25s"><b>No</b><p>Say what it should do. The question stays open on every change to that journey.</p></div></div>
+     <div class="rule">The answer is a line in <code>decisions.md</code>, a plain file in the repo. On a pull request, the same question is a tick box or a <code>/flow no</code> reply.</div>`, E?"enter":""),
+   right: E => ttyPane([[`flow decide "POST /api/cancel" yes`,["Saved to decisions.md: POST /api/cancel is meant to work this way: Apply plan change: now uses S, interval"]],
+     [`flow comment --asked "${HOW_ASK}"`,["Asked:     "+HOW_ASK,"Changed:   POST /api/cancel","             reaches 2 journeys: POST /api/cancel, POST /api/upgrade","             Apply plan change: now uses S, interval",
+     ["Decided:   POST /api/cancel was already answered for this behaviour","ok"],["Decided:   POST /api/upgrade was already answered for this behaviour","ok"],"Kept:      no earlier decision was touched"]]], E) },
+
+ { label:"Save", say:"Saving makes an ordinary git commit, with the journeys it changed written into the message.",
+   left: E => pane(`<div class="colh"><h2>The git commit it writes</h2></div><div class="commit"><b>Keep the billing interval</b>
+     <pre>2 journeys changed, 4 untouched
+
+Apply plan change   reaches POST /api/cancel, POST /api/upgrade
+    now uses S, interval
+
+decisions.md
+    added heading: decisions.md
+<mark>Flow-Journeys: POST /api/cancel, POST /api/upgrade</mark></pre></div>
+     <div class="rule">Git still stores everything, so GitHub, CI and deploys see a normal commit.</div>`, E?"enter":""),
+   right: E => ttyPane([[`flow save -m "Keep the billing interval"`,[["Saved e6dc364c: POST /api/cancel, POST /api/upgrade","ok"]]]], E) },
+
+ { label:"Merge", say:"A teammate changed the header on another branch, and flow merges the two a function at a time and finds where they meet.",
+   left: E => pane(`<div class="colh"><h2>Who changed what</h2></div><table class="imp"><tr><th>Function</th><th>Changed by</th><th>Flow takes</th></tr>
+       <tr><td>Apply plan change</td><td><span class="by you">You</span></td><td>Your version</td></tr>
+       <tr><td>Render header</td><td><span class="by mate">Teammate</span></td><td>Their version</td></tr>
+       <tr><td class="dim">Every other function</td><td class="dim">Nobody</td><td class="dim">As it was</td></tr></table>
+     <div class="sub">Both changes sit on the same two journeys</div><div class="strips">
+     ${stripHTML("Cancel plan","ca","Meet","bad",J_CANCEL,{"Apply plan change":"you","Render header":"mate"},E,.2)}
+     ${stripHTML("Upgrade to Pro","up","Meet","bad",J_UP,{"Apply plan change":"you","Render header":"mate"},E,.45)}</div>`, E?"enter":""),
+   right: E => ttyPane([["flow merge header",["From header: 1 change taken as they are.","  lib/ui.ts","","No collisions: no function was changed differently on both sides.","",
+     ["The two sides meet in 2 journeys. Each side changed a different step, so the text merges cleanly, but nobody has seen them together:","warn"],
+     "  POST /api/cancel","      here: Apply plan change","      header: Render header","  POST /api/upgrade","      here: Apply plan change","      header: Render header"]]], E) },
+
+ { label:"Run", say:"Flow runs Cancel plan on all four versions of the code, and only the merged one shows a free user FREE YEARLY.",
+   left: E => pane(`<div class="colh"><h2>The header after a yearly user cancels</h2></div>${fourHTML([["Where they split","FREE"],["Your branch","FREE"],["Teammate's branch","FREE"],["Merged","FREE YEARLY",1]], E)}
+     ${verdictHTML({ v:"bad", t:"Flow blocks the save", d:"Git merges this same code with no warning about it, and the merged app shows FREE YEARLY." }, E?"enter":"", 2)}
+     <div class="rule">Flow runs real checkouts of the app, so this isn't a guess. It can only check journeys that have a scenario, which is why Upgrade to Pro is unchecked here.</div>`, E?"enter":""),
+   right: E => ttyPane([["flow merge header",["Ran 1 scenario on the versions before, each side, and merged:","  cancel  (POST /api/cancel)",["      header: appears only when merged","bad"],"        where they split  FREE","        here              FREE","        header            FREE",["        merged            FREE YEARLY","bad"],"",
+     ["No scenario runs POST /api/upgrade, so that meet is unchecked.","warn"],"","Written to the folder, but saving is blocked until someone decides. Change the code, or accept the result with `flow accept cancel`."]],
+     [`flow save -m "Merge header"`,[["flow: running the merge gave results nobody has accepted: cancel. Change the code, or `flow accept <scenario>`","bad"]]]], E) },
+
+ { label:"Fix", say:"You fix the header right there in the merge, and saving runs it again and passes.",
+   left: E => pane(`<div class="colh"><h2>The fix in lib/ui.ts</h2></div><div class="code wrapcode">${diffHTML(FIX_DIFF, null, { enter:E, delay:.2 })}</div>
+     <div class="sub">The header after a yearly user cancels</div>${fourHTML([["Where they split","FREE"],["Your branch","FREE"],["Teammate's branch","FREE"],["Merged","FREE"]], E)}
+     ${verdictHTML({ v:"ok", t:"The bug never reached main", d:"Saved as a normal git merge, and a free user sees FREE." }, E?"enter":"", 2)}`),
+   right: E => ttyPane([[`flow save -m "Merge header, only Pro shows the interval"`,["The code changed since the merge ran, so it ran again:","  cancel  (POST /api/cancel)",["      ran on all four versions: everything is what the two changes predict","ok"],"",["Saved ab340a83: POST /api/cancel, POST /api/login, POST /api/signup and 1 more","ok"]]]], E) },
+
+ { label:"Conflicts", say:"Flow only stops you for a real disagreement, and it names the function instead of leaving markers in a file.",
+   left: E => pane(`<div class="colh"><h2>The same merges, git and flow</h2></div><table class="imp"><tr><th>What happened</th><th>Git</th><th>Flow</th></tr>
+       <tr class="${E?'enter':''}" style="animation-delay:.1s"><td>One side reformats a function, the other edits it</td><td><span class="bad-t">Conflict</span></td><td><span class="ok-t">Merges</span></td></tr>
+       <tr class="${E?'enter':''}" style="animation-delay:.3s"><td>Each side changes a different step of a journey</td><td><span class="bad-t">Merges, no warning</span></td><td><span class="ok-t">Runs it, blocks if it breaks</span></td></tr>
+       <tr class="${E?'enter':''}" style="animation-delay:.5s"><td>Both sides change one line two ways</td><td>Conflict</td><td>Collision, you pick a side</td></tr></table>
+     <div class="rule">Here one branch set the Pro price to 22 and the other to 26, so a person has to choose.</div>`, E?"enter":""),
+   right: E => ttyPane([["flow merge c1",["From c1: 0 changes taken as they are.","",["1 thing was changed differently on both sides. Our version is kept until you decide:","warn"],"  Resolve price  (lib/billing.ts)","      in POST /api/upgrade","","Written to the folder. Decide each collision with `flow resolve <step> ours|theirs`, then `flow save`."]],
+     [`flow resolve "Resolve price" theirs`,[["Resolve price: keeping theirs.","ok"]]],[`flow save -m "Merge c1: 22 wins"`,[["Saved add0442a: POST /api/upgrade","ok"]]]], E) },
+];
+let HP = null;
+function renderHow(i, anim){
+  document.getElementById("h-stage").innerHTML = HOW[i].left(anim) + HOW[i].right(anim);
+}
+const howSteps = () => HOW;
+
 let MP = null;
 
 /* ---------------- navigation ---------------- */
@@ -1429,14 +1970,15 @@ let MP = null;
 })();
 const PAGES = {
   overview: () => { if (!OVP) OVP = makePlayer(document.getElementById("ov-player"), () => OV_STEPS, renderOverview, 2600); OVP.reset(); if (reduced) OVP.go(OV_STEPS.length-1, false); else { OVP.go(0); OVP.play(); } },
-  file: renderFile, diff: renderDiff, flow: renderFlow,
+  how: () => { if (!HP) HP = makePlayer(document.getElementById("h-player"), howSteps, renderHow, 5600); HP.reset(); HP.go(0); },
+  explore: arg => { exCards = arg==="commits"; const i = COMMITS.findIndex(c => c.id===arg); if (i >= 0 && i !== exCommit) resetCommit(i); exPick = false; renderExplore(true); },
   merge: () => { if (!MP) MP = makePlayer(document.getElementById("m-player"), mergeSteps, renderMerge, 3400); MP.reset(); MP.go(0); },
 };
 function route(){
-  const h = (location.hash || "#overview").slice(1), r = PAGES[h] ? h : "overview";
-  document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.getAttribute("href")==="#"+r));
+  const [h, id] = (location.hash || "#overview").slice(1).split("/"), tab = h==="commits" ? h : ["file","diff","flow"].includes(h) ? "explore" : PAGES[h] ? h : "overview", r = tab==="commits" ? "explore" : tab;
+  document.querySelectorAll("#tabs a").forEach(a => a.classList.toggle("on", a.getAttribute("href")==="#"+tab));
   document.querySelectorAll(".page").forEach(p => p.classList.toggle("on", p.id==="p-"+r));
-  PAGES[r]();
+  PAGES[r](tab==="commits" ? "commits" : id);
 }
 window.addEventListener("hashchange", () => { route(); window.scrollTo(0,0); });
 route();

@@ -2,6 +2,7 @@
 //! Git stores the files. Every question a person asks is answered in journeys.
 
 use crate::change::{self, Report};
+use crate::ids::Found;
 use crate::names::Names;
 use crate::universal::readable as is_source;
 use crate::source::{git, Source};
@@ -88,7 +89,7 @@ impl Vcs {
     }
 
     fn is_tracked_output(&self, p: &str) -> bool {
-        p.starts_with(&format!("{}/", self.out)) || p == "flow.names.json"
+        p.starts_with(&format!("{}/", self.out)) || p == "flow.names.json" || p == crate::ids::FILE || p == crate::journeys::FILE || p == crate::titles::FILE
     }
 
     /// Changed files that are not read as journeys (styles, config, content), named so nothing hides.
@@ -122,9 +123,34 @@ impl Vcs {
         Ok(self.other(paths))
     }
 
+    /// The working folder, with any rename the code proves against the last saved snapshot.
+    pub fn now(&mut self) -> Result<(Lift, Found)> {
+        let mut now = lift_source(&Source::Dir(self.root.clone()), &self.out)?;
+        let mut found = Found::default();
+        // A merge only combines what each side recorded. HEAD is whichever side was merged into,
+        // so comparing with it would make the result depend on the direction of the merge.
+        let merging = self.merge_state_path().exists() || self.git_path("MERGE_HEAD").exists();
+        if let Some(head) = self.head().filter(|_| !merging) {
+            if !self.worktree_paths()?.is_empty() {
+                found = crate::ids::reconcile(self.lift_rev(&head)?, &mut now);
+            }
+        }
+        Ok((now, found))
+    }
+
+    /// Write down what `now` found. Nothing is written for a repo that has renamed nothing.
+    pub fn record_ids(&self, now: &Lift) -> Result<()> {
+        let p = self.root.join(crate::ids::FILE);
+        let text = now.ids.render();
+        if text != std::fs::read_to_string(&p).unwrap_or_default() {
+            std::fs::write(p, text)?;
+        }
+        Ok(())
+    }
+
     /// The working folder against the last saved snapshot.
     pub fn status(&mut self) -> Result<Report> {
-        let now = lift_source(&Source::Dir(self.root.clone()), &self.out)?;
+        let (now, _) = self.now()?;
         let others = self.other(self.worktree_paths()?);
         let Some(head) = self.head() else {
             let empty = lift_source(&Source::Mem { root: self.root.clone(), files: Default::default() }, &self.out)?;
@@ -168,7 +194,20 @@ impl Vcs {
     }
 
     pub fn commits(&self, n: usize, rev: &str) -> Result<Vec<Commit>> {
-        let s = git(&self.root, &["log", &format!("-n{n}"), "--date=short", "--topo-order", "--format=%H%x1f%P%x1f%ad%x1f%an%x1f%s%x1e", rev])?;
+        self.commits_from(0, n, rev)
+    }
+
+    pub fn cached_count(&self) -> usize {
+        self.cache.len()
+    }
+
+    /// Let go of lifted snapshots, for something that runs for days.
+    pub fn forget(&mut self) {
+        self.cache.clear();
+    }
+
+    pub fn commits_from(&self, skip: usize, n: usize, rev: &str) -> Result<Vec<Commit>> {
+        let s = git(&self.root, &["log", &format!("--skip={skip}"), &format!("-n{n}"), "--date=short", "--topo-order", "--format=%H%x1f%P%x1f%ad%x1f%an%x1f%s%x1e", rev])?;
         Ok(s.split('\x1e')
             .map(str::trim)
             .filter(|x| !x.is_empty())
@@ -200,6 +239,7 @@ impl Vcs {
     pub fn save(&mut self, message: &str) -> Result<(String, Report)> {
         let ms = self.merge_state_path();
         if ms.exists() {
+            crate::merge::refresh(self)?;
             let st: crate::merge::MergeState = serde_json::from_str(&std::fs::read_to_string(&ms)?)?;
             let open: Vec<String> = st.collisions.iter().filter(|c| !c.resolved).map(|c| c.label.clone()).collect();
             if !open.is_empty() {
@@ -215,8 +255,9 @@ impl Vcs {
         if report.is_empty() && !self.git_path("MERGE_HEAD").exists() && self.worktree_paths()?.is_empty() {
             bail!("nothing to save: no journey or file changed");
         }
+        let (l, _) = self.now()?;
+        self.record_ids(&l)?;
         if self.root.join(&self.out).is_dir() {
-            let l = lift_source(&Source::Dir(self.root.clone()), &self.out)?;
             crate::write(&self.root.join(&self.out), &l.out.files)?;
         }
         git(&self.root, &["add", "-A"])?;

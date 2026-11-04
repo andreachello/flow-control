@@ -11,8 +11,12 @@ use serde::Serialize;
 use std::collections::{BTreeMap, BTreeSet};
 
 struct Snap {
-    /// (slice id, hash) in call order.
+    /// What the flow is called in this snapshot.
+    id: String,
+    /// (permanent step id, hash) in call order.
     steps: Vec<(String, String)>,
+    /// Permanent step id -> what the step is called in this snapshot.
+    sids: BTreeMap<String, String>,
     reads: BTreeSet<String>,
     writes: BTreeSet<String>,
 }
@@ -21,9 +25,12 @@ fn snapshot(l: &Lift) -> BTreeMap<String, Snap> {
     l.flows
         .iter()
         .map(|f| {
-            let mut s = Snap { steps: vec![], reads: BTreeSet::new(), writes: BTreeSet::new() };
+            let mut s = Snap { id: f.id.clone(), steps: vec![], sids: BTreeMap::new(), reads: BTreeSet::new(), writes: BTreeSet::new() };
             for st in &f.steps {
-                s.steps.push((l.repo.sid(st.at), hash_of(&l.repo, st.at)));
+                let sid = l.repo.sid(st.at);
+                let uid = l.uids.step(&sid).to_string();
+                s.steps.push((uid.clone(), hash_of(&l.repo, st.at)));
+                s.sids.insert(uid, sid);
                 if let Some(r) = l.graph.reads.get(&st.at) {
                     s.reads.extend(r.iter().cloned());
                 }
@@ -31,7 +38,7 @@ fn snapshot(l: &Lift) -> BTreeMap<String, Snap> {
                     s.writes.extend(w.iter().cloned());
                 }
             }
-            (f.id.clone(), s)
+            (f.uid.clone(), s)
         })
         .collect()
 }
@@ -71,6 +78,11 @@ pub enum How {
 #[derive(Debug, Serialize)]
 pub struct FlowChange {
     pub id: String,
+    /// The permanent id, the same before and after a rename.
+    pub uid: String,
+    /// The name it had before this change, when it was renamed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub was: Option<String>,
     pub how: How,
     /// Steps in both snapshots whose code changed.
     pub edited: Vec<String>,
@@ -112,34 +124,38 @@ pub fn affected(base: &Lift, head: &Lift) -> Report {
     let mut flows = vec![];
     let mut unchanged = 0;
     let ids: BTreeSet<&String> = a.keys().chain(b.keys()).collect();
-    for id in ids {
-        let (fa, fb) = (a.get(id), b.get(id));
+    for uid in ids {
+        let (fa, fb) = (a.get(uid), b.get(uid));
+        let id = fb.or(fa).map(|s| s.id.clone()).unwrap_or_default();
+        let was = fa.zip(fb).filter(|(x, y)| x.id != y.id).map(|(x, _)| x.id.clone());
         let reads = fa.iter().chain(fb.iter()).flat_map(|s| s.reads.iter().cloned()).collect::<BTreeSet<_>>().into_iter().collect();
         let writes = fa.iter().chain(fb.iter()).flat_map(|s| s.writes.iter().cloned()).collect::<BTreeSet<_>>().into_iter().collect();
-        let sids = |s: &Snap| s.steps.iter().map(|(k, _)| k.clone()).collect::<Vec<_>>();
+        let sids = |s: &Snap| s.steps.iter().map(|(k, _)| s.sids[k].clone()).collect::<Vec<_>>();
         let change = match (fa, fb) {
-            (None, Some(s)) => FlowChange { id: id.clone(), how: How::Added, edited: vec![], entered: sids(s), left: vec![], reordered: false, reads, writes },
-            (Some(s), None) => FlowChange { id: id.clone(), how: How::Removed, edited: vec![], entered: vec![], left: sids(s), reordered: false, reads, writes },
+            (None, Some(s)) => FlowChange { id, uid: uid.clone(), was, how: How::Added, edited: vec![], entered: sids(s), left: vec![], reordered: false, reads, writes },
+            (Some(s), None) => FlowChange { id, uid: uid.clone(), was, how: How::Removed, edited: vec![], entered: vec![], left: sids(s), reordered: false, reads, writes },
             (Some(x), Some(y)) => {
                 let hx: BTreeMap<&String, &String> = x.steps.iter().map(|(k, h)| (k, h)).collect();
                 let hy: BTreeMap<&String, &String> = y.steps.iter().map(|(k, h)| (k, h)).collect();
-                let edited: Vec<String> = y.steps.iter().filter(|(k, h)| hx.get(k).is_some_and(|o| *o != h)).map(|(k, _)| k.clone()).collect();
-                let entered: Vec<String> = y.steps.iter().filter(|(k, _)| !hx.contains_key(k)).map(|(k, _)| k.clone()).collect();
-                let left: Vec<String> = x.steps.iter().filter(|(k, _)| !hy.contains_key(k)).map(|(k, _)| k.clone()).collect();
+                let edited: Vec<String> = y.steps.iter().filter(|(k, h)| hx.get(k).is_some_and(|o| *o != h)).map(|(k, _)| y.sids[k].clone()).collect();
+                let entered: Vec<String> = y.steps.iter().filter(|(k, _)| !hx.contains_key(k)).map(|(k, _)| y.sids[k].clone()).collect();
+                let left: Vec<String> = x.steps.iter().filter(|(k, _)| !hy.contains_key(k)).map(|(k, _)| x.sids[k].clone()).collect();
                 let common = |s: &Snap, other: &BTreeMap<&String, &String>| s.steps.iter().filter(|(k, _)| other.contains_key(k)).map(|(k, _)| k.clone()).collect::<Vec<_>>();
                 let reordered = common(x, &hy) != common(y, &hx);
-                if edited.is_empty() && entered.is_empty() && left.is_empty() && !reordered {
+                if was.is_none() && edited.is_empty() && entered.is_empty() && left.is_empty() && !reordered {
                     unchanged += 1;
                     continue;
                 }
-                FlowChange { id: id.clone(), how: How::Changed, edited, entered, left, reordered, reads, writes }
+                FlowChange { id, uid: uid.clone(), was, how: How::Changed, edited, entered, left, reordered, reads, writes }
             }
             (None, None) => unreachable!(),
         };
         flows.push(change);
     }
 
-    let in_flows: BTreeSet<&String> = a.values().chain(b.values()).flat_map(|s| s.steps.iter().map(|(k, _)| k)).collect();
+    flows.sort_by(|a, b| a.id.cmp(&b.id));
+
+    let in_flows: BTreeSet<&String> = a.values().chain(b.values()).flat_map(|s| s.sids.values()).collect();
     let (sa, sb) = (all_slices(base), all_slices(head));
     let loose = sa
         .keys()

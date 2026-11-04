@@ -25,6 +25,15 @@ struct Cli {
 enum Cmd {
     /// Read the code into the flow document and write it.
     Lift,
+    /// Open your projects in the browser, on localhost: their changes, files and journeys.
+    Serve {
+        /// More repositories to show. The repository you are in is always shown.
+        projects: Vec<PathBuf>,
+        #[arg(long, default_value_t = 4000)]
+        port: u16,
+    },
+    /// Say that one journey or step continues another, when the code cannot prove it.
+    Rename { old: String, new: String },
     /// Lift in memory and compare with the committed flow document. Exits 1 on drift or unplaced lines.
     Check,
     /// List the journeys a change touched, between a base commit and a head commit (default: the working folder).
@@ -193,6 +202,25 @@ enum Cmd {
         #[arg(long)]
         all: bool,
     },
+    /// Ask Claude to group requests into what people come to do, saved to flow.journeys.json for review.
+    Journeys {
+        #[arg(long, default_value = "claude-opus-5-5")]
+        model: String,
+        /// Only say how many requests have no journey yet.
+        #[arg(long)]
+        dry_run: bool,
+    },
+    /// Ask Claude for one short sentence per change, saved to flow.titles.json for review.
+    Titles {
+        #[arg(long, default_value = "claude-opus-5-5")]
+        model: String,
+        /// How many of the newest changes to title.
+        #[arg(long, default_value_t = 100)]
+        last: usize,
+        /// Calls to run at once.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
+    },
     /// Open every journey in the browser: steps, code, and what each step reads and changes.
     View {
         /// Write the page here instead of a temp file.
@@ -278,10 +306,48 @@ fn run() -> Result<ExitCode> {
     let names_path = cli.names.clone().unwrap_or_else(|| cli.repo.join("flow.names.json"));
     match cli.cmd {
         Cmd::Lift => {
-            let l = flowcontrol::lift(&cli.repo, &cli.out)?;
+            // A rename can only be seen against the last saved snapshot, so outside git there are none.
+            let l = match flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, Default::default()) {
+                Ok(mut v) => {
+                    let (l, found) = v.now()?;
+                    v.record_ids(&l)?;
+                    for (a, b) in &found.renamed {
+                        println!("Renamed: {a} is now {b}. Its history continues.");
+                    }
+                    if !found.gone.is_empty() {
+                        println!("Gone: {}\nNew: {}\nNothing in the code ties these together. If one continues another, run `flow rename <old> <new>`.", found.gone.join(", "), found.new.join(", "));
+                    }
+                    l
+                }
+                Err(_) => flowcontrol::lift(&cli.repo, &cli.out)?,
+            };
             summary(&l);
             let n = flowcontrol::write(&out_dir, &l.out.files)?;
             println!("Wrote {} ({} changed).", out_dir.display(), plural(n, "file", "files"));
+            Ok(ExitCode::SUCCESS)
+        }
+        Cmd::Serve { projects, port } => {
+            let mut roots = vec![cli.repo.clone()];
+            roots.extend(projects);
+            flowcontrol::serve::run(&roots, &cli.out, port)?;
+            Ok(ExitCode::SUCCESS)
+        }
+        Cmd::Rename { old, new } => {
+            let v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, Default::default())?;
+            let mut l = flowcontrol::lift(&cli.repo, &cli.out)?;
+            let mut ids = l.ids.clone();
+            if l.flows.iter().any(|f| f.id == old) || l.uids.steps.contains_key(&old) {
+                bail!("{old:?} is still in the code, so {new:?} cannot replace it");
+            }
+            if !ids.link(&l, &old, &new) {
+                bail!("{new:?} is not a journey or step in the code");
+            }
+            flowcontrol::stamp(&mut l, ids);
+            v.record_ids(&l)?;
+            if out_dir.is_dir() {
+                flowcontrol::write(&out_dir, &l.out.files)?;
+            }
+            println!("{new} now continues the history of {old}.");
             Ok(ExitCode::SUCCESS)
         }
         Cmd::Check => {
@@ -325,7 +391,7 @@ fn run() -> Result<ExitCode> {
             let a = flowcontrol::lift_source(&rev(&base), &cli.out)?;
             let b = match &head {
                 Some(h) => flowcontrol::lift_source(&rev(h), &cli.out)?,
-                None => flowcontrol::lift(&cli.repo, &cli.out)?,
+                None => flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, Default::default()).and_then(|mut v| v.now()).map(|x| x.0).or_else(|_| flowcontrol::lift(&cli.repo, &cli.out))?,
             };
             let rep = flowcontrol::affected::affected(&a, &b);
             if json {
@@ -447,6 +513,13 @@ fn run() -> Result<ExitCode> {
                 let agent = flowcontrol::agent::pick(&v.root, None);
                 flowcontrol::agent::describe(&mut v, agent, asked.as_deref());
             }
+            if let Some((checks, theirs)) = flowcontrol::merge::refresh(&v)? {
+                println!("The code changed since the merge ran, so it ran again:");
+                for c in &checks {
+                    print!("{}", flowcontrol::scenario::render(c, &theirs));
+                }
+                println!();
+            }
             let (id, r) = v.save(&message)?;
             println!("Saved {}: {}", &id[..id.len().min(8)], flowcontrol::change::one_line(&r));
             Ok(ExitCode::SUCCESS)
@@ -465,9 +538,14 @@ fn run() -> Result<ExitCode> {
             let q = journey.to_lowercase();
             let mut title = None;
             let mut hits = 0;
+            // Follow the journey itself, under whatever name it had at the time.
+            let uid = v.head().and_then(|h| v.lift_rev(&h).ok().and_then(|l| l.journey(&journey).map(|fi| l.flows[fi].uid.clone())));
             for c in v.commits_lifted(count, "HEAD")? {
                 let r = v.change_of(&c)?;
-                for j in r.journeys.iter().filter(|j| j.id.to_lowercase() == q || j.title.to_lowercase() == q || j.title.to_lowercase().contains(&q)) {
+                for j in r.journeys.iter().filter(|j| match &uid {
+                    Some(u) => &j.uid == u,
+                    None => j.id.to_lowercase() == q || j.title.to_lowercase() == q || j.title.to_lowercase().contains(&q),
+                }) {
                     if title.is_none() {
                         title = Some(j.title.clone());
                         println!("{}\n", j.title);
@@ -478,6 +556,7 @@ fn run() -> Result<ExitCode> {
                         flowcontrol::change::JState::Gone => "journey removed".to_string(),
                         flowcontrol::change::JState::Changed => {
                             let mut parts = vec![];
+                            if let Some(w) = &j.was { parts.push(format!("renamed from {w}")); }
                             if !j.edited.is_empty() { parts.push(format!("changed {}", j.edited.join(", "))); }
                             if !j.added.is_empty() { parts.push(format!("added {}", j.added.join(", "))); }
                             if !j.removed.is_empty() { parts.push(format!("dropped {}", j.removed.join(", "))); }
@@ -725,6 +804,39 @@ fn run() -> Result<ExitCode> {
             let label = flowcontrol::merge::resolve(&v, &step, &side)?;
             println!("{label}: keeping {side}.");
             Ok(ExitCode::SUCCESS)
+        }
+        Cmd::Journeys { model, dry_run } => {
+            use flowcontrol::journeys::{self, Journeys};
+            let l = flowcontrol::lift(&cli.repo, &cli.out)?;
+            let path = cli.repo.join(journeys::FILE);
+            let mut book = Journeys::load(&path)?;
+            let todo = journeys::unplaced(&l, &book, &l.ids).len();
+            println!("{todo} of {} requests have no journey yet.", l.flows.len());
+            if dry_run || todo == 0 {
+                return Ok(ExitCode::SUCCESS);
+            }
+            let rep = journeys::group(&l, &mut book, &l.ids, &model)?;
+            book.save(&path)?;
+            println!("Placed {} requests in {} journeys. Saved to {}.", rep.placed, book.journeys.len(), path.display());
+            println!("This is a proposal: rename a journey or move a request by editing that file. Running this again only places new requests.");
+            for r in &rep.left {
+                println!("  no journey: {r}");
+            }
+            Ok(if rep.left.is_empty() { ExitCode::SUCCESS } else { ExitCode::from(1) })
+        }
+        Cmd::Titles { model, last, jobs } => {
+            use flowcontrol::{journeys, titles};
+            let mut v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, flowcontrol::names::Names::load(&names_path)?)?;
+            let path = cli.repo.join(titles::FILE);
+            let mut have = titles::load(&path)?;
+            let book = journeys::Journeys::load(&cli.repo.join(journeys::FILE))?;
+            let rep = titles::write(&mut v, &book, &mut have, last, &model, jobs)?;
+            titles::save(&have, &path)?;
+            println!("Titled {} changes. Saved to {}. Edit any title in that file; running this again only fills in new changes.", rep.titled, path.display());
+            for f in &rep.failures {
+                println!("  failed: {f}");
+            }
+            Ok(if rep.failures.is_empty() { ExitCode::SUCCESS } else { ExitCode::from(1) })
         }
         Cmd::Name { model, jobs, dry_run, all } => {
             let l = flowcontrol::lift(&cli.repo, &cli.out)?;
