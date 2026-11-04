@@ -14,7 +14,7 @@ use crate::repo::SRef;
 use crate::util::fnv64;
 use crate::vcs::Vcs;
 use crate::Lift;
-use anyhow::Result;
+use anyhow::{bail, Result};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -25,12 +25,13 @@ use std::sync::OnceLock;
 
 pub const FILE: &str = "flow.words.jsonl";
 const SAYS: &str = "says";
+const WHY: &str = "why";
 
 #[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct Entry {
     pub key: String,
     pub journey: String,
-    /// "says" for a description, otherwise the hash of the request that was judged.
+    /// "says" for a description, "why" for a stated reason, otherwise the hash of the request judged.
     pub of: String,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub sentence: String,
@@ -80,6 +81,10 @@ impl Words {
 
     pub fn says(&self, key: &str) -> Option<&Entry> {
         self.entries.get(&(key.to_string(), SAYS.to_string()))
+    }
+
+    pub fn why(&self, key: &str) -> Option<&Entry> {
+        self.entries.get(&(key.to_string(), WHY.to_string()))
     }
 
     pub fn judged(&self, key: &str, request: Option<&str>) -> Option<&Entry> {
@@ -213,6 +218,44 @@ pub struct Filled {
     pub failed: Vec<String>,
     /// Journeys left with their facts because the change is so large.
     pub skipped: usize,
+}
+
+/// Save why a change was made, tied to exactly this change: every journey it touches, or one. The
+/// author's word is kept apart from everything flow works out for itself, so it is not held to the
+/// code the way a sentence is, and it decides nothing. If the code changes again, it lapses.
+pub fn why(v: &mut Vcs, reason: &str, journey: Option<&str>, base: &str) -> Result<Vec<String>> {
+    let reason: String = reason.chars().map(|c| if c.is_control() { ' ' } else { c }).collect::<String>().split_whitespace().collect::<Vec<_>>().join(" ");
+    if reason.is_empty() {
+        bail!("give the reason in a sentence");
+    }
+    let root = v.root.clone();
+    let names = v.names.clone();
+    let (items, ids) = between(v, base, None, |a, b, r| {
+        let mut items = crate::comment::items(&r);
+        crate::comment::annotate(&mut items, a, b, &Words::default());
+        let ids = journey.map(|j| crate::comment::find_journey(j, b, &names));
+        (items, ids)
+    })?;
+    let chosen: Vec<&Item> = match (journey, &ids) {
+        (Some(j), Some(ids)) => {
+            let hit: Vec<&Item> = items.iter().filter(|i| ids.contains(&i.id)).collect();
+            if hit.is_empty() {
+                bail!("{j:?} did not change since {base}, so there is nothing to give a reason for");
+            }
+            hit
+        }
+        _ => items.iter().collect(),
+    };
+    if chosen.is_empty() {
+        bail!("no journey changed since {base}, so there is nothing to give a reason for");
+    }
+    let mut text = String::new();
+    for i in &chosen {
+        let e = Entry { key: i.key.clone(), journey: i.id.clone(), of: WHY.into(), sentence: reason.clone(), by: "agent".into(), ..Default::default() };
+        text += &(serde_json::to_string(&e)? + "\n");
+    }
+    std::fs::OpenOptions::new().create(true).append(true).open(root.join(FILE))?.write_all(text.as_bytes())?;
+    Ok(chosen.iter().map(|i| i.title.clone()).collect())
 }
 
 struct Job {

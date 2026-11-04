@@ -128,6 +128,17 @@ A saved judgement outranks word matching, and it can flag part of a journey's ch
 
 Agents do not open `decisions.md` on their own, so the same hook hands Claude Code the decisions with each prompt, and it is told to raise a conflict before changing the code. Only the newest 4,000 characters go, and it is told how many older decisions the file holds. Codex has no hook for this, so `flow hook install` gives the line to add to `AGENTS.md`.
 
+`flow why "reason"` is where the agent that did the work says why. Facts show what changed and the prompt shows what was wanted, but only that agent knows why it took this approach. The reason shows under the change, always labelled:
+
+```
+Not asked: POST /api/cancel
+             Refund: value: 1 -> 0.9
+             Agent's reason, not checked: refunds now match the upgrade discount
+           Is that what you want?
+```
+
+It is the author's own account, so flow does not treat it as evidence. It is not held to the code, it never changes what counts as asked or decided, and it never replaces a fact. It is tied to the exact change, like a sentence, so if the code changes again it stops showing until a new reason is given. It goes to every journey the change touches unless `--journey` picks one. The Claude Code hook asks for it at the start of each turn; for Codex, `flow hook install` prints a line for `AGENTS.md`. Nothing in flow depends on it being there.
+
 On a pull request, `--markdown` turns each question into checkboxes, and `flow answer <file>` records ticked boxes and replies like `/flow no <journey>: what it should do`. The same answer twice stays one line. These two workflows do both (a sketch: they have not been run on GitHub):
 
 ```yaml
@@ -192,6 +203,7 @@ flow accept <scenario>     # accept what a merge does
 flow comment [base] [head] --asked "..."     # one short comment on a change
 flow decide <journey> yes|no ["sentence"]    # save the answer to decisions.md
 flow word [base] [head]    # have your agent put a change into plain sentences
+flow why "reason"          # say why a change was made, shown as unchecked
 flow answer <file>         # record the answers in a pull request comment
 flow hook install          # connect this repo to the agents on this machine
 flow diff [base] [head]    # the change as journeys, in the browser

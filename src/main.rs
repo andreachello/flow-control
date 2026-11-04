@@ -125,6 +125,16 @@ enum Cmd {
         #[arg(long, default_value = "HEAD")]
         base: String,
     },
+    /// Say why a change was made. It is shown labelled as the author's own, unchecked account.
+    Why {
+        reason: String,
+        /// Only this journey. Left out, every journey the change touches.
+        #[arg(long)]
+        journey: Option<String>,
+        /// The base the change is compared from.
+        #[arg(long, default_value = "HEAD")]
+        base: String,
+    },
     /// Have Claude put a change into plain sentences. They are saved for review; the comment reads them.
     Word {
         #[arg(default_value = "HEAD")]
@@ -587,6 +597,12 @@ fn run() -> Result<ExitCode> {
             let mut v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, flowcontrol::names::Names::load(&names_path)?)?;
             let said = flowcontrol::comment::decide(&mut v, &journey, &answer, sentence.as_deref(), &base)?;
             println!("Saved to {}: {said}", flowcontrol::comment::FILE);
+            Ok(ExitCode::SUCCESS)
+        }
+        Cmd::Why { reason, journey, base } => {
+            let mut v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, flowcontrol::names::Names::load(&names_path)?)?;
+            let saved = flowcontrol::words::why(&mut v, &reason, journey.as_deref(), &base)?;
+            println!("Reason saved in {} for: {}", flowcontrol::words::FILE, saved.join(", "));
             Ok(ExitCode::SUCCESS)
         }
         Cmd::Word { base, head, asked, asked_file, with, model, jobs } => {

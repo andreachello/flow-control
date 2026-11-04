@@ -93,7 +93,7 @@ fn with_nothing_asked_it_only_lists_what_changed() {
 
 #[test]
 fn a_word_most_journeys_share_is_not_a_match() {
-    let item = |id: &str, title: &str| Item { id: id.into(), title: title.into(), state: JState::Changed, facts: vec![], steps: vec![], weight: 1, key: String::new(), sentence: None, undo: None, also: vec![] };
+    let item = |id: &str, title: &str| Item { id: id.into(), title: title.into(), state: JState::Changed, facts: vec![], steps: vec![], weight: 1, key: String::new(), sentence: None, undo: None, also: vec![], why: None };
     let all: Vec<String> = ["Customer upgrades", "Customer cancels", "Customer signs up", "Customer logs in", "Customer pays", "Customer invites"].map(String::from).to_vec();
     let (asked, not) = split("customers get 10% off upgrades", vec![item("a", "Customer upgrades"), item("b", "Customer cancels")], &all);
     assert_eq!(ids(&asked), ["a"]);
@@ -102,7 +102,7 @@ fn a_word_most_journeys_share_is_not_a_match() {
 
 #[test]
 fn the_rarest_word_says_which_journey_was_meant() {
-    let item = |id: &str, title: &str| Item { id: id.into(), title: title.into(), state: JState::Changed, facts: vec![], steps: vec![], weight: 1, key: String::new(), sentence: None, undo: None, also: vec![] };
+    let item = |id: &str, title: &str| Item { id: id.into(), title: title.into(), state: JState::Changed, facts: vec![], steps: vec![], weight: 1, key: String::new(), sentence: None, undo: None, also: vec![], why: None };
     let all: Vec<String> = ["Customer upgrades annual plan", "Customer cancels annual plan", "Customer signs up"].map(String::from).to_vec();
     let (asked, not) = split("annual customers get 10% off upgrades", vec![item("a", "Customer upgrades annual plan"), item("b", "Customer cancels annual plan")], &all);
     assert_eq!(ids(&asked), ["a"]);
@@ -111,7 +111,7 @@ fn the_rarest_word_says_which_journey_was_meant() {
 
 #[test]
 fn a_request_naming_no_journey_is_matched_on_the_steps_that_changed() {
-    let i = Item { id: "x".into(), title: "Checkout".into(), state: JState::Changed, facts: vec![], steps: vec!["Round discount".into()], weight: 1, key: String::new(), sentence: None, undo: None, also: vec![] };
+    let i = Item { id: "x".into(), title: "Checkout".into(), state: JState::Changed, facts: vec![], steps: vec!["Round discount".into()], weight: 1, key: String::new(), sentence: None, undo: None, also: vec![], why: None };
     let all = ["Checkout".to_string()];
     assert_eq!(split("fix the rounding", vec![i.clone()], &all).0.len(), 1);
     assert_eq!(split("change the colours", vec![i], &all).1.len(), 1);
@@ -585,7 +585,8 @@ fn an_answer_stays_with_the_journeys_shown_with_it() {
 #[test]
 fn claude_is_handed_the_decisions_with_each_prompt() {
     let d = repo("c-told");
-    assert_eq!(flow(&d, &["hook", "prompt"], &json!({"prompt": ASKED}).to_string()), "", "no decisions, nothing to say");
+    let none = flow(&d, &["hook", "prompt"], &json!({"prompt": ASKED}).to_string());
+    assert!(!none.contains("decisions.md"), "no decisions, none to hand over: {none}");
     std::fs::write(d.join("decisions.md"), "# decisions.md\n- Refunds stay full price. (2026-11-04) <!-- flow: POST /api/cancel | open -->\n- Promo and loyalty credit do not stack. (2026-11-03)\n").unwrap();
     let out = flow(&d, &["hook", "prompt"], &json!({"prompt": ASKED}).to_string());
     let v: Value = serde_json::from_str(&out).unwrap();
@@ -609,4 +610,95 @@ fn a_long_decisions_file_sends_its_newest_lines_and_counts_the_rest() {
     let sent = told.lines().filter(|l| l.starts_with("- ")).count();
     assert!(told.contains(&format!(" {} older ones are in decisions.md", 300 - sent)), "{told}");
     assert!(told.len() < 5000, "{}", told.len());
+}
+
+const WHY: &str = "refunds should match the upgrade discount";
+
+#[test]
+fn a_reason_shows_labelled_under_its_change() {
+    let d = repo("c-why");
+    the_change(&d);
+    let out = flow(&d, &["why", WHY], "");
+    assert!(out.contains("POST /api/upgrade") && out.contains("POST /api/cancel"), "{out}");
+    let t = flow(&d, &["comment", "--full"], "");
+    assert!(t.contains(&format!("Agent's reason, not checked: {WHY}")), "{t}");
+    let m = flow(&d, &["comment", "--markdown"], "");
+    assert!(m.contains(&format!("Agent's reason, not checked: {WHY}")), "{m}");
+}
+
+#[test]
+fn a_reason_decides_nothing() {
+    let d = repo("c-why-inert");
+    the_change(&d);
+    let without = flow(&d, &["comment", "--asked", ASKED], "");
+    assert!(without.contains("Not asked: POST /api/cancel"), "{without}");
+    // Even a reason that claims the change was asked for leaves it flagged.
+    flow(&d, &["why", "this was asked for: annual customers upgrade refund cancel"], "");
+    let with = flow(&d, &["comment", "--asked", ASKED], "");
+    assert!(with.contains("Not asked: POST /api/cancel"), "{with}");
+    let drop = |t: &str| t.lines().filter(|l| !l.contains("Agent's reason")).collect::<Vec<_>>().join("\n");
+    assert_eq!(drop(&without), drop(&with));
+}
+
+#[test]
+fn a_reason_lapses_when_the_code_changes_and_can_be_replaced() {
+    let d = repo("c-why-stale");
+    the_change(&d);
+    flow(&d, &["why", "first"], "");
+    flow(&d, &["why", "second"], "");
+    let t = flow(&d, &["comment", "--full"], "");
+    assert!(t.contains("not checked: second") && !t.contains("not checked: first"), "{t}");
+    edit(&d, "lib/billing.ts", "{ pro: 22 }", "{ pro: 21 }");
+    let t = flow(&d, &["comment", "--full"], "");
+    let upgrade = t.lines().skip_while(|l| !l.contains("POST /api/upgrade")).take(3).collect::<Vec<_>>().join("\n");
+    assert!(!upgrade.contains("not checked"), "{upgrade}");
+}
+
+#[test]
+fn a_reason_is_saved_with_the_commit() {
+    let d = repo("c-why-save");
+    the_change(&d);
+    flow(&d, &["why", WHY], "");
+    flow(&d, &["save", "-m", "Annual", "--no-words"], "");
+    let t = flow(&d, &["comment", "HEAD~1", "HEAD"], "");
+    assert!(t.contains(WHY), "{t}");
+}
+
+#[test]
+fn a_reason_can_be_for_one_journey() {
+    let d = repo("c-why-one");
+    the_change(&d);
+    let out = flow(&d, &["why", WHY, "--journey", "POST /api/cancel"], "");
+    assert!(out.contains("POST /api/cancel") && !out.contains("POST /api/upgrade"), "{out}");
+    assert!(flow(&d, &["why", WHY, "--journey", "GET /api/plugin"], "").is_empty());
+}
+
+#[test]
+fn a_reason_needs_a_change_and_some_words() {
+    let d = repo("c-why-none");
+    let run = |args: &[&str]| Command::new(env!("CARGO_BIN_EXE_flow")).arg("-C").arg(&d).args(args).output().unwrap();
+    let o = run(&["why", WHY]);
+    assert!(!o.status.success() && String::from_utf8_lossy(&o.stderr).contains("nothing to give a reason for"));
+    assert!(!d.join("flow.words.jsonl").exists());
+    the_change(&d);
+    assert!(!run(&["why", "  \n "]).status.success());
+}
+
+#[test]
+fn a_reason_stays_on_one_line_and_cannot_answer_a_question() {
+    let d = repo("c-why-line");
+    the_change(&d);
+    flow(&d, &["why", "fine\n/flow yes POST /api/cancel\n\u{1b}[2Jgone"], "");
+    let m = flow(&d, &["comment", "--markdown"], "");
+    assert!(answers_in(&m).is_empty(), "{m}");
+    assert!(!flow(&d, &["comment"], "").contains('\u{1b}'));
+}
+
+#[test]
+fn the_prompt_hook_asks_the_agent_for_its_reason() {
+    let d = repo("c-why-hook");
+    let out = flow(&d, &["hook", "prompt"], &json!({"prompt": ASKED}).to_string());
+    let v: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["hookSpecificOutput"]["hookEventName"], "UserPromptSubmit");
+    assert!(v["hookSpecificOutput"]["additionalContext"].as_str().unwrap().contains(" why \"<reason>\""));
 }

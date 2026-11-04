@@ -120,6 +120,12 @@ fn note_prompt(v: &Vcs, prompt: &str) -> Result<()> {
     Ok(())
 }
 
+/// The agent that did the work is the only one who knows why, so it is asked at the start of a turn.
+fn ask_for_why(v: &Vcs) -> Result<String> {
+    let exe = std::env::current_exe()?.display().to_string();
+    Ok(format!("If this turn changes what the product does, finish by recording why, in one sentence: \"{exe}\" -C \"{}\" why \"<reason>\". Give the reason for the approach, not a description of the code. Reviewers see it labelled as your own unchecked account.", v.root.display()))
+}
+
 /// Word the change in a process of its own, so the work finishes even if the agent exits. The
 /// turn waits a moment for it, so the sentence is usually there to show, and never much longer.
 fn word_apart(v: &Vcs, fired: &str) {
@@ -248,7 +254,7 @@ pub fn install(v: &Vcs) -> Result<String> {
         said += if added { "Claude Code: connected for this repo, on this machine.\n" } else { "Claude Code: already connected.\n" };
     }
     if on_path("codex") {
-        said += &format!("Codex: add this line to ~/.codex/config.toml (it applies to every repo, and flow ignores folders that are not git repositories):\n  notify = [{exe:?}, \"hook\", \"codex\"]\nCodex has no hook that can pass it decisions, so add this to AGENTS.md: Read decisions.md before changing behaviour, and follow it.\n");
+        said += &format!("Codex: add this line to ~/.codex/config.toml (it applies to every repo, and flow ignores folders that are not git repositories):\n  notify = [{exe:?}, \"hook\", \"codex\"]\nCodex has no hook that can pass it decisions, so add this to AGENTS.md: Read decisions.md before changing behaviour, and follow it. After changing what the product does, record why in one sentence: flow why \"<reason>\"\n");
     }
     if said.is_empty() {
         said = "Neither claude nor codex is installed here. Flow still works, with plain facts.\n".into();
@@ -268,9 +274,8 @@ pub fn hook(root: &Path, out: &str, names: crate::names::Names, what: &str, arg:
             if let Some(p) = stdin_json()["prompt"].as_str() {
                 note_prompt(&v, p)?;
             }
-            if let Some(text) = decisions_context(&v.root) {
-                println!("{}", json!({ "hookSpecificOutput": { "hookEventName": "UserPromptSubmit", "additionalContext": text } }));
-            }
+            let context = [decisions_context(&v.root), Some(ask_for_why(&v)?)].into_iter().flatten().collect::<Vec<_>>().join("\n\n");
+            println!("{}", json!({ "hookSpecificOutput": { "hookEventName": "UserPromptSubmit", "additionalContext": context } }));
         }
         "done" => {
             let mut v = open(root, names)?;

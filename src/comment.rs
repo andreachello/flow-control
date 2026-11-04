@@ -38,6 +38,8 @@ pub struct Item {
     pub undo: Option<String>,
     /// Other journeys the very same change reaches. One change, one question.
     pub also: Vec<String>,
+    /// Why, in the words of whoever made the change. Never checked, and never decides anything.
+    pub why: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -178,7 +180,7 @@ pub fn items(r: &Report) -> Vec<Item> {
             if let Some(w) = &j.was {
                 facts.insert(0, format!("renamed from {w}"));
             }
-            Item { id: j.id.clone(), title: j.title.clone(), state: j.state.clone(), facts, steps: j.edited.iter().chain(&j.added).chain(&j.removed).cloned().collect(), weight, key: String::new(), sentence: None, undo: None, also: vec![] }
+            Item { id: j.id.clone(), title: j.title.clone(), state: j.state.clone(), facts, steps: j.edited.iter().chain(&j.added).chain(&j.removed).cloned().collect(), weight, key: String::new(), sentence: None, undo: None, also: vec![], why: None }
         })
         .collect();
     v.sort_by(|a, b| b.weight.cmp(&a.weight).then_with(|| a.title.cmp(&b.title)));
@@ -222,7 +224,10 @@ pub fn group(list: Vec<Item>) -> Vec<Item> {
     let mut out: Vec<Item> = vec![];
     for i in list {
         match out.iter_mut().find(|o| !i.facts.is_empty() && o.facts == i.facts && o.state == i.state) {
-            Some(o) => o.also.push(i.title),
+            Some(o) => {
+                o.also.push(i.title);
+                o.why = o.why.take().or(i.why);
+            }
             None => out.push(i),
         }
     }
@@ -273,6 +278,7 @@ pub fn write_with(before: &Lift, after: &Lift, r: &Report, asked: Option<String>
     let mut all = items(r);
     for i in all.iter_mut() {
         i.key = change_key(before, after, &i.id);
+        i.why = saved.why(&i.key).map(|e| e.sentence.clone()).filter(|s| !s.is_empty());
         if let Some(e) = saved.says(&i.key) {
             if e.by == "person" || grounded(&e.sentence, &evidence(before, after, r, i)) {
                 i.sentence = Some(e.sentence.clone()).filter(|s| !s.is_empty());
@@ -401,6 +407,12 @@ fn shown_facts(i: &Item, full: bool) -> Vec<String> {
     v
 }
 
+/// The reason given for a change. The label stays with it everywhere it is shown: facts are
+/// computed from the code, and this is only what the author says.
+fn stated(i: &Item) -> Option<String> {
+    i.why.as_ref().map(|w| format!("Agent's reason, not checked: {}", cut(w, 160)))
+}
+
 /// The two answers to a question, as commands.
 fn answers(c: &Comment, i: &Item) -> (String, String) {
     let base = c.base.as_ref().map(|b| format!(" --base {b}")).unwrap_or_default();
@@ -436,6 +448,9 @@ pub fn render(c: &Comment, full: bool) -> String {
         for f in shown_facts(i, full) {
             o += &format!("             {f}\n");
         }
+        if let Some(w) = stated(i) {
+            o += &format!("             {w}\n");
+        }
         o += "           Is that what you want?\n";
         let (yes, no) = answers(c, i);
         o += &format!("             {yes}   or   {no}\n");
@@ -447,6 +462,9 @@ pub fn render(c: &Comment, full: bool) -> String {
         }
         for f in shown_facts(i, full) {
             o += &format!("             {f}\n");
+        }
+        if let Some(w) = stated(i) {
+            o += &format!("             {w}\n");
         }
     }
     let rest = folded(c);
@@ -493,6 +511,9 @@ pub fn markdown(c: &Comment) -> String {
         for f in shown_facts(i, false) {
             o += &format!("- `{}`\n", esc(&f));
         }
+        if let Some(w) = stated(i) {
+            o += &format!("\n{}\n", esc(&w));
+        }
         o += &format!("\nIs that what you want?\n- [ ] Yes, keep it <!-- flow-yes: {} -->\n", i.id);
         match &i.undo {
             Some(u) => o += &format!("- [ ] No, {} <!-- flow-no: {} -->\n", esc(u), i.id),
@@ -511,6 +532,9 @@ pub fn markdown(c: &Comment) -> String {
         }
         for f in shown_facts(i, false) {
             o += &format!("\n  - `{}`", esc(&f));
+        }
+        if let Some(w) = stated(i) {
+            o += &format!("\n  - {}", esc(&w));
         }
         o += "\n";
     }
@@ -561,7 +585,7 @@ fn today() -> String {
     format!("{:04}-{m:02}-{d:02}", yoe + era * 400 + i64::from(m <= 2))
 }
 
-fn find_journey(id: &str, l: &Lift, names: &crate::names::Names) -> Vec<String> {
+pub fn find_journey(id: &str, l: &Lift, names: &crate::names::Names) -> Vec<String> {
     let want = id.to_lowercase();
     let title = |f: &crate::flows::Flow| crate::change::journey_title(names, &f.id).to_lowercase();
     let exact: Vec<String> = l.flows.iter().filter(|f| f.id.to_lowercase() == want || title(f) == want).map(|f| f.id.clone()).collect();
