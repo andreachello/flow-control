@@ -86,13 +86,23 @@ fn a_journey_groups_its_requests_and_a_running_server_notices() {
     let (_, body) = ask(s.1, "GET", &commits, None);
     assert!(body.contains(r#""journeys":[]"#), "no file, no journeys: {body}");
 
-    std::fs::write(d.join("flow.journeys.json"), r#"{"journeys":[{"title":"Pay for a stay","icon":"card","requests":["POST /api/pay"]}]}"#).unwrap();
+    std::fs::write(d.join("flow.journeys.json"), r#"{"journeys":[{"title":"Pay for a stay","icon":"card","requests":["POST /api/pay"],"stops":[{"say":"Enter your card.","requests":["POST /api/pay"]},{"say":"Get a receipt.","requests":["POST /api/pay"]}]}]}"#).unwrap();
     let (_, body) = ask(s.1, "GET", &commits, None);
-    assert!(body.contains("Pay for a stay"), "{body}");
+    assert!(body.contains("Pay for a stay") && body.contains("Enter your card."), "{body}");
+    assert!(body.contains(r#""requests":["j_"#), "a stop names its requests by permanent id: {body}");
     let head = sh(&d, &["git", "rev-parse", "HEAD"]);
     let (_, sum) = ask(s.1, "GET", &format!("/api/p/{name}/summaries?ids={head}"), None);
     assert!(sum.contains(r#""group":0"#), "{sum}");
     assert!(sum.contains(r#""focus":[0]"#), "{sum}");
+    let (_, requests) = ask(s.1, "GET", &format!("/api/p/{name}/requests"), None);
+    assert!(requests.contains("POST /api/pay") && requests.contains(r#""group":0"#), "{requests}");
+    let uid = requests.split(r#""uid":""#).nth(1).unwrap().split('"').next().unwrap();
+    let (_, one) = ask(s.1, "GET", &format!("/api/p/{name}/request/{uid}"), None);
+    assert!(one.contains(r#""steps":["#) && one.contains("route.ts"), "{one}");
+    let (status, _) = ask(s.1, "GET", &format!("/api/p/{name}/request/j_nothing"), None);
+    assert!(status.contains("400"), "{status}");
+    let (_, activity) = ask(s.1, "GET", &format!("/api/p/{name}/activity"), None);
+    assert_eq!(activity.matches(r#","t"]"#).count(), 2, "{activity}");
     let (_, detail) = ask(s.1, "GET", &format!("/api/p/{name}/commit/{head}"), None);
     assert!(detail.contains(r#""group":0"#), "{detail}");
     assert_eq!(sh(&d, &["git", "status", "--porcelain"]), "?? flow.journeys.json", "serving writes nothing");

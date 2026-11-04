@@ -6,9 +6,12 @@
 //! asked when a page loads, and the lifter never reads this file: a journey only groups what the
 //! lift already found. A request stays listed after its code is gone, so old changes still read
 //! as the journey they belonged to.
+//!
+//! Each journey is also written out as its stops: what a person does, in order, and the requests
+//! behind each one. That is what lets a change be shown as the place in the journey it reaches.
 
 use crate::ids::Ids;
-use crate::names::{doc_of, run_claude, STYLE};
+use crate::names::{doc_of, parallel, run_claude, STYLE};
 use crate::Lift;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -27,6 +30,15 @@ pub const BEHIND: &str = "gear";
 pub struct Journey {
     pub title: String,
     pub icon: String,
+    pub requests: Vec<String>,
+    /// What a person does along the way, in order.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub stops: Vec<Stop>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct Stop {
+    pub say: String,
     pub requests: Vec<String>,
 }
 
@@ -165,11 +177,68 @@ pub fn apply(have: &mut Journeys, answer: &Value, todo: &[&str]) -> usize {
             Some(j) => j.requests.extend(mine),
             None => {
                 let icon = a["icon"].as_str().filter(|i| ICONS.contains(i)).unwrap_or("star").to_string();
-                have.journeys.push(Journey { title: title.to_string(), icon, requests: mine });
+                have.journeys.push(Journey { title: title.to_string(), icon, requests: mine, stops: vec![] });
             }
         }
     }
     placed
+}
+
+pub fn stops_prompt(l: &Lift, j: &Journey) -> String {
+    let which: Vec<&str> = j.requests.iter().map(String::as_str).collect();
+    format!(
+        "\"{}\" is one journey people take through a product. Below are the requests it is made of, read from the code. Write out the journey as its stops: what a person does, from start to finish, in the order they do it.\n\n{STYLE}\n\n\
+         say: one short sentence at most 60 characters, starting with what the person does, ending in a full stop, like \"Pick a plan.\", \"Enter your card details.\" or \"Get a confirmation email.\"\n\
+         requests: the requests behind this stop, exactly as written below. A request can sit under more than one stop only when a person really meets it twice.\n\
+         Use 3 to 7 stops, and cover the whole journey as a person lives it, not every request. Group small steps into one stop. A journey with several separate tasks takes its stops in the order a person usually meets them.\n\n{}",
+        j.title,
+        described(l, &which)
+    )
+}
+
+pub fn stops_schema() -> Value {
+    json!({
+        "type": "object", "additionalProperties": false, "required": ["stops"],
+        "properties": {"stops": {"type": "array", "items": {
+            "type": "object", "additionalProperties": false, "required": ["say", "requests"],
+            "properties": {"say": {"type": "string"}, "requests": {"type": "array", "items": {"type": "string"}}}
+        }}}
+    })
+}
+
+/// Take in a written journey. A stop has to rest on requests of this journey, and one stop is no
+/// journey at all, so anything less leaves the journey unwritten. Returns the stops kept.
+pub fn take_stops(j: &mut Journey, answer: &Value) -> usize {
+    let mut stops = vec![];
+    for a in answer["stops"].as_array().into_iter().flatten() {
+        let say = a["say"].as_str().unwrap_or("").trim();
+        let mine: Vec<String> = a["requests"].as_array().into_iter().flatten().filter_map(Value::as_str).filter(|r| j.requests.iter().any(|x| x == r)).map(str::to_string).collect();
+        if !say.is_empty() && say.chars().count() <= 80 && !mine.is_empty() {
+            stops.push(Stop { say: say.to_string(), requests: mine });
+        }
+    }
+    if stops.len() < 2 {
+        return 0;
+    }
+    j.stops = stops;
+    j.stops.len()
+}
+
+/// Write out every journey people take that has no stops yet. Returns the journeys written, and
+/// what went wrong with the others.
+pub fn walk(l: &Lift, have: &mut Journeys, model: &str, jobs: usize) -> (usize, Vec<String>) {
+    let todo: Vec<usize> = (0..have.journeys.len()).filter(|&i| have.journeys[i].stops.is_empty() && have.journeys[i].icon != BEHIND).collect();
+    let asks: Vec<(usize, String)> = todo.into_iter().map(|i| (i, stops_prompt(l, &have.journeys[i]))).collect();
+    let (mut written, mut failed) = (0, vec![]);
+    for (i, answer) in parallel(jobs, asks, |_, (i, p)| (i, run_claude(model, &p, &stops_schema()))) {
+        let title = have.journeys[i].title.clone();
+        match answer {
+            Ok(a) if take_stops(&mut have.journeys[i], &a) > 0 => written += 1,
+            Ok(_) => failed.push(format!("{title}: the stops did not match its requests")),
+            Err(e) => failed.push(format!("{title}: {e:#}")),
+        }
+    }
+    (written, failed)
 }
 
 pub struct Report {

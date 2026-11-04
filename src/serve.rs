@@ -7,6 +7,7 @@ use crate::ids::Ids;
 use crate::journeys::{self, Journeys, Places};
 use crate::titles::{self, Titles};
 use crate::names::Names;
+use crate::repo::SRef;
 use crate::source::{all_paths, git, Source};
 use crate::vcs::{Commit, Vcs};
 use crate::{lift_source, Lift};
@@ -36,8 +37,11 @@ struct Project {
     summaries: HashMap<String, Value>,
     book: Journeys,
     places: Places,
+    ids: Ids,
     /// When the journeys were last read, to notice `flow journeys` finishing while this runs.
     read: Option<[Option<SystemTime>; 3]>,
+    /// Every request at the newest commit, worked out once per commit.
+    catalog: Option<(String, Value)>,
     titles: Titles,
 }
 
@@ -62,7 +66,7 @@ impl Project {
         let n = taken.entry(base.clone()).or_insert(0);
         *n += 1;
         let name = if *n == 1 { base } else { format!("{base}-{n}") };
-        let mut p = Project { name, root, v, details: HashMap::new(), summaries: HashMap::new(), book: Journeys::default(), places: Places::default(), read: None, titles: Titles::new() };
+        let mut p = Project { name, root, v, details: HashMap::new(), summaries: HashMap::new(), book: Journeys::default(), places: Places::default(), ids: Ids::default(), read: None, catalog: None, titles: Titles::new() };
         p.refresh()?;
         Ok(p)
     }
@@ -80,6 +84,7 @@ impl Project {
             self.titles = titles::load(&self.root.join(titles::FILE))?;
             let (ids, _) = Ids::parse(&std::fs::read_to_string(self.root.join(crate::ids::FILE)).unwrap_or_default());
             self.places = self.book.places(&ids);
+            self.ids = ids;
             self.read = Some(now);
             self.details.clear();
             self.summaries.clear();
@@ -113,11 +118,61 @@ impl Project {
     fn parts(&self, id: &str, r: &Report) -> Vec<Value> {
         let Some(t) = self.titles.get(id) else { return vec![] };
         let hit = |p: &titles::Part| r.functions.iter().find(|f| f.sid == p.step).map(|f| self.reach(r, f)).unwrap_or_default();
-        t.parts.iter().map(|p| json!({ "say": p.say, "step": p.step, "groups": hit(p) })).collect()
+        // Which requests run it, to place the clause at a stop of the journey.
+        let runs = |p: &titles::Part| -> Vec<String> {
+            let f = r.functions.iter().find(|f| f.sid == p.step);
+            f.into_iter().flat_map(|f| f.journeys.iter()).filter_map(|t| r.journeys.iter().find(|j| j.title == *t)).map(|j| j.uid.clone()).collect()
+        };
+        t.parts.iter().map(|p| json!({ "say": p.say, "line": p.line, "at": p.at, "step": p.step, "groups": hit(p), "requests": runs(p) })).collect()
+    }
+
+    /// Who changed what and when, for every change. This comes straight from git, so it is quick.
+    fn activity(&self) -> Result<Value> {
+        let text = if self.v.head().is_some() { git(&self.root, &["log", "-n5000", "--date=short", "--format=%ad%x1f%an", "HEAD"])? } else { String::new() };
+        Ok(Value::Array(text.lines().filter_map(|l| l.split_once('\x1f')).map(|(d, a)| json!([d, a])).collect()))
+    }
+
+    /// Every request the code has today, and which journey it belongs to.
+    fn requests(&mut self) -> Result<Value> {
+        self.refresh()?;
+        let Some(head) = self.v.head() else { return Ok(json!([])) };
+        if let Some((at, v)) = &self.catalog {
+            if *at == head {
+                return Ok(v.clone());
+            }
+        }
+        let names = self.v.names.clone();
+        let l = self.v.lift_rev(&head)?;
+        let list = l.flows.iter().map(|f| json!({ "uid": f.uid, "id": f.id, "title": journey_title(&names, &f.id), "kind": f.kind, "steps": f.steps.len(), "group": self.places.of(&f.uid, &f.id) })).collect();
+        let v = Value::Array(list);
+        self.catalog = Some((head, v.clone()));
+        self.trim();
+        Ok(v)
+    }
+
+    /// One request as it runs today, step by step.
+    fn request(&mut self, uid: &str) -> Result<Value> {
+        self.refresh()?;
+        let head = self.v.head().context("nothing saved yet")?;
+        let names = self.v.names.clone();
+        let l = self.v.lift_rev(&head)?;
+        let f = l.flows.iter().find(|f| f.uid == uid).context("no such request")?;
+        let short = |k: &String| k.rsplit('#').next().unwrap_or(k).to_string();
+        let steps: Vec<Value> = f.steps.iter().map(|s| {
+            let sid = l.repo.sid(s.at);
+            let name = names.steps.get(&sid).map(|n| n.name.clone()).unwrap_or_else(|| l.repo.slice(s.at).name.clone());
+            json!({ "name": name, "file": sid.split('#').next().unwrap_or(""), "depth": s.depth })
+        }).collect();
+        let of = |m: &HashMap<SRef, BTreeSet<String>>| f.steps.iter().filter_map(|s| m.get(&s.at)).flatten().map(short).collect::<BTreeSet<_>>();
+        Ok(json!({ "uid": f.uid, "id": f.id, "title": journey_title(&names, &f.id), "kind": f.kind, "group": self.places.of(&f.uid, &f.id), "steps": steps,
+            "reads": of(&l.graph.reads), "writes": of(&l.graph.writes), "outside": f.outside }))
     }
 
     fn legend(&self) -> Vec<Value> {
-        self.book.journeys.iter().map(|j| json!({ "title": j.title, "icon": j.icon })).collect()
+        self.book.journeys.iter().map(|j| {
+            let stops: Vec<Value> = j.stops.iter().map(|s| json!({ "say": s.say, "requests": s.requests.iter().map(|r| self.ids.journey(r)).collect::<Vec<_>>() })).collect();
+            json!({ "title": j.title, "icon": j.icon, "stops": stops })
+        }).collect()
     }
 
     fn card(&self) -> Value {
@@ -125,7 +180,7 @@ impl Project {
         let shown: Vec<Value> = recent.iter().map(|c| self.shown(c)).collect();
         // The latest change anyone would notice is what a project is up to.
         let says = shown.iter().find(|c| c["quiet"] != json!(true)).or(shown.first()).map(|c| c["title"].clone());
-        json!({ "name": self.name, "path": self.root.display().to_string(), "changes": self.total(), "last": shown.first(), "says": says, "journeys": self.legend() })
+        json!({ "name": self.name, "path": self.root.display().to_string(), "changes": self.total(), "last": shown.first(), "says": says, "journeys": self.legend(), "recent": shown.iter().take(6).collect::<Vec<_>>() })
     }
 
     fn sha(&self, s: &str) -> Result<String> {
@@ -478,6 +533,9 @@ fn api(projects: &Shared, path: &str, q: &HashMap<String, String>) -> Result<Val
     match (what, arg) {
         ("commits", None) => p.commits(q.get("skip").and_then(|s| s.parse().ok()).unwrap_or(0)),
         ("summaries", None) => p.summaries(&need("ids")?.split(',').map(str::to_string).collect::<Vec<_>>()),
+        ("activity", None) => p.activity(),
+        ("requests", None) => p.requests(),
+        ("request", Some(id)) => p.request(id),
         ("commit", Some(id)) => p.detail(id),
         ("file", Some(id)) => p.file(id, &need("path")?),
         ("whole", Some(id)) => p.whole(id, &need("path")?, q.get("from").map(String::as_str)),

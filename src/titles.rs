@@ -23,6 +23,12 @@ const MOST: usize = 60;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Part {
     pub say: String,
+    /// The same thing as a sentence that stands alone, for when it is read on its own line.
+    #[serde(default)]
+    pub line: String,
+    /// The stop of a journey where a person meets this, in that stop's own words.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub at: String,
     pub step: String,
 }
 
@@ -59,7 +65,7 @@ pub fn take(t: &mut Titles, known: &Known, answer: &Value) -> usize {
             continue;
         }
         let parts = a["parts"].as_array().into_iter().flatten();
-        let parts = parts.filter_map(|p| Some(Part { say: p["say"].as_str()?.trim().to_string(), step: p["step"].as_str()?.to_string() }));
+        let parts = parts.filter_map(|p| Some(Part { say: p["say"].as_str()?.trim().to_string(), line: p["line"].as_str().unwrap_or("").trim().to_string(), at: p["at"].as_str().unwrap_or("").trim().to_string(), step: p["step"].as_str()?.to_string() }));
         let parts = parts.filter(|p| !p.say.is_empty() && steps.contains(&p.step) && title != QUIET).collect();
         t.insert(sha.clone(), Title { title: title.to_string(), parts });
         n += 1;
@@ -88,15 +94,18 @@ pub struct Report {
 pub fn write(v: &mut Vcs, book: &Journeys, have: &mut Titles, last: usize, model: &str, jobs: usize) -> Result<Report> {
     let (ids, _) = crate::ids::Ids::parse(&std::fs::read_to_string(v.root.join(crate::ids::FILE)).unwrap_or_default());
     let todo: Vec<Commit> = v.commits_lifted(last, "HEAD")?.into_iter().filter(|c| !have.contains_key(&c.id)).collect();
+    let lines: Vec<String> = book.journeys.iter().filter(|j| !j.stops.is_empty()).map(|j| format!("{}:\n{}", j.title, j.stops.iter().map(|s| format!("- {}", s.say)).collect::<Vec<_>>().join("\n"))).collect();
+    let stops = if lines.is_empty() { String::new() } else { format!("The journey stops:\n{}\n\n", lines.join("\n")) };
     let mut batches = vec![];
     for chunk in todo.chunks(25) {
         let mut p = format!(
             "Each block below is one saved change to a product. Write its title for the list of changes.\n\n{STYLE}\n\n\
              title: one short sentence ending in a full stop, at most 48 characters, saying what is different for the person using the product, like \"Pay yearly for the price of ten months.\", \"Agent replies name their tools.\" or \"Everyone who pays gets a receipt.\" Say what changed, not that something was updated. Use the words of the product, not of the code.\n\
              When nobody using the product would notice, such as a script, a test or a tidy-up, the title is exactly \"{QUIET}\" and parts is empty.\n\
-             parts: 1 to 7 short clauses that read in order as one flowing paragraph about what changed for people, each at most 40 characters, like \"People can pay yearly,\" then \"for ten months' price,\" then \"with unused days credited.\" Each clause has step: the id of the changed step it describes, copied exactly from that change's list. Only say what those steps show. Do not repeat the title.\n\
+             parts: 1 to 7 short clauses that read in order as one flowing paragraph about what changed for people, each at most 40 characters, like \"People can pay yearly,\" then \"for ten months' price,\" then \"with unused days credited.\" Each clause has step: the id of the changed step it describes, copied exactly from that change's list. Only say what those steps show. Do not repeat the title. Each clause also has line: the same point as a complete sentence that makes sense alone, at most 70 characters, like \"Unused days are credited when people pay yearly.\" Each clause also has at: the stop where a person would meet this, copied exactly from the list of journey stops, or empty if none fits.\n\
              id: exactly as given.\n\n"
         );
+        p += &stops;
         let mut known = Known::new();
         for c in chunk {
             let (text, steps) = described(v, c, book, &ids)?;
@@ -110,8 +119,8 @@ pub fn write(v: &mut Vcs, book: &Journeys, have: &mut Titles, last: usize, model
         "properties": {"titles": {"type": "array", "items": {
             "type": "object", "additionalProperties": false, "required": ["id", "title", "parts"],
             "properties": {"id": {"type": "string"}, "title": {"type": "string"}, "parts": {"type": "array", "items": {
-                "type": "object", "additionalProperties": false, "required": ["say", "step"],
-                "properties": {"say": {"type": "string"}, "step": {"type": "string"}}
+                "type": "object", "additionalProperties": false, "required": ["say", "line", "at", "step"],
+                "properties": {"say": {"type": "string"}, "line": {"type": "string"}, "at": {"type": "string"}, "step": {"type": "string"}}
             }}}
         }}}
     });

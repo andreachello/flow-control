@@ -6,7 +6,7 @@ use flowcontrol::journeys::{apply, unplaced, Journey, Journeys, BEHIND, ICONS};
 use serde_json::json;
 
 fn journey(title: &str, requests: &[&str]) -> Journey {
-    Journey { title: title.into(), icon: "star".into(), requests: requests.iter().map(|r| r.to_string()).collect() }
+    Journey { title: title.into(), icon: "star".into(), requests: requests.iter().map(|r| r.to_string()).collect(), stops: vec![] }
 }
 
 #[test]
@@ -84,7 +84,7 @@ fn a_title_must_fit_a_row_and_a_clause_must_name_a_step_that_changed() {
     let known: Known = [("abc123aaaa", "a.ts#pay"), ("def456bbbb", "b.ts#x"), ("aaa000cccc", "c.ts#y")].iter().map(|(k, s)| (k.to_string(), [s.to_string()].into_iter().collect())).collect();
     let answer = json!({"titles": [
         {"id": "abc123", "title": "Pay yearly for the price of ten months.", "parts": [
-            {"say": "People can pay yearly,", "step": "a.ts#pay"},
+            {"say": "People can pay yearly,", "line": "People can now pay once a year.", "at": "Pick a plan.", "step": "a.ts#pay"},
             {"say": "and something imagined.", "step": "a.ts#never"},
         ]},
         {"id": "fff999", "title": "A change that was never saved.", "parts": []},
@@ -95,8 +95,27 @@ fn a_title_must_fit_a_row_and_a_clause_must_name_a_step_that_changed() {
     let paid = &t["abc123aaaa"];
     assert_eq!(paid.parts.len(), 1, "a clause about a step that did not change is dropped");
     assert_eq!(paid.parts[0].say, "People can pay yearly,");
+    assert_eq!(paid.parts[0].line, "People can now pay once a year.");
+    assert_eq!(paid.parts[0].at, "Pick a plan.");
     assert!(t["aaa000cccc"].parts.is_empty(), "a change nobody notices has nothing to say");
     assert_eq!(t.len(), 2);
+}
+
+#[test]
+fn a_stop_has_to_rest_on_requests_of_its_journey() {
+    use flowcontrol::journeys::take_stops;
+    let mut j = journey("Pay", &["page /pay", "action pay"]);
+    let answer = json!({"stops": [
+        {"say": "Choose a plan.", "requests": ["page /pay"]},
+        {"say": "Pay for it.", "requests": ["action pay", "action imagined"]},
+        {"say": "Do something no request does.", "requests": ["action imagined"]},
+    ]});
+    assert_eq!(take_stops(&mut j, &answer), 2);
+    assert_eq!(j.stops[1].requests, ["action pay"]);
+
+    let mut k = journey("Pay", &["page /pay"]);
+    assert_eq!(take_stops(&mut k, &json!({"stops": [{"say": "One stop.", "requests": ["page /pay"]}]})), 0, "one stop is no journey");
+    assert!(k.stops.is_empty());
 }
 
 #[test]

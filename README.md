@@ -250,13 +250,13 @@ A file renamed on one side and edited on the other keeps the edit at its new pat
 
 A page, an action and a route are each one request. A journey is what those requests add up to: the thing a person came to do, like "Add a house" or "Upgrade to Pro". The code shows which requests lead to which, but not what anyone is trying to do, so `flow journeys` asks Claude to group them into at most 6 journeys, and anything no person starts goes in "Behind the scenes". The result is `flow.journeys.json`, meant to be committed and read: rename a journey or move a request by editing it.
 
-Running it again only places new requests, in the journeys you already have, so titles and colours stay put. A request stays listed after its code is gone, so old changes still read as the journey they belonged to. Nothing asks Claude when a page loads, and the lifter never reads the file: a journey only groups what the lift found. Until the file exists, `flow serve` shows single requests and says so.
+It also writes each journey out as its stops, what a person does from start to finish, so a change can be shown at the place in the journey it reaches. Running it again only fills in what is missing, placing new requests in the journeys you already have, so titles and colours stay put. A request stays listed after its code is gone, so old changes still read as the journey they belonged to. Nothing asks Claude when a page loads, and the lifter never reads the file: a journey only groups what the lift found. Until the file exists, `flow serve` shows single requests and says so.
 
 `flow titles` does the same for the list of changes: one short sentence per commit in `flow.titles.json`, or "Nothing changes for people." Edit any of them by hand. A commit without a title shows its message.
 
 ## In the browser
 
-`flow serve` shows your projects on `http://localhost:4000`. Each project opens to its changes, day by day, with the journeys each one reached. A change opens to its files and diff beside what it changes for people, most far-reaching first, and each change leads to its code and its place in the journey.
+`flow serve` shows your projects on `http://localhost:4000`: every project with recent activity across them, then for each one an overview, its journeys, its changes and the people behind them. A journey opens to its history and the requests it runs, and a request to the steps it runs and the data it touches. A change opens in plain words: what is different for people and which journeys it reaches. Its advanced view has the files and diff, step by step. `⌘K` searches everything, and `?` lists the keyboard shortcuts.
 
 ```
 flow serve                              # the repository you are in

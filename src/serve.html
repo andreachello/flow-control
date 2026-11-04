@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Flow control</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2318181b'/%3E%3Cpath d='M9 7v18M16 7v8a4 4 0 0 0 4 4h4' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round'/%3E%3Ccircle cx='16' cy='15' r='3.2' fill='%23e8a200'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap">
 <style>
@@ -335,15 +336,188 @@ button.fl-jr:hover{background:var(--sheet-2)}
 .fl-jr b{overflow-wrap:anywhere;min-width:0}
 .caret{position:absolute;top:-6px;width:10px;height:10px;background:var(--sheet);border-left:1px solid var(--rule);border-top:1px solid var(--rule);border-radius:2px 0 0 0;transform:rotate(45deg)}
 @media (prefers-reduced-motion: reduce){ .ghc-wait{animation:none} }
+
+/* The platform: a header with a project switcher and sections, and pages built from panels. */
+nav .in{min-height:52px;gap:10px}
+.crumb{display:flex;align-items:center;gap:6px;min-width:0;position:relative}
+.sw{display:inline-flex;align-items:center;gap:7px;max-width:260px;padding:4px 8px;border:0;border-radius:8px;background:none;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer}
+.sw:hover{background:var(--sheet-2)}
+.sw span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.sw .chev{margin:0 2px 3px;transform:rotate(45deg)}
+.tile{flex:none;display:grid;place-items:center;width:20px;height:20px;border-radius:6px;background:var(--c);font-size:11px;font-style:normal;font-weight:600;color:#fff}
+.tile.big{width:28px;height:28px;border-radius:8px;font-size:14px}
+.nav-r{display:flex;align-items:center;gap:8px;margin-left:auto}
+.find{display:inline-flex;align-items:center;gap:8px;width:220px;padding:5px 7px 5px 10px;border:1px solid var(--rule);border-radius:10px;background:var(--sheet);font-size:13px;color:var(--ink-3);cursor:pointer}
+.find:hover{color:var(--ink-2);background:var(--sheet-2)}
+.find kbd{margin-left:auto}
+kbd{font:500 11px var(--f-ui);letter-spacing:0;padding:1px 5px;border-radius:5px;background:var(--sheet-2);color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--rule)}
+.theme{margin-left:0}
+.sec{display:flex;gap:2px;max-width:1320px;margin:0 auto;padding:0 12px;overflow-x:auto;scrollbar-width:none}
+.sec a{position:relative;padding:7px 10px 10px;font-size:13.5px;color:var(--ink-2);text-decoration:none;white-space:nowrap}
+.sec a:hover{color:var(--ink)}
+.sec a.on{font-weight:500;color:var(--ink)}
+.sec a.on::after{content:"";position:absolute;left:10px;right:10px;bottom:-1px;height:2px;border-radius:1px;background:var(--ink)}
+.sec a:focus-visible{outline-offset:-2px}
+.sec:empty{display:none}
+.ex3{height:calc(100vh - 208px)}
+.enter > *{animation:rise .2s ease-out}
+@keyframes rise{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.page-h{display:flex;align-items:center;gap:10px;padding:2px 0 16px}
+.page-h h2{margin:0;font-size:22px;font-weight:600;letter-spacing:-.012em}
+.page-h .bdg{width:28px;height:28px;box-shadow:none}
+.page-h .bdg svg{width:16px;height:16px}
+.page-h .ghl-n{margin-left:auto}
+.page-sub{margin:-10px 0 16px;font-size:14px;color:var(--ink-2)}
+.page-sub a{color:inherit}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.stat{padding:14px 16px;border:1px solid var(--rule);border-radius:12px;background:var(--sheet)}
+.stat b{display:block;font-size:26px;font-weight:600;line-height:1.2;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--ink-3)}
+.cols{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:12px;align-items:start}
+.cols.even{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.pn{min-width:0;margin-bottom:12px;border:1px solid var(--rule);border-radius:12px;background:var(--sheet);overflow:hidden}
+.pn-h{display:flex;align-items:baseline;gap:8px;padding:13px 16px 0;font-size:13px;font-weight:500;color:var(--ink-3)}
+.pn-h b{font-size:14px;font-weight:600;color:var(--ink)}
+.pn-h small,.pn-h a{margin-left:auto;font-size:12.5px;font-weight:400;color:var(--ink-3)}
+.pn-b{padding:10px 16px 14px}
+.pn-e{padding:14px 16px 16px;font-size:13.5px;color:var(--ink-3)}
+.pn-e code{font:12.5px var(--f-code);color:var(--ink-2)}
+.chart{display:flex;align-items:flex-end;gap:2px;height:132px;padding-top:4px;border-bottom:1px solid var(--rule)}
+.chart button{flex:1;display:flex;align-items:flex-end;height:100%;min-width:0;padding:0;border:0;background:none;cursor:default}
+.chart i{display:block;width:100%;min-height:0;border-radius:4px 4px 0 0;background:var(--l-su);transition:opacity .1s}
+.chart.zero i{min-height:0}
+.chart:hover i{opacity:.55}
+.chart button:hover i,.chart button:focus i{opacity:1}
+.axis{display:flex;justify-content:space-between;padding-top:6px;font-size:12px;color:var(--ink-3)}
+#tip{position:fixed;z-index:60;padding:5px 9px;border-radius:7px;background:var(--ink);font-size:12.5px;color:var(--sheet);pointer-events:none;transform:translate(-50%,-100%);white-space:nowrap}
+.rank{list-style:none;margin:0;padding:0}
+.rank a{display:grid;grid-template-columns:20px minmax(0,1fr) 28px;align-items:center;gap:4px 9px;margin:0 -6px;padding:6px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:13.5px}
+.rank a:hover{background:var(--sheet-2)}
+.rank .bdg{grid-row:span 2;width:20px;height:20px;box-shadow:none}
+.rank span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.rank small{text-align:right;font-size:12.5px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.rank u{grid-column:2 / 4;display:block;height:4px;border-radius:2px;background:var(--sheet-2);text-decoration:none;overflow:hidden}
+.rank u i{display:block;height:100%;border-radius:2px;background:var(--c)}
+.fd{list-style:none;margin:0;padding:4px 0}
+.fd a{display:flex;align-items:center;gap:12px;min-height:42px;padding:6px 16px;color:var(--ink);text-decoration:none}
+.fd a:hover{background:var(--sheet-2)}
+.fd li + li a{box-shadow:inset 0 1px 0 var(--rule)}
+.fd b{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-size:14px;font-weight:500}
+.fd .q{font-weight:400;color:var(--ink-3)}
+.fd .ic{flex:none;display:flex;gap:3px}
+.fd .bdg{width:18px;height:18px;box-shadow:none}
+.fd .bdg svg{width:11px;height:11px}
+.fd .bdg + .bdg{margin-left:0}
+.fd small{flex:none;font-size:12.5px;color:var(--ink-3);white-space:nowrap}
+.jgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.jc{display:block;padding:14px 16px;border:1px solid var(--rule);border-radius:12px;background:var(--sheet);color:var(--ink);text-decoration:none;transition:border-color .12s,box-shadow .12s}
+.jc:hover{border-color:color-mix(in srgb,var(--ink) 22%,var(--rule));box-shadow:0 6px 20px -10px rgba(24,24,27,.18)}
+.jc-t{display:flex;align-items:center;gap:9px;font-size:15px;font-weight:600;letter-spacing:-.008em}
+.jc-t .bdg{width:24px;height:24px;box-shadow:none}
+.jc-m{display:flex;gap:14px;margin-top:10px;font-size:12.5px;color:var(--ink-3)}
+.jc-m b{font-weight:500;color:var(--ink-2)}
+.spark{display:flex;align-items:flex-end;gap:2px;height:30px;margin-top:12px;border-bottom:1px solid var(--rule)}
+.spark i{flex:1;min-height:0;border-radius:2px 2px 0 0;background:var(--c)}
+.rq{list-style:none;margin:0;padding:0 0 4px}
+.rq a{display:flex;align-items:center;gap:10px;padding:6px 16px;color:var(--ink);text-decoration:none;font-size:13.5px}
+.rq a:hover{background:var(--sheet-2)}
+.rq span{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.rq small{flex:none;font-size:12.5px;color:var(--ink-3)}
+.rq-k{padding:10px 16px 3px;font-size:12.5px;color:var(--ink-3)}
+.stp{list-style:none;margin:0;padding:8px 16px 14px}
+.stp li{position:relative;display:flex;align-items:baseline;gap:10px;padding:4px 0 4px calc(var(--d) * 16px + 16px);font-size:13.5px}
+.stp li::before{content:"";position:absolute;left:calc(var(--d) * 16px + 2px);top:11px;width:7px;height:7px;border-radius:50%;background:var(--c)}
+.stp span{min-width:0;overflow-wrap:anywhere}
+.stp small{margin-left:auto;flex:none;max-width:45%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font:12px var(--f-code);color:var(--ink-3)}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+.chips span{padding:2px 9px;border-radius:999px;background:var(--sheet-2);font-size:12.5px;color:var(--ink-2)}
+.ppl{list-style:none;margin:0;padding:4px 0}
+.ppl li{display:grid;grid-template-columns:32px minmax(0,1.4fr) minmax(0,2fr) 90px 130px;align-items:center;gap:12px;min-height:54px;padding:6px 16px}
+.ppl li + li{box-shadow:inset 0 1px 0 var(--rule)}
+.ppl .av{display:grid;place-items:center;width:32px;height:32px;border-radius:50%;background:var(--sheet-2);box-shadow:inset 0 0 0 1px var(--rule);font-size:13px;font-weight:600;color:var(--ink-2)}
+.ppl b{font-size:14px;font-weight:500}
+.ppl .ic{display:flex;gap:3px}
+.ppl .ic .bdg{width:20px;height:20px;box-shadow:none}
+.ppl .ic .bdg + .bdg{margin-left:0}
+.ppl small{font-size:12.5px;color:var(--ink-3);text-align:right}
+.cv-top{display:flex;align-items:center;gap:8px;min-height:32px;margin-bottom:18px;font-size:13.5px}
+.cv-top .bar-pos{margin-left:auto}
+.cv-top .bar-s:last-child{margin-left:8px}
+.cv-h{margin-bottom:18px}
+.cv-h h2{margin:0;font-size:30px;font-weight:600;line-height:1.2;letter-spacing:-.02em;text-wrap:balance}
+.cv-h p{margin:8px 0 0;font-size:14px;color:var(--ink-3)}
+.cv-say{margin:0;padding:8px 16px 18px;font-size:18px;line-height:1.5;letter-spacing:-.01em;text-wrap:pretty}
+.cv-sub{margin:20px 0 10px;font-size:13px;font-weight:500;color:var(--ink-3)}
+.cv-jh{display:flex;align-items:center;gap:10px;padding:13px 14px 4px 16px;color:var(--ink);text-decoration:none}
+.cv-jh .bdg{width:24px;height:24px;box-shadow:none}
+.cv-jh b{font-size:15px;font-weight:600;letter-spacing:-.008em}
+.cv-jh .chev{margin-left:auto;margin-right:4px;transform:rotate(-45deg)}
+.cv-jh:hover b{text-decoration:underline;text-underline-offset:3px}
+.cv-stops{list-style:none;margin:0;padding:8px 16px 16px 27px}
+.cv-stops li{position:relative;padding:7px 0 7px 21px;font-size:15px;line-height:1.4}
+.cv-stops li > b{font-weight:400;color:var(--ink-3)}
+.cv-stops li.hit > b{font-weight:600;color:var(--ink)}
+.cv-stops li p{margin:3px 0 0;font-size:14px;line-height:1.45;color:var(--ink-2)}
+.cv-tag{display:inline-block;margin-left:8px;padding:0 7px;border-radius:999px;background:color-mix(in srgb,var(--c) 14%,var(--sheet));font-size:12px;font-weight:500;line-height:19px;color:var(--ink)}
+.cv-stops li::before{content:"";position:absolute;left:0;top:14px;width:8px;height:8px;border-radius:50%;background:var(--sheet);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--c) 40%,var(--rule)),0 0 0 3px var(--sheet);z-index:1}
+.cv-stops li.hit::before{left:-2px;top:12px;width:12px;height:12px;background:var(--c);box-shadow:0 0 0 3px var(--sheet)}
+.cv-stops li::after{content:"";position:absolute;left:3px;top:18px;bottom:-18px;width:2px;background:color-mix(in srgb,var(--c) 30%,var(--rule))}
+.cv-jh small{margin-left:4px;font-size:12.5px;color:var(--ink-3)}
+.cv-rest{padding:0 16px 14px}
+.cv-rest h4{margin:0 0 4px;font-size:12.5px;font-weight:500;color:var(--ink-3)}
+.cv-rest ul{margin:0;padding-left:16px;font-size:14px;line-height:1.5;color:var(--ink-2)}
+.cv-stops li:last-child::after{display:none}
+.cv-list{list-style:none;margin:0;padding:6px 8px 8px}
+.cv-list a{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:14px}
+.cv-list a:hover{background:var(--sheet-2)}
+.cv-list span{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.cv-list small{flex:none;font-size:12.5px;color:var(--ink-3)}
+.cv-list .bdg{flex:none;width:22px;height:22px;box-shadow:none}
+.cv-list .off .bdg{opacity:.4}
+.cv-list .off span{color:var(--ink-3)}
+.cv-note{margin:0;padding:0 16px 14px;font-size:12.5px;line-height:1.45;color:var(--ink-3)}
+.ghc.kb{box-shadow:inset 2px 0 0 var(--l-up);background:var(--sheet-2)}
+.sk{display:block;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--sheet-2) 30%,color-mix(in srgb,var(--rule) 60%,var(--sheet-2)) 50%,var(--sheet-2) 70%);background-size:300% 100%;animation:shine 1.3s linear infinite}
+@keyframes shine{from{background-position:100% 0}to{background-position:0 0}}
+.sk-box{height:var(--h,88px);margin-bottom:12px;padding:16px;border:1px solid var(--rule);border-radius:12px;background:var(--sheet)}
+.sk-box .sk{margin-bottom:12px}
+.sk-pane{padding:16px}.sk-pane .sk{margin-bottom:14px}
+.sk-note{display:flex;align-items:center;min-height:32px;margin:4px 0 12px;font-size:13.5px;color:var(--ink-3)}
+.ov{position:fixed;z-index:40;inset:0;display:flex;align-items:flex-start;justify-content:center;padding:12vh 16px 16px;background:rgba(24,24,27,.32);backdrop-filter:blur(2px);animation:fade .12s ease-out}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.ov-box{width:100%;max-width:580px;max-height:68vh;display:flex;flex-direction:column;border:1px solid var(--rule);border-radius:14px;background:var(--sheet);box-shadow:0 2px 4px rgba(24,24,27,.08),0 24px 64px -12px rgba(24,24,27,.35);overflow:hidden;animation:rise .14s ease-out}
+.pal-in{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--rule);color:var(--ink-3)}
+.pal-in input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;font-size:15.5px;color:var(--ink)}
+.pal-in input::placeholder{color:var(--ink-3)}
+.pal-l{flex:1;min-height:0;overflow-y:auto;padding:6px}
+.pal-h{padding:9px 10px 4px;font-size:12px;font-weight:500;color:var(--ink-3)}
+.pal-i{display:flex;align-items:center;gap:10px;width:100%;min-width:0;padding:7px 10px;border:0;border-radius:8px;background:none;font:inherit;font-size:14px;color:var(--ink);text-align:left;cursor:pointer}
+.pal-i.on{background:var(--sheet-2)}
+.pal-i > span{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.pal-i small{flex:none;font-size:12.5px;color:var(--ink-3)}
+.pal-i .bdg{flex:none;width:20px;height:20px;box-shadow:none}
+.pal-none{padding:28px 16px;text-align:center;font-size:14px;color:var(--ink-3)}
+.pal-f{display:flex;gap:14px;padding:8px 14px;border-top:1px solid var(--rule);font-size:12px;color:var(--ink-3)}
+.keys{padding:18px 20px 20px}
+.keys h3{margin:0 0 12px;font-size:15px;font-weight:600}
+.keys dl{display:grid;grid-template-columns:1fr auto;gap:8px 16px;margin:0;font-size:13.5px}
+.keys dt{color:var(--ink-2)}
+.keys dd{display:flex;gap:4px;justify-content:flex-end;margin:0}
+.toast{position:fixed;z-index:50;left:50%;bottom:24px;padding:7px 13px;border-radius:9px;background:var(--ink);box-shadow:0 12px 28px -8px rgba(24,24,27,.5);font-size:13px;color:var(--sheet);transform:translateX(-50%);animation:rise .14s ease-out}
+.live{display:inline-flex;align-items:center;gap:7px;padding:4px 10px;border:1px solid var(--rule);border-radius:999px;background:var(--sheet);font-size:12.5px;font-weight:500;color:var(--ink);cursor:pointer}
+.live i{width:6px;height:6px;border-radius:50%;background:var(--l-up)}
+@media (max-width:900px){ .stats{grid-template-columns:repeat(2,minmax(0,1fr))} .cols,.cols.even{grid-template-columns:minmax(0,1fr)} .find{width:auto} .find span,.find kbd{display:none} .ppl li{grid-template-columns:32px minmax(0,1fr) auto} .ppl .ic,.ppl li > small:last-child{display:none} }
+@media (prefers-reduced-motion: reduce){ .enter > *,.sk,.ov,.ov-box,.toast{animation:none} }
 </style>
 </head>
 <body>
 <nav><div class="in">
   <a class="brand" href="#/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v18M12 3v8a4 4 0 0 0 4 4h3" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="12" cy="11" r="3" fill="#e8a200"/></svg>Flow control</a>
   <div class="crumb" id="crumb"></div>
-  <button class="theme" id="theme" aria-label="Switch light or dark">Dark</button><div class="tabs" id="tabs"></div>
-</div></nav>
+  <div class="nav-r"><span id="live"></span><button class="find" id="find"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M7 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM10 10l3.5 3.5"/></svg><span>Search</span><kbd>⌘K</kbd></button><button class="theme" id="theme" aria-label="Switch light or dark">Dark</button></div>
+</div><div class="sec" id="sec"></div></nav>
 <div class="wrap" id="view"></div>
+<div id="over"></div><div id="toast"></div><div id="tip" hidden></div>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
@@ -375,7 +549,7 @@ const badges = (titles, most = 5) => titles.slice(0, most).map(t => badge(t)).jo
 const SHAPE = { enter:"M7 3h6v10H7M3 8h7M8 5l3 3-3 3", plus:"M8 3v10M3 8h10", cross:"M4 4l8 8M12 4l-8 8", up:"M8 13V3M4 7l4-4 4 4", spark:"M8 2l1.6 4.4L14 8l-4.4 1.6L8 14l-1.6-4.4L2 8l4.4-1.6z", plug:"M6 2v4M10 2v4M4 6h8v3a4 4 0 0 1-8 0zM8 13v2",
   home:"M3 7.500L8 3l5 4.500M4.5 6.500V13h7V6.5", calendar:"M3 4.500h10V13H3zM3 7.500h10M5.5 2.500v3M10.5 2.500v3", chat:"M3 3.500h10v7H7l-3 2.500v-2.500H3z", card:"M2.5 4.500h11v7h-11zM2.5 7.500h11", search:"M7 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM10 10l3.5 3.5", key:"M6 7a3 3 0 1 0-.1.6M8.7 7.500H14M12 7.500v2.5", star:"M8 2.500l1.7 3.6 3.9.5-2.9 2.7.8 3.900L8 11.300l-3.5 1.9.8-3.9-2.9-2.7 3.9-.5z", photo:"M2.5 3.500h11v9h-11zM2.5 10.500l3-3 2.5 2.5 2-2 3.5 3.5", mail:"M2.5 4h11v8h-11zM2.5 4.500L8 9l5.5-4.5", chart:"M3 13V8M8 13V3M13 13V6", globe:"M8 2.500a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM2.5 8h11M8 2.500c3 3 3 8 0 11M8 2.500c-3 3-3 8 0 11", people:"M6 7.500a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM1.5 13.500c.5-3 2-4 4.5-4s4 1 4.5 4M10.5 2.800a2.5 2.5 0 0 1 0 4.500M12 9.800c1.3.5 2 1.7 2.5 3.7", doc:"M4 2.500h5.500L12 5v8.500H4zM6 8h4M6 10.500h4", pin:"M8 14s4.5-4.3 4.5-7.500a4.5 4.5 0 0 0-9 0C3.5 9.7 8 14 8 14zM8 8a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z", gear:"M8 5.500a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM8 1.800v2M8 12.200v2M1.8 8h2M12.2 8h2M3.6 3.600L5 5M11 11l1.4 1.400M3.6 12.400L5 11M11 5l1.4-1.4" };
 const TINT = ["li","su","ca","up","ag","te","or","in","ol"];
-let BOOK = [], READ = false;
+let BOOK = [], READ = false, PROJ = [], ACT = null, CAT = null, REDRAW = null, TAB = "", SWITCH = false, KB = null, PAL = null, back = null;
 const tint = (g, book = BOOK) => book[g].icon === "gear" ? "var(--l-pl)" : `var(--l-${TINT[g % TINT.length]})`;
 const gbadge = (g, off, book = BOOK) => `<span class="bdg ${off?"off":""}" style="background:${tint(g, book)}" title="${esc(book[g].title)}${off===undefined?"":off?": no change":": changes"}"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${SHAPE[book[g].icon] || SHAPE.star}"/></svg></span>`;
 const groupsOf = js => [...new Set(js.map(j => j.group).filter(g => g != null))].sort((a, b) => a - b);
@@ -400,16 +574,28 @@ let curFile = null, scope = { all:true }, selSid = null, whole = false, cache = 
 const api = (what, q = "") => `/api/p/${encodeURIComponent(P)}/${what}${q}`;
 const hash = (...p) => "#/" + ["p", encodeURIComponent(P), ...p].join("/");
 const page = html => { $("view").innerHTML = html; };
-const failed = e => page(`<div class="pj-empty"><b>That did not load</b><p>${esc(e.message)}</p></div>`);
-function nav(tab){
-  $("crumb").innerHTML = P ? `<span class="bar-sl">/</span><a href="${hash()}">${esc(P)}</a>` : "";
+const failed = e => { page(`<div class="pj-empty"><b>That did not load</b><p>${esc(e.message)}</p><p><button class="bar-s" id="retry">Try again</button></p></div>`); $("retry").onclick = route; };
+const SECTIONS = [["overview", "Overview", ""], ["journeys", "Journeys", "journeys"], ["changes", "Changes", "changes"], ["people", "People", "people"]];
+function nav(tab, here){
+  const me = PROJ.find(p => p.name === P);
+  $("crumb").innerHTML = !P ? "" : `<span class="bar-sl">/</span><button class="sw" id="sw" aria-expanded="${SWITCH}"><i class="tile" style="--c:${colour(P)}">${esc(P.charAt(0).toUpperCase())}</i><span>${esc(P)}</span><i class="chev"></i></button>${SWITCH ? `<div class="cp-menu" style="top:38px;left:14px;width:280px">${PROJ.map(p => `<a class="${p.name === P ? "on" : ""}" href="#/p/${encodeURIComponent(p.name)}"><b>${esc(p.name)}</b><span>${plural(p.changes, "change")}</span></a>`).join("")}<a href="#/"><b>All projects</b></a></div>` : ""}`;
+  if ($("sw")) $("sw").onclick = e => { e.stopPropagation(); SWITCH = !SWITCH; nav(tab, here); };
+  $("sec").innerHTML = P ? SECTIONS.map(([k, label, path]) => `<a href="${hash(...(path ? [path] : []))}" class="${k === tab ? "on" : ""}" ${k === tab ? 'aria-current="page"' : ""}>${label}</a>`).join("") : "";
+  document.title = !P ? "Flow control" : `${here || (SECTIONS.find(x => x[0] === tab) || [0, "Change"])[1]}, ${P}`;
+  TAB = tab; void me;
 }
 
 /* projects */
 async function projects(){
-  P = null; nav(); const list = await get("/api/projects");
-  if (list.length === 1) { location.replace(`#/p/${encodeURIComponent(list[0].name)}/changes`); return; }
-  page(`<div class="ex-cards on"><div class="ghl-top"><h2>Projects</h2><span class="ghl-n">${plural(list.length, "project")}</span></div><ol class="pj">${[...list].sort((a, b) => (b.last ? b.last.date : "").localeCompare(a.last ? a.last.date : "")).map(p => `<li><a href="#/p/${encodeURIComponent(p.name)}/changes" title="${esc(p.path)}"><div class="pj-m"><b>${esc(p.name)}</b><span>${esc(p.says || "Nothing saved yet")}</span></div>${p.journeys.length ? `<div class="ghc-js" role="img" aria-label="${esc(words(p.journeys.map(j => j.title)))}">${p.journeys.map((j, g) => gbadge(g, undefined, p.journeys)).join("")}</div>` : ""}<div class="ghc-r pj-r"><div><span>${plural(p.changes, "change")}</span>${p.last ? `<span>${esc(when(p.last.date))}</span>` : ""}</div><i class="chev"></i></div></a></li>`).join("")}</ol></div>`);
+  P = null; REDRAW = null; nav(); if (!PROJ.length) page(skPage());
+  const list = PROJ = await get("/api/projects");
+  if (list.length === 1) { location.replace(`#/p/${encodeURIComponent(list[0].name)}`); return; }
+  const go = p => `#/p/${encodeURIComponent(p.name)}`, sorted = [...list].sort((a, b) => (b.last ? b.last.date : "").localeCompare(a.last ? a.last.date : ""));
+  const feed = list.flatMap(p => (p.recent || []).filter(c => !c.quiet).map(c => ({ p, c }))).sort((a, b) => b.c.date.localeCompare(a.c.date)).slice(0, 8);
+  const total = list.reduce((n, p) => n + p.changes, 0), journeys = list.reduce((n, p) => n + p.journeys.length, 0);
+  page(`<div class="ex-cards on"><div class="page-h"><h2>Projects</h2><span class="ghl-n">${plural(list.length, "project")}, ${plural(total, "change")}${journeys ? `, ${plural(journeys, "journey")}` : ""}</span></div>
+    <ol class="pj">${sorted.map(p => `<li><a href="${go(p)}" title="${esc(p.path)}"><i class="tile big" style="--c:${colour(p.name)}">${esc(p.name.charAt(0).toUpperCase())}</i><div class="pj-m"><b>${esc(p.name)}</b><span>${esc(p.says || "Nothing saved yet")}</span></div>${p.journeys.length ? `<div class="ghc-js" role="img" aria-label="${esc(words(p.journeys.map(j => j.title)))}">${p.journeys.map((j, g) => gbadge(g, undefined, p.journeys)).join("")}</div>` : ""}<div class="ghc-r pj-r"><div><span>${plural(p.changes, "change")}</span>${p.last ? `<span>${esc(when(p.last.date))}</span>` : ""}</div><i class="chev"></i></div></a></li>`).join("")}</ol>
+    ${feed.length ? `<div class="pn" style="margin-top:16px"><div class="pn-h"><b>Recent activity</b><small>Across your projects</small></div><ul class="fd">${feed.map(({ p, c }) => `<li><a href="#/p/${encodeURIComponent(p.name)}/change/${c.id}"><i class="tile" style="--c:${colour(p.name)}">${esc(p.name.charAt(0).toUpperCase())}</i><b>${esc(c.title)}</b><small>${esc(p.name)}</small><small>${esc(when(c.date))}</small></a></li>`).join("")}</ul></div>` : ""}</div>`);
 }
 
 /* changes */
@@ -429,7 +615,7 @@ function commitRow(c, i){
   return `<li class="ghc ${calm(c) ? "quiet" : ""}" data-row="${esc(c.id)}"><div class="ghc-line"><div class="ghc-main"><div class="ghc-t"><button class="ghc-title" title="${esc(c.subject)}" aria-expanded="${open}">${esc(c.title)}</button></div></div>
     <div class="ghc-js" role="img" aria-label="${s ? (js.length ? esc(says) : "Changes no journeys") : "Working out what this changes"}">${s ? lit : `<span class="ghc-wait"></span>`}</div>
     <div class="ghc-r"><span class="ghc-who"><span class="ghc-av" aria-hidden="true">${esc(c.author.charAt(0).toUpperCase())}</span><span>${esc(c.author.split(" ")[0])}</span></span><span class="ghc-sha"><code>${short(c.id)}</code><button data-copy="${esc(c.id)}" aria-label="Copy commit id ${short(c.id)}">${COPY}</button></span><i class="chev ${open?"up":""}"></i></div></div>
-    ${open ? `<div class="ghc-body">${s && s.parts.length ? `<p>${proseOf(s.parts)}</p>` : s ? `<p>${esc(says)}.</p>${who ? `<div class="fl-who">${who}</div>` : ""}${BOOK.length && loose && gs.length ? `<p class="ghc-loose">${plural(loose, "request")} not in a journey yet</p>` : ""}` : "<p>Working out what this changes.</p>"}<div class="ghc-foot"><a class="bar-s" href="${hash("explore", c.id)}">Show details</a></div></div>` : ""}</li>`;
+    ${open ? `<div class="ghc-body">${s && s.parts.length ? `<p>${proseOf(s.parts)}</p>` : s ? `<p>${esc(says)}.</p>${who ? `<div class="fl-who">${who}</div>` : ""}${BOOK.length && loose && gs.length ? `<p class="ghc-loose">${plural(loose, "request")} not in a journey yet</p>` : ""}` : "<p>Working out what this changes.</p>"}<div class="ghc-foot"><a class="bar-s" href="${hash("change", c.id)}">Show details</a></div></div>` : ""}</li>`;
 }
 function drawChanges(){
   const days = [];
@@ -441,8 +627,9 @@ function drawChanges(){
     ${MORE ? `<button class="more" id="more">Show older changes</button>` : ""}
     <details class="key hfoot"${READ ? " open" : ""}><summary>How to read this</summary><p>Each row is one saved change. A colored icon shows which journey the change is about. Open a row to see what changed, then Show details for everything behind it.</p></details>` : `<div class="pj-empty"><b>Nothing saved yet</b><p>This project has no commits.</p></div>`}</div>`);
   const read = document.querySelector(".hfoot"); if (read) read.ontoggle = () => { READ = read.open; };
+  cursor();
   document.querySelectorAll("[data-row]").forEach(r => r.onclick = e => { if (e.target.closest("[data-copy],a") || String(getSelection())) return; const id = r.dataset.row; if (!OPEN.delete(id)) OPEN.add(id); drawChanges(); });
-  document.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => { try { navigator.clipboard.writeText(b.dataset.copy).catch(() => {}); } catch {} });
+  document.querySelectorAll("[data-copy]").forEach(b => b.onclick = () => { try { navigator.clipboard.writeText(b.dataset.copy).then(() => toast(`Copied ${short(b.dataset.copy)}`), () => {}); } catch {} });
   const m = $("more"); if (m) m.onclick = async () => { m.disabled = true; await more(); drawChanges(); fill(); };
 }
 // The list comes straight from git. What each change reaches takes a lift, so it arrives after.
@@ -453,22 +640,23 @@ async function fill(){
     if (!ids.length || mine !== wants) return;
     try { Object.assign(SUMM, await get(api("summaries", `?ids=${ids.join(",")}`))); }
     catch { for (const id of ids) SUMM[id] = { journeys:[], focus:[], line:"Could not read this change", untouched:0 }; }
-    if (mine === wants && $("view").querySelector(".ghl")) { const y = scrollY; drawChanges(); scrollTo(0, y); }
+    if (mine === wants && REDRAW) { const y = scrollY; REDRAW(); scrollTo(0, y); }
   }
 }
-async function changes(){ nav("changes"); await ensureList(); drawChanges(); fill(); }
+async function changes(){ nav("changes"); if (!LIST.length) page(skPage()); await ensureList(); REDRAW = drawChanges; drawChanges(); fill(); }
 
 /* explore */
 async function explore(id){
-  nav("explore"); await ensureList();
+  nav("changes"); REDRAW = null; await ensureList();
   id = id || (LIST[0] && LIST[0].id);
   if (!id) return page(`<div class="pj-empty"><b>Nothing saved yet</b><p>This project has no commits.</p></div>`);
   wants++;
   if (!D || !D.commit.id.startsWith(id)) {
-    page(`<div class="pj-empty"><b>Reading this change</b><p>Lifting the code before and after it. A large repo takes a few seconds.</p></div>`);
+    page(skDetail());
     D = await get(api("commit/" + id));
     curFile = null; scope = { all:true }; selSid = null; whole = false; cache = {}; exOpen = null; exJourney = null; exGroup = null; exPick = false; exAll = false;
   }
+  nav("changes", D.commit.title);
   page(`<div class="ex-bar" id="ex-bar"></div><div class="ex3"><nav class="sheet ex-tree" id="ex-tree" aria-label="Files"></nav><div class="sheet ex-diff"><div class="ex-head" id="ex-head"></div><div class="ex-body" id="ex-body"><div class="code" id="ex-file"></div></div></div><div class="sheet ex-flow" id="ex-flow"></div></div><details class="key hfoot"><summary>How to read this</summary><p>The left column is the files this change touched. The middle column is what a git diff shows. The right column is what a diff can't show: what changes for people, in plain words. Click a phrase to see the step behind it, and open a <b>journey</b> to see the requests and steps it runs.</p></details>`);
   draw(true);
 }
@@ -479,7 +667,7 @@ const reached = c => D.journeys.filter(j => c.journeys.includes(j.title)).map(j 
 function barHTML(){
   const i = LIST.findIndex(c => c.id === D.commit.id), step = (k, label) => LIST[k] ? `<a class="bar-s" href="${hash("explore", LIST[k].id)}" title="${esc(LIST[k].title)}">${label}</a>` : `<span class="bar-s off">${label}</span>`;
   const menu = !exPick ? "" : `<div class="cp-menu">${LIST.map(c => `<a class="${c.id===D.commit.id?"on":""}" href="${hash("explore", c.id)}"><b>${esc(c.title)}</b><span>${esc(when(c.date))}, ${short(c.id)}</span></a>`).join("")}</div>`;
-  return `<a class="bar-c" href="${hash("changes")}">Changes</a><span class="bar-sl">/</span><div class="cp"><button class="bar-now" data-pick aria-expanded="${exPick}">${esc(D.commit.title)}<i class="chev ${exPick?"up":""}"></i></button>${menu}</div>
+  return `<a class="bar-c" href="${hash("change", D.commit.id)}">Simple view</a><span class="bar-sl">/</span><div class="cp"><button class="bar-now" data-pick aria-expanded="${exPick}">${esc(D.commit.title)}<i class="chev ${exPick?"up":""}"></i></button>${menu}</div>
     <span class="bar-pos">${i >= 0 ? `${i+1} of ${TOTAL}` : short(D.commit.id)}</span>${step(i-1, "Newer")}${i >= 0 ? step(i+1, "Older") : ""}`;
 }
 function treeHTML(){
@@ -618,16 +806,227 @@ document.addEventListener("click", e => { if (exPick && e.target.isConnected && 
 
 /* where you are */
 async function route(){
+  wants++; REDRAW = null; // Whatever the last page was still reading must not draw over this one.
   const parts = (location.hash || "#/").slice(2).split("/").filter(Boolean);
   try {
     if (parts[0] !== "p") return await projects();
     const name = decodeURIComponent(parts[1]);
-    if (name !== P) { P = name; LIST = []; MORE = true; SUMM = {}; OPEN = new Set(); D = null; }
-    if (parts[2] === "explore") await explore(parts[3]); else await changes();
+    if (name !== P) { P = name; ACT = null; CAT = null; KB = null; $("live").innerHTML = ""; LIST = []; MORE = true; SUMM = {}; OPEN = new Set(); D = null; }
+    SWITCH = false;
+    const go = { journeys, change:() => change(parts[3]), journey:() => journey(+parts[3]), request:() => request(decodeURIComponent(parts[3] || "")), changes, explore:() => explore(parts[3]), people };
+    await (go[parts[2]] || overview)();
   } catch (e) { failed(e); }
 }
-addEventListener("hashchange", () => { route(); scrollTo(0, 0); });
-route();
+/* what every page draws from */
+const LOAD_MOST = 120;
+async function loadAll(){ await ensureList(); while (MORE && LIST.length < LOAD_MOST) await more(); }
+const loadAct = async () => { ACT = ACT || await get(api("activity")); };
+const loadCat = async () => { CAT = CAT || await get(api("requests")); };
+const read = () => LIST.filter(c => SUMM[c.id]);
+const noted = c => SUMM[c.id] && !c.quiet ? SUMM[c.id].focus : [];
+const touches = (c, g) => noted(c).includes(g);
+const readNote = () => { const n = read().length; return n < LIST.length ? `Reading ${n} of ${LIST.length} changes` : `From the latest ${plural(n, "change")}`; };
+const icons = gs => `<span class="ic">${gs.map(g => gbadge(g)).join("")}</span>`;
+const feedRow = c => `<li><a href="${hash("change", c.id)}"><b class="${c.quiet ? "q" : ""}">${esc(c.title)}</b>${BOOK.length ? icons(noted(c)) : ""}<small>${esc(c.author.split(" ")[0])}</small><small>${esc(when(c.date))}</small></a></li>`;
+const monday = d => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; };
+const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+function weeks(dates, n){ const end = monday(iso(new Date())), out = [];
+  for (let i = n - 1; i >= 0; i--) { const d = new Date(end); d.setDate(d.getDate() - i * 7); out.push({ at:iso(d), n:0 }); }
+  const at = Object.fromEntries(out.map(w => [w.at, w])); for (const d of dates) { const w = at[iso(monday(d))]; if (w) w.n++; } return out; }
+function chart(rows){ const top = Math.max(1, ...rows.map(w => w.n)), day = d => new Date(d + "T12:00:00").toLocaleDateString("en-US", { month:"short", day:"numeric" });
+  return `<div class="chart" role="img" aria-label="${rows.reduce((n, w) => n + w.n, 0)} changes over ${rows.length} weeks">${rows.map(w => `<button data-tip="Week of ${day(w.at)}: ${plural(w.n, "change")}" aria-label="Week of ${day(w.at)}: ${plural(w.n, "change")}"><i style="height:${w.n ? Math.max(3, w.n / top * 100) : 0}%"></i></button>`).join("")}</div><div class="axis"><span>${day(rows[0].at)}</span><span>This week</span></div>`; }
+const spark = (rows, c) => { const top = Math.max(1, ...rows.map(w => w.n)); return `<div class="spark" style="--c:${c}" aria-hidden="true">${rows.map(w => `<i style="height:${w.n ? Math.max(8, w.n / top * 100) : 0}%"></i>`).join("")}</div>`; };
+const figure = (n, label) => `<div class="stat"><b>${n}</b><span>${label}</span></div>`;
+const kinds = { page:"Pages", action:"Actions", route:"Routes", metadata:"Search engines", middleware:"Middleware" };
+const reqList = list => { const by = {}; for (const r of list) (by[r.kind] ||= []).push(r);
+  return Object.entries(by).map(([k, rs]) => `<div class="rq-k">${esc(kinds[k] || k)}</div><ul class="rq">${rs.map(r => `<li><a href="${hash("request", r.uid)}"><span>${esc(r.title)}</span><small>${plural(r.steps, "step")}</small></a></li>`).join("")}</ul>`).join(""); };
+const NOBOOK = `<div class="pn-e">Run <code>flow journeys</code> to group this project by what people come to do.</div>`;
+
+/* overview */
+async function overview(){
+  nav("overview"); page(skPage()); await loadAll(); await loadAct(); REDRAW = drawOverview; drawOverview(); loadCat().then(() => { if (REDRAW === drawOverview) drawOverview(); }, () => {}); fill();
+}
+function drawOverview(){
+  const oldest = ACT.length ? ACT[ACT.length - 1][0] : iso(new Date()), span = Math.ceil((monday(iso(new Date())) - monday(oldest)) / 6048e5) + 1, shown = Math.max(8, Math.min(26, span));
+  const rows = weeks(ACT.map(a => a[0]), shown), people = new Set(ACT.map(a => a[1])).size, recent = rows.slice(-4).reduce((n, w) => n + w.n, 0);
+  const counts = BOOK.map((b, g) => ({ g, n:read().filter(c => touches(c, g)).length })).sort((a, b) => b.n - a.n), top = Math.max(1, ...counts.map(x => x.n));
+  page(`<div class="ex-cards on"><div class="page-h"><h2>Overview</h2><span class="ghl-n">${LIST[0] ? `Last change ${esc(when(LIST[0].date))}` : ""}</span></div>
+    <div class="stats">${figure(TOTAL, "Changes")}${figure(recent, "In the last 4 weeks")}${figure(BOOK.length || (CAT ? CAT.length : "…"), BOOK.length ? "Journeys" : "Requests")}${figure(people, "People")}</div>
+    <div class="cols"><div><div class="pn"><div class="pn-h"><b>Activity</b><small>Last ${shown} weeks</small></div><div class="pn-b">${chart(rows)}</div></div>
+      <div class="pn"><div class="pn-h"><b>Latest changes</b><a href="${hash("changes")}">All changes</a></div><ul class="fd">${LIST.slice(0, 6).map(feedRow).join("")}</ul></div></div>
+      <div class="pn"><div class="pn-h"><b>Most changed journeys</b></div>${BOOK.length ? `<div class="pn-b"><ul class="rank">${counts.map(({ g, n }) => `<li><a href="${hash("journey", g)}">${gbadge(g)}<span>${esc(BOOK[g].title)}</span><small>${n}</small><u style="--c:${tint(g)}"><i style="width:${n / top * 100}%"></i></u></a></li>`).join("")}</ul></div><div class="pn-e" style="padding-top:0">${readNote()}</div>` : NOBOOK}</div></div></div>`);
+}
+
+/* journeys */
+async function journeys(){
+  nav("journeys"); page(skPage()); await loadAll(); await loadCat(); REDRAW = drawJourneys; drawJourneys(); fill();
+}
+function drawJourneys(){
+  const card = (b, g) => { const mine = read().filter(c => touches(c, g)), n = CAT.filter(r => r.group === g).length;
+    return `<a class="jc" href="${hash("journey", g)}"><div class="jc-t">${gbadge(g)}${esc(b.title)}</div><div class="jc-m"><span><b>${plural(n, "request")}</b></span><span><b>${plural(mine.length, "change")}</b></span><span>${mine[0] ? esc(when(mine[0].date)) : "No recent change"}</span></div>${spark(weeks(mine.map(c => c.date), 16), tint(g))}</a>`; };
+  const loose = CAT.filter(r => r.group == null);
+  page(`<div class="ex-cards on"><div class="page-h"><h2>Journeys</h2><span class="ghl-n">${BOOK.length ? readNote() : plural(CAT.length, "request")}</span></div>
+    ${BOOK.length ? `<div class="jgrid">${BOOK.map(card).join("")}</div>` : `<div class="pn">${NOBOOK}</div>`}
+    ${loose.length ? `<div class="pn" style="margin-top:12px"><div class="pn-h"><b>${BOOK.length ? "Not in a journey yet" : "Requests"}</b><small>${plural(loose.length, "request")}</small></div>${reqList(loose)}</div>` : ""}</div>`);
+}
+async function journey(g){
+  nav("journeys"); page(skPage()); await loadAll(); await loadCat(); if (!BOOK[g]) throw new Error("This project has no such journey."); REDRAW = () => drawJourney(g); drawJourney(g); fill();
+}
+function drawJourney(g){
+  const mine = read().filter(c => touches(c, g)), rs = CAT.filter(r => r.group === g);
+  document.title = `${BOOK[g].title}, ${P}`;
+  page(`<div class="ex-cards on"><div class="page-h">${gbadge(g)}<h2>${esc(BOOK[g].title)}</h2><span class="ghl-n"><a href="${hash("journeys")}" style="color:inherit">All journeys</a></span></div>
+    <div class="stats">${figure(rs.length, "Requests")}${figure(mine.length, "Changes")}${figure(rs.reduce((n, r) => n + r.steps, 0), "Steps run")}${figure(new Set(mine.map(c => c.author)).size, "People")}</div>
+    ${(BOOK[g].stops || []).length ? `<div class="pn"><div class="pn-h"><b>How it goes</b><small>${plural(BOOK[g].stops.length, "step")}</small></div><ol class="cv-stops" style="--c:${tint(g)}">${BOOK[g].stops.map(t => `<li class="hit"><b style="font-weight:500">${esc(t.say)}</b></li>`).join("")}</ol></div>` : ""}
+    <div class="cols"><div class="pn"><div class="pn-h"><b>History</b><small>${readNote()}</small></div>${mine.length ? `<ul class="fd">${mine.slice(0, 30).map(feedRow).join("")}</ul>` : `<div class="pn-e">No change is about this journey yet.</div>`}</div>
+      <div class="pn"><div class="pn-h"><b>What it runs</b></div>${reqList(rs)}</div></div></div>`);
+}
+
+/* one change, in plain words */
+let CUR = null;
+async function change(id){
+  nav("changes"); page(skPage()); await loadAll();
+  const c = LIST.find(x => x.id.startsWith(id));
+  if (!c) { location.replace(hash("explore", id)); return; }
+  CUR = c.id; nav("changes", c.title);
+  if (!SUMM[c.id]) Object.assign(SUMM, await get(api("summaries", `?ids=${c.id}`)));
+  REDRAW = null; drawChange(c); wants++;
+}
+// A clause runs on into the next one, so a line of its own needs its own sentence.
+const sentence = p => { if (p.line) return p.line; const x = p.say.trim().replace(/[,;:]$/, ""); return x.charAt(0).toUpperCase() + x.slice(1); };
+function drawChange(c){
+  const s = SUMM[c.id], gs = groupsOf(s.journeys), i = LIST.indexOf(c), loose = s.journeys.filter(j => j.group == null);
+  const stops = g => s.parts.filter(p => p.groups.includes(g)), lead = c.quiet ? [] : gs.filter(g => stops(g).length).sort((a, b) => stops(b).length - stops(a).length || a - b);
+  const also = gs.filter(g => !lead.includes(g)), still = BOOK.map((b, g) => g).filter(g => !gs.includes(g));
+  const step = (k, label) => LIST[k] ? `<a class="bar-s" href="${hash("change", LIST[k].id)}" title="${esc(LIST[k].title)}">${label}</a>` : `<span class="bar-s off">${label}</span>`;
+  const story = !c.quiet && s.parts.length ? s.parts.map(p => esc(p.say)).join(" ") : c.quiet ? (gs.length ? "Nobody using the product will notice this. It changes how things work underneath, not what people see." : "Nobody using the product will notice this. No journey runs the code it changed.") : esc(s.line) + ".";
+  // The whole journey, with what changed written at the stop it happens.
+  const walked = g => { const route = BOOK[g].stops || [], notes = route.map(() => []), rest = [];
+    for (const p of stops(g)) { const named = route.findIndex(t => t.say === p.at), at = named >= 0 ? named : route.findIndex(t => t.requests.some(u => p.requests.includes(u))); (at < 0 ? rest : notes[at]).push(p); }
+    return { route, notes, rest }; };
+  const stopRow = (say, ps) => `<li class="${ps.length ? "hit" : ""}"><b>${esc(say)}</b>${ps.length ? `<span class="cv-tag">Changed</span>${ps.map(p => `<p>${esc(sentence(p))}</p>`).join("")}` : ""}</li>`;
+  const card = g => { const { route, notes, rest } = walked(g), n = notes.filter(x => x.length).length;
+    return `<section class="pn cv-j"><a class="cv-jh" href="${hash("journey", g)}">${gbadge(g)}<b>${esc(BOOK[g].title)}</b>${route.length && n ? `<small>${n} of ${plural(route.length, "step")} changed</small>` : ""}<i class="chev"></i></a><ol class="cv-stops" style="--c:${tint(g)}">${route.length ? route.map((t, i) => stopRow(t.say, notes[i])).join("") : stops(g).map(p => `<li class="hit"><b>${esc(sentence(p))}</b></li>`).join("")}</ol>${route.length && rest.length ? `<div class="cv-rest"><h4>Also changed here</h4><ul>${rest.map(p => `<li>${esc(sentence(p))}</li>`).join("")}</ul></div>` : ""}</section>`; };
+  const line = (g, note) => `<li><a href="${hash("journey", g)}">${gbadge(g)}<span>${esc(BOOK[g].title)}</span><small>${note}</small></a></li>`;
+  page(`<div class="ex-cards on" id="cv"><div class="cv-top"><a class="bar-c" href="${hash("changes")}">Changes</a><span class="bar-pos">${i + 1} of ${TOTAL}</span>${step(i - 1, "Newer")}${step(i + 1, "Older")}<a class="bar-s" href="${hash("explore", c.id)}">Advanced view</a></div>
+    <header class="cv-h"><h2>${esc(c.title)}</h2><p>${esc(c.author)}, ${esc(when(c.date))}</p></header>
+    <div class="cols"><div><section class="pn"><div class="pn-h">What changes for people</div><p class="cv-say">${story}</p></section>${lead.length ? `<h3 class="cv-sub">${lead.length === 1 ? "The journey this changes" : "The journeys this changes"}</h3>${lead.map(card).join("")}` : ""}</div>
+      <div>${BOOK.length ? `<section class="pn"><div class="pn-h"><b>Journeys</b></div><ul class="cv-list">${lead.map(g => line(g, "Changed")).join("")}${also.map(g => line(g, "Shared code")).join("")}${still.map(g => line(g, "No change").replace("<li>", '<li class="off">')).join("")}</ul>${also.length ? `<p class="cv-note">Shared code means the journey runs something that changed, but what people see there stays the same.</p>` : ""}</section>` : s.journeys.length ? `<section class="pn"><div class="pn-h"><b>Reaches</b><small>${plural(s.journeys.length, "request")}</small></div><div class="pn-e">Run <code>flow journeys</code> to see this as journeys.</div></section>` : ""}${loose.length && BOOK.length ? `<section class="pn"><div class="pn-e">${plural(loose.length, "request")} not in a journey yet.</div></section>` : ""}</div></div></div>`);
+}
+
+/* one request */
+async function request(uid){
+  nav("journeys"); page(skPage()); await ensureList(); const r = await get(api("request/" + encodeURIComponent(uid)));
+  REDRAW = () => drawRequest(r); drawRequest(r); fill();
+}
+function drawRequest(r){
+  const c = r.group != null && BOOK[r.group] ? tint(r.group) : "var(--ink-3)", list = read().filter(x => SUMM[x.id].journeys.some(j => j.uid === r.uid));
+  const box = (t, xs) => xs.length ? `<div class="pn"><div class="pn-h"><b>${t}</b></div><div class="pn-b"><div class="chips">${xs.map(x => `<span>${esc(x)}</span>`).join("")}</div></div></div>` : "";
+  document.title = `${r.title}, ${P}`;
+  page(`<div class="ex-cards on"><div class="page-h">${r.group != null && BOOK[r.group] ? gbadge(r.group) : ""}<h2>${esc(r.title)}</h2><span class="ghl-n">${esc((kinds[r.kind] || r.kind).replace(/s$/, ""))}</span></div>
+    ${r.group != null && BOOK[r.group] ? `<p class="page-sub">Part of <a href="${hash("journey", r.group)}">${esc(BOOK[r.group].title)}</a></p>` : ""}
+    <div class="cols"><div class="pn"><div class="pn-h"><b>What runs</b><small>${plural(r.steps.length, "step")}</small></div><ol class="stp" style="--c:${c}">${r.steps.map(s => `<li style="--d:${Math.min(s.depth, 6)}"><span>${esc(s.name)}</span><small title="${esc(s.file)}">${esc(s.file.split("/").pop())}</small></li>`).join("")}</ol></div>
+      <div>${box("Changes this data", r.writes)}${box("Reads this data", r.reads)}${box("Calls outside", r.outside)}<div class="pn"><div class="pn-h"><b>History</b><small>${readNote()}</small></div>${list.length ? `<ul class="fd">${list.slice(0, 12).map(feedRow).join("")}</ul>` : `<div class="pn-e">No recent change touched this.</div>`}</div></div></div></div>`);
+}
+
+/* people */
+async function people(){
+  nav("people"); page(skPage()); await loadAll(); await loadAct(); REDRAW = drawPeople; drawPeople(); fill();
+}
+function drawPeople(){
+  const by = {}; for (const [d, a] of ACT) { const p = by[a] ||= { name:a, n:0, last:d }; p.n++; if (d > p.last) p.last = d; }
+  const list = Object.values(by).sort((x, y) => y.n - x.n);
+  const touched = name => { const seen = {}; for (const c of read()) if (c.author === name) for (const g of noted(c)) seen[g] = (seen[g] || 0) + 1; return Object.keys(seen).map(Number).sort((a, b) => seen[b] - seen[a]).slice(0, 6); };
+  page(`<div class="ex-cards on"><div class="page-h"><h2>People</h2><span class="ghl-n">${plural(list.length, "person").replace("persons", "people")}</span></div>
+    <div class="pn"><ul class="ppl">${list.map(p => `<li><span class="av" aria-hidden="true">${esc(p.name.charAt(0).toUpperCase())}</span><b>${esc(p.name)}</b><span class="ic">${touched(p.name).map(g => gbadge(g)).join("")}</span><small>${plural(p.n, "change")}</small><small>${esc(when(p.last))}</small></li>`).join("")}</ul></div></div>`);
+}
+
+/* loading, messages */
+const skPage = () => `<div class="ex-cards on"><div class="page-h"><span class="sk" style="width:160px;height:22px"></span></div><div class="stats">${[1, 2, 3, 4].map(() => `<div class="sk-box" style="margin:0"><span class="sk" style="width:40%;height:20px"></span><span class="sk" style="width:60%"></span></div>`).join("")}</div><div class="sk-box" style="--h:220px;margin-top:12px"><span class="sk" style="width:24%"></span></div><div class="sk-box" style="--h:160px"><span class="sk" style="width:50%"></span><span class="sk" style="width:70%"></span></div></div>`;
+const skPane = ws => `<div class="sheet sk-pane">${ws.map(w => `<span class="sk" style="width:${w}%"></span>`).join("")}</div>`;
+const skDetail = () => `<p class="sk-note">Reading the code before and after this change. A large repo takes a few seconds.</p><div class="ex3">${skPane([80, 60, 70, 50, 66, 58])}${skPane([34, 90, 76, 84, 60, 92, 70, 88, 54, 80, 66])}${skPane([46, 90, 84, 70, 40, 76, 62])}</div>`;
+let toastTimer;
+function toast(text){ $("toast").innerHTML = `<div class="toast" role="status">${esc(text)}</div>`; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $("toast").innerHTML = ""; }, 1800); }
+document.addEventListener("mouseover", e => { const t = e.target.closest("[data-tip]"), tip = $("tip"); tip.hidden = !t; if (t) { const r = t.getBoundingClientRect(); tip.textContent = t.dataset.tip; tip.style.left = `${r.left + r.width / 2}px`; tip.style.top = `${r.bottom - t.firstElementChild.getBoundingClientRect().height - 6}px`; } });
+document.addEventListener("click", () => { if (SWITCH) { SWITCH = false; nav(TAB); } });
+
+/* search */
+const over = html => { $("over").innerHTML = html; const w = $("over").firstElementChild; if (w) w.onclick = e => { if (e.target === w) closeOver(); }; };
+function closeOver(){ PAL = null; over(""); if (back && back.isConnected) back.focus(); back = null; }
+$("find").onclick = () => palette();
+function paletteItems(q){
+  const go = h => () => { location.hash = h; };
+  const all = [
+    ...(P ? SECTIONS.map(([k, label, path]) => ({ kind:"Go to", label, go:go(hash(...(path ? [path] : []))) })) : []),
+    ...BOOK.map((b, g) => P ? { kind:"Journeys", label:b.title, mark:gbadge(g), go:go(hash("journey", g)) } : null).filter(Boolean),
+    ...(P ? LIST.map(c => ({ kind:"Changes", label:c.title, small:when(c.date), go:go(hash("change", c.id)) })) : []),
+    ...(P && CAT ? CAT.map(r => ({ kind:"Requests", label:r.title, go:go(hash("request", r.uid)) })) : []),
+    ...PROJ.map(p => ({ kind:"Projects", label:p.name, small:plural(p.changes, "change"), go:go(`#/p/${encodeURIComponent(p.name)}`) })),
+    { kind:"Actions", label:"Switch light or dark", key:"T", go:() => $("theme").click() },
+    { kind:"Actions", label:"Keyboard shortcuts", key:"?", go:() => setTimeout(keySheet) },
+  ];
+  const typed = q.toLowerCase().split(/\s+/).filter(Boolean), hit = all.filter(i => typed.every(w => `${i.label} ${i.small || ""}`.toLowerCase().includes(w)));
+  // With nothing typed, the newest few are enough, and requests wait to be asked for.
+  const seen = {}; return hit.filter(i => { seen[i.kind] = (seen[i.kind] || 0) + 1; return typed.length ? seen[i.kind] <= 8 : i.kind !== "Requests" && seen[i.kind] <= (i.kind === "Changes" ? 5 : 12); });
+}
+function drawPalette(){
+  const list = paletteItems(PAL.q); PAL.items = list; PAL.i = Math.min(PAL.i, Math.max(list.length - 1, 0)); let last = "";
+  $("pal-l").innerHTML = list.length ? list.map((x, n) => { const h = x.kind !== last ? `<div class="pal-h">${x.kind}</div>` : ""; last = x.kind;
+    return `${h}<button class="pal-i ${n === PAL.i ? "on" : ""}" data-n="${n}" role="option" aria-selected="${n === PAL.i}">${x.mark || ""}<span>${esc(x.label)}</span>${x.small ? `<small>${esc(x.small)}</small>` : ""}${x.key ? `<kbd>${x.key}</kbd>` : ""}</button>`; }).join("") : `<div class="pal-none">Nothing matches that.</div>`;
+  $("pal-l").querySelectorAll("[data-n]").forEach(b => { b.onclick = () => runItem(+b.dataset.n); b.onmousemove = () => { if (PAL.i !== +b.dataset.n) { PAL.i = +b.dataset.n; markItem(); } }; });
+}
+const markItem = () => $("pal-l").querySelectorAll("[data-n]").forEach(b => { const on = +b.dataset.n === PAL.i; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); if (on) b.scrollIntoView({ block:"nearest" }); });
+function runItem(n){ const x = PAL.items[n]; closeOver(); if (x) x.go(); }
+function palette(){
+  back = document.activeElement; PAL = { q:"", i:0, items:[] }; if (P) loadCat().catch(() => {});
+  over(`<div class="ov" role="dialog" aria-modal="true" aria-label="Search"><div class="ov-box"><div class="pal-in"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M7 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM10 10l3.5 3.5"/></svg><input id="pal-q" placeholder="Search changes, journeys and requests" autocomplete="off" spellcheck="false" aria-label="Search"></div><div class="pal-l" id="pal-l" role="listbox"></div><div class="pal-f"><span><kbd>↑</kbd> <kbd>↓</kbd> to move</span><span><kbd>↵</kbd> to open</span><span><kbd>esc</kbd> to close</span></div></div></div>`);
+  const q = $("pal-q"); drawPalette(); q.focus();
+  q.oninput = () => { PAL.q = q.value; PAL.i = 0; drawPalette(); };
+  q.onkeydown = e => { const n = PAL.items.length; if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); if (n) { PAL.i = (PAL.i + (e.key === "ArrowDown" ? 1 : n - 1)) % n; markItem(); } } else if (e.key === "Enter") { e.preventDefault(); runItem(PAL.i); } };
+}
+function keySheet(){
+  back = document.activeElement; PAL = { sheet:true };
+  const row = (t, ...k) => `<dt>${t}</dt><dd>${k.map(x => `<kbd>${x}</kbd>`).join("")}</dd>`;
+  over(`<div class="ov" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts"><div class="ov-box" style="max-width:420px"><div class="keys"><h3>Keyboard shortcuts</h3><dl>${row("Search", "⌘", "K")}${row("Go to a section", "1", "2", "3", "4")}${row("Move through changes", "J", "K")}${row("Open a change", "↵")}${row("Show its details", "D")}${row("Simple or advanced view", "A")}${row("Newer or older change", "[", "]")}${row("Back to changes", "B")}${row("Switch light or dark", "T")}</dl></div></div></div>`);
+}
+
+/* keyboard */
+function cursor(){ document.querySelectorAll(".ghc.kb").forEach(r => r.classList.remove("kb")); const r = KB && document.querySelector(`[data-row="${KB}"]`); if (r) r.classList.add("kb"); return r; }
+function moveCursor(by){ const rows = [...document.querySelectorAll("[data-row]")]; if (!rows.length) return; const at = rows.findIndex(r => r.dataset.row === KB), next = rows[at < 0 ? 0 : Math.max(0, Math.min(rows.length - 1, at + by))]; KB = next.dataset.row; cursor(); next.scrollIntoView({ block:"center" }); }
+addEventListener("keydown", e => {
+  const mod = e.metaKey || e.ctrlKey, k = e.key.toLowerCase();
+  if (mod && k === "k") { e.preventDefault(); return PAL ? closeOver() : palette(); }
+  if (PAL) { if (e.key === "Escape") closeOver(); return; }
+  if (mod || e.altKey || /INPUT|TEXTAREA|SELECT/.test(e.target.tagName)) return;
+  if (e.key === "/") { e.preventDefault(); return palette(); }
+  if (e.key === "?") return keySheet();
+  if (k === "t") return $("theme").click();
+  if (P && "1234".includes(e.key)) { const path = SECTIONS[+e.key - 1][2]; location.hash = hash(...(path ? [path] : [])); return; }
+  const list = !!document.querySelector("[data-row]");
+  if (list && (k === "j" || k === "k")) { e.preventDefault(); return moveCursor(k === "j" ? 1 : -1); }
+  if (list && KB && e.key === "Enter" && !e.target.closest("a,button")) { e.preventDefault(); if (!OPEN.delete(KB)) OPEN.add(KB); return drawChanges(); }
+  if (list && KB && k === "d") { location.hash = hash("change", KB); return; }
+  const plain = !!$("cv");
+  if (plain || $("ex-bar")) { const at = LIST.findIndex(c => c.id === (plain ? CUR : D && D.commit.id)), to = LIST[at + (e.key === "[" ? -1 : e.key === "]" ? 1 : 0)];
+    if ((e.key === "[" || e.key === "]") && to) location.hash = hash(plain ? "change" : "explore", to.id);
+    if (k === "a") location.hash = hash(plain ? "explore" : "change", plain ? CUR : D.commit.id);
+    if (k === "b") location.hash = hash("changes"); }
+});
+
+/* new work appears without a reload */
+let SEEN = "";
+async function watch(){
+  if (document.hidden) return;
+  try { const list = await get("/api/projects"), text = JSON.stringify(list); if (text === SEEN) return; SEEN = text; PROJ = list;
+    const me = list.find(p => p.name === P), fresh = me && TOTAL ? me.changes - TOTAL : 0;
+    $("live").innerHTML = fresh > 0 ? `<button class="live" id="live-b"><i></i>${plural(fresh, "new change")}</button>` : "";
+    if (fresh > 0) $("live-b").onclick = () => { LIST = []; MORE = true; TOTAL = 0; ACT = null; CAT = null; $("live").innerHTML = ""; route(); };
+  } catch {}
+}
+setInterval(watch, 20000);
+
+addEventListener("hashchange", () => { const v = $("view"); route(); scrollTo(0, 0); v.classList.add("enter"); setTimeout(() => v.classList.remove("enter"), 240); });
+(async () => { try { PROJ = await get("/api/projects"); } catch {} route(); })();
 </script>
 </body>
 </html>

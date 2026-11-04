@@ -212,7 +212,7 @@ enum Cmd {
         #[arg(long)]
         all: bool,
     },
-    /// Ask Claude to group requests into what people come to do, saved to flow.journeys.json for review.
+    /// Ask Claude to group requests into what people come to do, and write out each journey stop by stop, saved to flow.journeys.json for review.
     Journeys {
         #[arg(long, default_value = "claude-opus-5-5")]
         model: String,
@@ -828,17 +828,23 @@ fn run() -> Result<ExitCode> {
             let mut book = Journeys::load(&path)?;
             let todo = journeys::unplaced(&l, &book, &l.ids).len();
             println!("{todo} of {} requests have no journey yet.", l.flows.len());
-            if dry_run || todo == 0 {
+            if dry_run {
                 return Ok(ExitCode::SUCCESS);
             }
             let rep = journeys::group(&l, &mut book, &l.ids, &model)?;
+            // Saved now, so a failure while writing the stops loses none of this.
             book.save(&path)?;
-            println!("Placed {} requests in {} journeys. Saved to {}.", rep.placed, book.journeys.len(), path.display());
-            println!("This is a proposal: rename a journey or move a request by editing that file. Running this again only places new requests.");
+            let (written, failed) = journeys::walk(&l, &mut book, &model, 4);
+            book.save(&path)?;
+            println!("Placed {} requests in {} journeys and wrote out {written} of them, stop by stop. Saved to {}.", rep.placed, book.journeys.len(), path.display());
+            println!("This is a proposal: rename a journey, move a request or reword a stop by editing that file. Running this again only fills in what is missing.");
             for r in &rep.left {
                 println!("  no journey: {r}");
             }
-            Ok(if rep.left.is_empty() { ExitCode::SUCCESS } else { ExitCode::from(1) })
+            for f in &failed {
+                println!("  failed: {f}");
+            }
+            Ok(if rep.left.is_empty() && failed.is_empty() { ExitCode::SUCCESS } else { ExitCode::from(1) })
         }
         Cmd::Titles { model, last, jobs } => {
             use flowcontrol::{journeys, titles};
