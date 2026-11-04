@@ -62,6 +62,9 @@ enum Cmd {
     Save {
         #[arg(short, long)]
         message: String,
+        /// Do not have the agent on this machine word the change first.
+        #[arg(long)]
+        no_words: bool,
     },
     /// The history of changes, told in journeys.
     Log {
@@ -80,6 +83,85 @@ enum Cmd {
         /// List every function, not just the summary tables.
         #[arg(long)]
         full: bool,
+    },
+
+    /// One short comment on a change: what behaves differently, what nobody asked for, what was decided.
+    Comment {
+        /// Compare from here.
+        #[arg(default_value = "HEAD")]
+        base: String,
+        /// Compare to here. Defaults to the working folder.
+        head: Option<String>,
+        /// What was asked for: the prompt or the pull request description.
+        #[arg(long)]
+        asked: Option<String>,
+        /// Read what was asked for from a file.
+        #[arg(long)]
+        asked_file: Option<PathBuf>,
+        /// Print Markdown for a pull request.
+        #[arg(long)]
+        markdown: bool,
+        /// Show what is folded away.
+        #[arg(long)]
+        full: bool,
+    },
+    /// Answer a comment's question. The answer is one line in decisions.md.
+    Decide {
+        journey: String,
+        /// yes or no.
+        answer: String,
+        /// What it should do. Needed for no.
+        sentence: Option<String>,
+        /// The base the comment compared from.
+        #[arg(long, default_value = "HEAD")]
+        base: String,
+    },
+    /// Have Claude put a change into plain sentences. They are saved for review; the comment reads them.
+    Word {
+        #[arg(default_value = "HEAD")]
+        base: String,
+        head: Option<String>,
+        #[arg(long)]
+        asked: Option<String>,
+        #[arg(long)]
+        asked_file: Option<PathBuf>,
+        /// claude or codex. Defaults to whichever is installed.
+        #[arg(long)]
+        with: Option<String>,
+        #[arg(long)]
+        model: Option<String>,
+        /// Calls to run at once.
+        #[arg(long, default_value_t = 4)]
+        jobs: usize,
+    },
+    /// Connect this repo to the coding agents on this machine, or run as their hook.
+    Hook {
+        /// install, or what the agent calls: prompt, done, codex.
+        what: String,
+        arg: Option<String>,
+    },
+    /// Record the answers in a pull request comment: ticked boxes and /flow replies.
+    Answer {
+        /// A file holding the comment.
+        file: PathBuf,
+        #[arg(long, default_value = "HEAD")]
+        base: String,
+    },
+    /// Open the new diff: each journey a change touches, step by step, in the browser.
+    Diff {
+        #[arg(default_value = "HEAD")]
+        base: String,
+        head: Option<String>,
+        #[arg(long)]
+        asked: Option<String>,
+        #[arg(long)]
+        asked_file: Option<PathBuf>,
+        /// Write the page here instead of a temp file.
+        #[arg(long)]
+        to: Option<PathBuf>,
+        /// Write the page without opening it.
+        #[arg(long)]
+        no_open: bool,
     },
 
     /// Merge one or more branches function by function, and show where the two sides meet.
@@ -135,6 +217,11 @@ fn main() -> ExitCode {
             ExitCode::from(2)
         }
     }
+}
+
+/// What was asked: said here, or from the pull request, or the prompts the agent was given.
+fn asked_of(v: &flowcontrol::vcs::Vcs, asked: Option<String>, file: Option<PathBuf>) -> Result<Option<String>> {
+    Ok(flowcontrol::comment::asked_text(asked, file)?.or_else(|| flowcontrol::agent::asked_so_far(v)))
 }
 
 fn plural(n: usize, one: &str, many: &str) -> String {
@@ -353,8 +440,13 @@ fn run() -> Result<ExitCode> {
             }
             Ok(ExitCode::SUCCESS)
         }
-        Cmd::Save { message } => {
+        Cmd::Save { message, no_words } => {
             let mut v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, flowcontrol::names::Names::load(&names_path)?)?;
+            if !no_words && v.head().is_some() {
+                let asked = flowcontrol::agent::asked_so_far(&v);
+                let agent = flowcontrol::agent::pick(&v.root, None);
+                flowcontrol::agent::describe(&mut v, agent, asked.as_deref());
+            }
             let (id, r) = v.save(&message)?;
             println!("Saved {}: {}", &id[..id.len().min(8)], flowcontrol::change::one_line(&r));
             Ok(ExitCode::SUCCESS)
@@ -399,6 +491,84 @@ fn run() -> Result<ExitCode> {
             }
             if hits == 0 {
                 println!("No saved change touched a journey matching {journey:?}.");
+            }
+            Ok(ExitCode::SUCCESS)
+        }
+        Cmd::Comment { base, head, asked, asked_file, markdown, full } => {
+            use flowcontrol::comment as c;
+            let mut v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, flowcontrol::names::Names::load(&names_path)?)?;
+            let asked = asked_of(&v, asked, asked_file)?;
+            let shown = (base != "HEAD").then(|| base.clone());
+            let root = v.root.clone();
+            let out = c::between(&mut v, &base, head.as_deref(), |a, b, r| c::write_with(a, b, &r, asked, shown, &flowcontrol::words::Words::load(b, &root)))?;
+            print!("{}", if markdown { c::markdown(&out) } else { c::render(&out, full) });
+            Ok(ExitCode::SUCCESS)
+        }
+        Cmd::Decide { journey, answer, sentence, base } => {
+            let mut v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, flowcontrol::names::Names::load(&names_path)?)?;
+            let said = flowcontrol::comment::decide(&mut v, &journey, &answer, sentence.as_deref(), &base)?;
+            println!("Saved to {}: {said}", flowcontrol::comment::FILE);
+            Ok(ExitCode::SUCCESS)
+        }
+        Cmd::Word { base, head, asked, asked_file, with, model, jobs } => {
+            let mut v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, flowcontrol::names::Names::load(&names_path)?)?;
+            let asked = asked_of(&v, asked, asked_file)?;
+            let Some(agent) = flowcontrol::agent::pick(&v.root, with.as_deref()) else { bail!("no coding agent is available here, so the plain facts stand. Install claude or codex, or check FLOW_AI") };
+            let ask = |p: &str, s: &serde_json::Value| flowcontrol::agent::ask(agent, model.as_deref(), p, s);
+            let f = flowcontrol::words::fill(&mut v, &base, head.as_deref(), asked.as_deref(), jobs, agent.name(), &ask)?;
+            println!("{} written, {} already there. Saved in {}.", plural(f.written, "sentence", "sentences"), f.kept, flowcontrol::words::FILE);
+            for r in &f.refused {
+                println!("  refused, the code does not support it, so the facts stay: {r}");
+            }
+            for r in &f.failed {
+                println!("  failed: {r}");
+            }
+            if f.skipped > 0 {
+                println!("  {} smaller journeys keep their facts: this change is large.", f.skipped);
+            }
+            Ok(if f.failed.is_empty() { ExitCode::SUCCESS } else { ExitCode::from(1) })
+        }
+        Cmd::Hook { what, arg } => {
+            let names = flowcontrol::names::Names::load(&names_path)?;
+            if what == "install" {
+                let v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, names)?;
+                print!("{}", flowcontrol::agent::install(&v)?);
+            } else {
+                // Never in the agent's way: a hook that fails stays silent.
+                let _ = flowcontrol::agent::hook(&cli.repo, &cli.out, names, &what, arg.as_deref());
+            }
+            Ok(ExitCode::SUCCESS)
+        }
+        Cmd::Answer { file, base } => {
+            let mut v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, flowcontrol::names::Names::load(&names_path)?)?;
+            let saved = flowcontrol::comment::answer(&mut v, &std::fs::read_to_string(&file)?, &base)?;
+            for s in &saved {
+                println!("Saved to {}: {s}", flowcontrol::comment::FILE);
+            }
+            if saved.is_empty() {
+                println!("No answers in {}.", file.display());
+            }
+            Ok(ExitCode::SUCCESS)
+        }
+        Cmd::Diff { base, head, asked, asked_file, to, no_open } => {
+            use flowcontrol::comment as c;
+            let names = flowcontrol::names::Names::load(&names_path)?;
+            let mut v = flowcontrol::vcs::Vcs::open(&cli.repo, &cli.out, names.clone())?;
+            let asked = asked_of(&v, asked, asked_file)?;
+            let name = v.root.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| "repo".into());
+            let end = head.clone().unwrap_or_else(|| "the working folder".into());
+            let root = v.root.clone();
+            let shown = (base != "HEAD").then(|| base.clone());
+            let page = c::between(&mut v, &base, head.as_deref(), |a, b, r| {
+                let out = c::write_with(a, b, &r, asked, shown, &flowcontrol::words::Words::load(b, &root));
+                flowcontrol::map::render(a, b, &r, &out, &name, &base, &end, &names)
+            })?;
+            let path = to.unwrap_or_else(|| std::env::temp_dir().join(format!("flow-diff-{}.html", flowcontrol::util::slug(&name))));
+            std::fs::write(&path, page)?;
+            println!("The change is drawn in {}", path.display());
+            if !no_open {
+                let opener = if cfg!(target_os = "macos") { "open" } else if cfg!(windows) { "explorer" } else { "xdg-open" };
+                let _ = std::process::Command::new(opener).arg(&path).status();
             }
             Ok(ExitCode::SUCCESS)
         }

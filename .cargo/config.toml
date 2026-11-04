@@ -1,0 +1,4 @@
+# Tests build throwaway repositories under target/. If one of those vanishes mid-test, git must not
+# walk up and find this repository instead.
+[env]
+GIT_CEILING_DIRECTORIES = { value = "target", relative = true }

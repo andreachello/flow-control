@@ -103,9 +103,9 @@ fn code_of(l: &Lift, r: (usize, usize), max: usize) -> String {
     v.join("\n")
 }
 
-const STYLE: &str = "Write for a product person who does not read code. Plain words about what the person using the product does or gets, never function names, file names or technical terms like query, slug, payload, handler or render. Sentence case. No em dashes. English, even when the code or routes are in another language.";
+pub const STYLE: &str = "Write for a product person who does not read code. Plain words about what the person using the product does or gets, never function names, file names or technical terms like query, slug, payload, handler or render. Sentence case. No em dashes. English, even when the code or routes are in another language.";
 
-fn run_claude(model: &str, prompt: &str, schema: &Value) -> Result<Value> {
+pub fn run_claude(model: &str, prompt: &str, schema: &Value) -> Result<Value> {
     let mut child = Command::new("claude")
         .args(["-p", "--model", model, "--output-format", "json", "--tools", "", "--no-session-persistence", "--strict-mcp-config", "--setting-sources", "", "--effort", "low", "--json-schema"])
         .arg(schema.to_string())
@@ -127,7 +127,7 @@ fn run_claude(model: &str, prompt: &str, schema: &Value) -> Result<Value> {
     Ok(so)
 }
 
-fn parallel<T: Send, R: Send>(jobs: usize, items: Vec<T>, f: impl Fn(usize, T) -> R + Sync) -> Vec<R> {
+pub fn parallel<T: Send, R: Send>(jobs: usize, items: Vec<T>, f: impl Fn(usize, T) -> R + Sync) -> Vec<R> {
     let mut out: Vec<Option<R>> = (0..items.len()).map(|_| None).collect();
     let mut queue: Vec<(usize, T)> = items.into_iter().enumerate().collect();
     queue.reverse();

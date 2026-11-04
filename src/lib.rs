@@ -23,6 +23,10 @@ pub mod accuracy;
 pub mod packages;
 pub mod facts;
 pub mod scenario;
+pub mod comment;
+pub mod map;
+pub mod words;
+pub mod agent;
 
 use anyhow::Result;
 use std::path::Path;

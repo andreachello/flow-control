@@ -21,6 +21,8 @@ pub struct Config {
     /// Commands that run a journey for real and print what happened.
     #[serde(default)]
     pub scenario: Vec<ScenarioCfg>,
+    /// Which agent may word changes: "claude", "codex" or "off". Left out, whichever is installed.
+    pub ai: Option<String>,
 }
 
 #[derive(Deserialize, Debug, Clone)]

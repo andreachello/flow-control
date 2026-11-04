@@ -38,7 +38,7 @@ pub fn lang_of(path: &str) -> String {
         "sql" | "psql" | "prisma" => "sql",
         "sh" | "bash" | "zsh" | "fish" => "sh",
         "md" | "mdx" | "markdown" | "txt" | "rst" | "adoc" => "prose",
-        "json" | "jsonc" | "yaml" | "yml" | "toml" | "ini" | "env" | "xml" | "plist" | "csv" => "data",
+        "json" | "jsonc" | "jsonl" | "yaml" | "yml" | "toml" | "ini" | "env" | "xml" | "plist" | "csv" => "data",
         "css" | "scss" | "sass" | "less" => "css",
         "html" | "htm" | "vue" | "svelte" | "astro" | "hbs" | "ejs" | "erb" => "markup",
         "" => match file {

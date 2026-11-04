@@ -752,7 +752,8 @@ fn step(v: &mut Vcs, ours: &str, theirs: &str, quiet: bool, poison: &mut Poison)
         } else {
             "unspecified".to_string()
         };
-        let union = rule == "union";
+        // Two branches each adding a decision is not a collision: both lines stay.
+        let union = rule == "union" || ((path == crate::comment::FILE || path == crate::words::FILE) && rule != "binary");
         let readable = (b.is_none() || tb.is_some()) && !matches!(rule.as_str(), "unset" | "binary");
         match (is_source(path) && !crate::universal::is_plain(path) && !union, to, tt) {
             (true, Some(to), Some(tt)) if readable => {

@@ -92,7 +92,7 @@ impl Vcs {
     }
 
     /// Changed files that are not read as journeys (styles, config, content), named so nothing hides.
-    fn other(&self, paths: Vec<String>) -> Vec<String> {
+    pub fn other(&self, paths: Vec<String>) -> Vec<String> {
         let mut v: Vec<String> = paths.into_iter().filter(|p| !is_source(p) && !self.is_tracked_output(p) && !crate::source::skipped(p)).collect();
         v.sort();
         v.dedup();
@@ -113,6 +113,13 @@ impl Vcs {
             }
         }
         Ok(out)
+    }
+
+    /// Files that differ between a commit and the working folder, new ones included.
+    pub fn changed_since(&self, rev: &str) -> Result<Vec<String>> {
+        let mut paths = self.worktree_paths()?;
+        paths.extend(git(&self.root, &["diff", "--name-only", "--no-renames", "-z", rev])?.split('\0').filter(|p| !p.is_empty()).map(str::to_string));
+        Ok(self.other(paths))
     }
 
     /// The working folder against the last saved snapshot.
@@ -220,6 +227,8 @@ impl Vcs {
             bail!("git could not save the snapshot");
         }
         let _ = std::fs::remove_file(ms);
+        // What the agent was asked belongs to the change just saved.
+        let _ = std::fs::remove_file(self.git_path("flow-asked"));
         Ok((self.head().unwrap_or_default(), report))
     }
 }

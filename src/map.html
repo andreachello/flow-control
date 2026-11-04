@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Flow diff</title>
+<style>
+:root{
+  --bg:#f3f4f1;--surface:#fff;--surface-2:#eceeea;--ink:#1a2227;--ink-2:#4f5c62;--ink-3:#6f7b80;
+  --line:#dde1dc;--line-strong:#c3cac5;--accent:#0b6e84;--accent-soft:#dcedf0;
+  --warn:#8a5a00;--warn-bg:#f6ead0;--bad:#a3341f;--bad-bg:#f7e0d9;--good:#1c6b42;--good-bg:#dff0e5;
+  --f-body:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --f-mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#12181b;--surface:#192125;--surface-2:#222c31;--ink:#e6ebea;--ink-2:#a3b1b5;--ink-3:#87969b;
+  --line:#2a363c;--line-strong:#41525a;--accent:#5cc0d6;--accent-soft:#17353c;
+  --warn:#e8b95a;--warn-bg:#3b2f14;--bad:#f0927f;--bad-bg:#3e1e19;--good:#74cf9e;--good-bg:#16352a;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--f-body)}
+main{max-width:980px;margin:0 auto;padding:28px 20px 60px}
+h1{font-size:19px;font-weight:650;margin:0}
+.sub{color:var(--ink-2);font-size:13.5px;margin:2px 0 18px}
+.sub code{font-family:var(--f-mono);font-size:.92em}
+.note{border-left:3px solid var(--line-strong);padding:2px 0 2px 12px;margin:0 0 10px;font-size:14.5px}
+.note b{font-weight:600}
+.note.warn{border-color:var(--bad)}
+.note.ok{border-color:var(--good)}
+section{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin-top:16px}
+section.flag{border-color:var(--warn)}
+h2{font-size:16px;font-weight:600;margin:0;overflow-wrap:anywhere}
+.tag{font-size:12.5px;font-weight:600;color:var(--ink-2)}
+section.flag .tag{color:var(--warn)}
+.steps{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px 0;margin:12px 0 0}
+.arrow{align-self:center;color:var(--ink-3);padding:0 6px;font-size:13px}
+.step{border:1px solid var(--line-strong);background:transparent;border-radius:8px;padding:8px 11px;font:inherit;font-size:13.5px;color:var(--ink-2);cursor:pointer;max-width:200px;text-align:left;overflow-wrap:anywhere}
+.step:hover{border-color:var(--ink-3)}
+.step:focus-visible,.more:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.step[data-kind=changed]{border:2px solid var(--accent);background:var(--accent-soft);color:var(--ink);font-weight:600}
+.step[data-kind=new]{border:2px solid var(--good);background:var(--good-bg);color:var(--ink);font-weight:600}
+.step[data-kind=gone]{border:2px dashed var(--bad);background:var(--bad-bg);color:var(--ink);text-decoration:line-through}
+.step[aria-expanded=true]{box-shadow:0 0 0 2px var(--ink)}
+.more{border:0;background:var(--surface-2);color:var(--ink-2);border-radius:8px;padding:8px 10px;font:inherit;font-size:13px;cursor:pointer}
+.change{margin-top:12px;font-size:14px}
+.pair{display:grid;grid-template-columns:64px 1fr;gap:1px 8px;margin:6px 0;padding:8px 11px;border:1px solid var(--line);border-radius:8px}
+.pair .k{color:var(--ink-3);font-size:12.5px;padding-top:1px}
+.pair code{font-family:var(--f-mono);font-size:13px;overflow-wrap:anywhere}
+.pair .w{grid-column:1/-1;font-weight:600;font-size:13px}
+.fact{margin:4px 0}
+.name{font-weight:600;font-size:13.5px}
+.code{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:10px}
+.code.one{grid-template-columns:minmax(0,1fr)}
+.code h3{font-size:12.5px;font-weight:600;color:var(--ink-2);margin:0 0 4px}
+pre{margin:0;padding:10px;background:var(--surface-2);border-radius:8px;overflow:auto;font-family:var(--f-mono);font-size:12.5px;line-height:1.5;max-height:420px}
+.file{font-family:var(--f-mono);font-size:12.5px;color:var(--ink-3);margin-top:10px;overflow-wrap:anywhere}
+details{margin-top:6px;font-size:14px;color:var(--ink-2)}
+main>details{margin-top:16px}
+details ul{margin:6px 0 0;padding-left:20px}
+summary{cursor:pointer}
+@media (max-width:640px){main{padding:18px 16px 40px}.code{grid-template-columns:minmax(0,1fr)}.arrow{padding:0 3px}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<script>
+const D = /*DATA*/null;
+const el = (tag, attrs = {}, ...kids) => {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) k === 'class' ? e.className = v : k.startsWith('on') ? e.addEventListener(k.slice(2), v) : e.setAttribute(k, v);
+  e.append(...kids.filter(k => k != null));
+  return e;
+};
+const app = document.getElementById('app');
+const note = (cls, label, text) => el('p', { class: 'note ' + cls }, el('b', {}, label + ' '), text);
+
+// "value: 1 -> 0.9" reads as a before and an after.
+function fact(f) {
+  const m = f.match(/^(.*?): (.*) -> (.*)$/);
+  if (!m) return el('p', { class: 'fact' }, f);
+  return el('div', { class: 'pair' }, el('span', { class: 'w' }, m[1]),
+    el('span', { class: 'k' }, 'Before'), el('code', {}, m[2]),
+    el('span', { class: 'k' }, 'After'), el('code', {}, m[3]));
+}
+
+// What changed in one step. The code stays one click behind.
+function detail(s, open) {
+  const box = el('div', { class: 'change' }, el('div', { class: 'name' }, s.label));
+  s.facts.forEach(f => box.append(fact(f)));
+  const cols = [['Before', s.before], ['After', s.after]].filter(c => c[1] != null && (s.kind !== 'same' || c[0] === 'After'));
+  const code = el('details', {}, el('summary', {}, 'Code'), el('div', { class: 'file' }, s.file),
+    el('div', { class: 'code' + (cols.length === 1 ? ' one' : '') }, ...cols.map(([t, c]) => el('div', {}, cols.length > 1 ? el('h3', {}, t) : null, el('pre', {}, c.trim())))));
+  code.open = open;
+  box.append(code);
+  return box;
+}
+
+function journey(j) {
+  const words = { new: 'new journey', gone: 'journey removed' };
+  const n = j.steps.filter(s => s.kind !== 'same').length;
+  const what = words[j.state] || `${n} step${n === 1 ? '' : 's'} changed`;
+  const sec = el('section', { class: j.notAsked ? 'flag' : '' },
+    el('h2', {}, j.says || j.title), j.says ? el('div', { class: 'tag' }, j.title) : null, el('div', { class: 'tag' }, what + (j.notAsked ? ', not asked for' : '')));
+  const row = el('div', { class: 'steps' });
+  const panel = el('div');
+  let open = null;
+  const button = s => {
+    const b = el('button', { class: 'step', 'data-kind': s.kind, title: s.label, 'aria-expanded': 'false', type: 'button' }, s.label);
+    b.addEventListener('click', () => {
+      const same = open === b;
+      if (open) open.setAttribute('aria-expanded', 'false');
+      open = same ? null : b;
+      if (open) { b.setAttribute('aria-expanded', 'true'); panel.replaceChildren(detail(s, true)); } else all();
+    });
+    return b;
+  };
+  const parts = [];
+  for (let i = 0; i < j.steps.length;) {
+    let e = i;
+    while (e < j.steps.length && j.steps[e].kind === 'same') e++;
+    if (e - i > 3) {
+      const hidden = j.steps.slice(i + 1, e - 1);
+      parts.push(button(j.steps[i]));
+      const more = el('button', { class: 'more', type: 'button' }, `${hidden.length} more steps`);
+      more.addEventListener('click', () => { const at = parts.indexOf(more); parts.splice(at, 1, ...hidden.map(button)); draw(); });
+      parts.push(more);
+      parts.push(button(j.steps[e - 1]));
+      i = e;
+    } else if (e > i) {
+      for (; i < e; i++) parts.push(button(j.steps[i]));
+    } else {
+      parts.push(button(j.steps[i])); i++;
+    }
+  }
+  const draw = () => {
+    row.replaceChildren();
+    parts.forEach((p, i) => { if (i) row.append(el('span', { class: 'arrow', 'aria-hidden': 'true' }, '→')); row.append(p); });
+  };
+  draw();
+  const all = () => panel.replaceChildren(...j.steps.filter(s => s.kind !== 'same').map(s => detail(s, false)));
+  all();
+  sec.append(row, panel);
+  return sec;
+}
+
+document.title = 'Flow diff: ' + D.repo;
+app.append(el('h1', {}, 'What this change does'), el('p', { class: 'sub' }, D.repo + ', ', el('code', {}, D.from), ' to ', el('code', {}, D.to)));
+if (D.asked) app.append(note('', 'Asked:', D.asked));
+D.removed.forEach(t => app.append(note('warn', 'Removed:', 'this change deletes a decision: ' + t)));
+D.touched.forEach(t => app.append(note('warn', 'Touched:', t)));
+D.decided.forEach(t => app.append(note('ok', 'Decided:', t + ' was already answered for this behaviour')));
+if (!D.touched.length) app.append(note('ok', 'Kept:', 'no earlier decision was touched'));
+if (!D.journeys.length) app.append(el('section', {}, 'No journey changed.'));
+D.journeys.forEach(j => app.append(journey(j)));
+const tail = [...D.smaller];
+if (tail.length) app.append(el('details', {}, el('summary', {}, `${tail.length} smaller change${tail.length === 1 ? '' : 's'}`), el('ul', {}, ...tail.map(t => el('li', {}, t)))));
+app.append(el('p', { class: 'sub', style: 'margin-top:16px' }, `${D.untouched} other journey${D.untouched === 1 ? '' : 's'} untouched.`));
+</script>
+</body>
+</html>

@@ -11,7 +11,7 @@ pub fn journey_title(names: &Names, id: &str) -> String {
     names.journeys.get(id).map(|n| n.title.clone()).unwrap_or_else(|| id.to_string())
 }
 
-fn step_label(names: &Names, l: &Lift, r: (usize, usize)) -> String {
+pub fn step_label(names: &Names, l: &Lift, r: (usize, usize)) -> String {
     names.steps.get(&l.repo.sid(r)).map(|n| n.name.clone()).unwrap_or_else(|| human(&l.repo.slice(r).name))
 }
 
@@ -46,6 +46,8 @@ pub struct FnChange {
     pub journeys: Vec<String>,
     /// What is different, read from the code.
     pub facts: Vec<String>,
+    /// Where it lived before, when it moved or was renamed.
+    pub before: Option<String>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -116,6 +118,32 @@ fn journeys_using(l: &Lift, names: &Names, r: (usize, usize)) -> Vec<String> {
     l.flows.iter().filter(|f| f.steps.iter().any(|s| s.at == r && !(f.kind == "command" && s.depth == 0))).map(|f| journey_title(names, &f.id)).collect()
 }
 
+/// The constants a journey's steps read. A constant is not a step, since nothing calls it, but
+/// changing one changes what every journey reading it does. Found by name through the same
+/// imports calls resolve through, and followed through constants that read other constants.
+pub fn constants(l: &Lift, fi: usize) -> Vec<(usize, usize)> {
+    use crate::repo::Res;
+    static WORD: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    let word = WORD.get_or_init(|| regex::Regex::new(r"[A-Za-z_$][\w$]*").unwrap());
+    let steps: BTreeSet<(usize, usize)> = l.flows[fi].steps.iter().map(|s| s.at).collect();
+    let mut todo: Vec<(usize, usize)> = steps.iter().copied().collect();
+    let (mut seen, mut out) = (steps.clone(), BTreeSet::new());
+    while let Some(r) = todo.pop() {
+        let (f, sl) = (&l.repo.files[r.0], l.repo.slice(r));
+        let text = sl.text(f);
+        let names: BTreeSet<&str> = word.find_iter(&text).map(|m| m.as_str()).collect();
+        for n in names {
+            if let Res::Slice(hit) = l.repo.resolve_ident(r.0, n, &sl.locals) {
+                if l.repo.slice(hit).role == crate::parse::Role::Data && seen.insert(hit) {
+                    out.insert(hit);
+                    todo.push(hit);
+                }
+            }
+        }
+    }
+    out.into_iter().collect()
+}
+
 /// Compare snapshot `a` (before) with `b` (after).
 pub fn compare(a: &Lift, b: &Lift, names: &Names, other_files: Vec<String>) -> Report {
     let mut rep = Report { other_files, ..Default::default() };
@@ -140,6 +168,22 @@ pub fn compare(a: &Lift, b: &Lift, names: &Names, other_files: Vec<String>) -> R
             moved.insert((*g).clone(), (*n).clone());
         }
     }
+    // Constants no journey runs but some read. Worth the search only when one changed.
+    let in_flow: BTreeSet<(usize, usize)> = b.flows.iter().flat_map(|f| f.steps.iter().map(|s| s.at)).collect();
+    let edited_constants: BTreeSet<(usize, usize)> = lb
+        .iter()
+        .filter(|(sid, (r, _, sh))| b.repo.slice(*r).role == crate::parse::Role::Data && !in_flow.contains(r) && la.get(*sid).is_some_and(|o| &o.2 != sh))
+        .map(|(_, (r, ..))| *r)
+        .collect();
+    let mut read_by: BTreeMap<&str, Vec<(usize, usize)>> = BTreeMap::new();
+    if !edited_constants.is_empty() {
+        for (fi, f) in b.flows.iter().enumerate() {
+            let hit: Vec<(usize, usize)> = constants(b, fi).into_iter().filter(|r| edited_constants.contains(r)).collect();
+            if !hit.is_empty() {
+                read_by.insert(&f.id, hit);
+            }
+        }
+    }
     for id in ids {
         let title = journey_title(names, id);
         match (ai.get(id), bi.get(id)) {
@@ -147,7 +191,8 @@ pub fn compare(a: &Lift, b: &Lift, names: &Names, other_files: Vec<String>) -> R
             (Some(_), None) => rep.journeys.push(JourneyChange { id: id.into(), title, state: JState::Gone, edited: vec![], added: vec![], removed: vec![], now_changes: vec![], no_longer_changes: vec![] }),
             (Some(&x), Some(&y)) => {
                 let (sa, sb) = (steps(a, x, &moved), steps(b, y, &BTreeMap::new()));
-                let edited: Vec<String> = sb.iter().filter(|(k, v)| sa.get(*k).map(|w| w.1 != v.1).unwrap_or(false)).map(|(_, v)| step_label(names, b, v.0)).collect();
+                let mut edited: Vec<String> = sb.iter().filter(|(k, v)| sa.get(*k).map(|w| w.1 != v.1).unwrap_or(false)).map(|(_, v)| step_label(names, b, v.0)).collect();
+                edited.extend(read_by.get(id).into_iter().flatten().map(|r| step_label(names, b, *r)));
                 let added: Vec<String> = sb.iter().filter(|(k, _)| !sa.contains_key(*k)).map(|(_, v)| step_label(names, b, v.0)).collect();
                 let removed: Vec<String> = sa.iter().filter(|(k, _)| !sb.contains_key(*k)).map(|(_, v)| step_label(names, a, v.0)).collect();
                 let (wa, wb) = (writes(a, x), writes(b, y));
@@ -187,11 +232,13 @@ pub fn compare(a: &Lift, b: &Lift, names: &Names, other_files: Vec<String>) -> R
             (_, None, Some(_)) => vec![],
             _ => crate::facts::added(b, *r),
         };
-        rep.functions.push(FnChange { sid: sid.clone(), label: step_label(names, b, *r), state, journeys: journeys_using(b, names, *r), facts });
+        let mut journeys = journeys_using(b, names, *r);
+        journeys.extend(read_by.iter().filter(|(_, v)| v.contains(r)).map(|(id, _)| journey_title(names, id)));
+        rep.functions.push(FnChange { sid: sid.clone(), label: step_label(names, b, *r), state, journeys, facts, before: moved_to.get(sid).map(|s| s.to_string()) });
     }
     for (sid, (r, ..)) in &la {
         if !lb.contains_key(sid) && !moved.contains_key(sid) {
-            rep.functions.push(FnChange { sid: sid.clone(), label: step_label(names, a, *r), state: "gone".into(), journeys: journeys_using(a, names, *r), facts: vec![] });
+            rep.functions.push(FnChange { sid: sid.clone(), label: step_label(names, a, *r), state: "gone".into(), journeys: journeys_using(a, names, *r), facts: vec![], before: None });
         }
     }
 

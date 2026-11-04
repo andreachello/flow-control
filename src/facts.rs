@@ -112,7 +112,22 @@ pub fn edited(a: &Lift, ra: SRef, b: &Lift, rb: SRef) -> Vec<String> {
     let (la, lb) = (literals(&fa.path, &ta), literals(&fb.path, &tb));
     let vals = |v: &[(String, bool)]| -> Vec<String> { v.iter().filter(|x| !x.1).map(|x| x.0.clone()).collect() };
     let (va, vb) = (vals(&la), vals(&lb));
-    out.extend(paired(&minus(&va, &vb), &minus(&vb, &va), "value"));
+    // A value that arrived or left means little alone, so show the line it is on.
+    let line_of = |text: &str, other: &str, v: &str| -> Option<String> {
+        let bare = v.trim_matches(|c| c == '"' || c == '\'' || c == '`');
+        let seen: BTreeSet<&str> = other.lines().map(str::trim).collect();
+        text.lines().map(str::trim).find(|l| l.contains(bare) && !seen.contains(l)).map(|l| cut(l, 70))
+    };
+    for f in paired(&minus(&va, &vb), &minus(&vb, &va), "value") {
+        let shown = if let Some(v) = f.strip_prefix("added value: ") {
+            line_of(&tb, &ta, v).map(|l| format!("added: {l}"))
+        } else if let Some(v) = f.strip_prefix("removed value: ") {
+            line_of(&ta, &tb, v).map(|l| format!("removed: {l}"))
+        } else {
+            None
+        };
+        out.push(shown.unwrap_or(f));
+    }
 
     let (ca, cb) = (conditions(&ta), conditions(&tb));
     out.extend(paired(&minus(&ca, &cb), &minus(&cb, &ca), "condition"));

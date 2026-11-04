@@ -44,6 +44,67 @@ run = "node scenarios/upgrade.mjs"
 
 `flow run` runs them and compares with the recorded outcome; `flow run --record` records it. When a merge meets in a journey, flow checks out four real versions (where the branches split, each side, and the merged tree), runs the scenario on each, and compares every value. It reports values both sides decide, values that appear only when merged, and merges that fail when neither side did. Values that differ between two identical runs, like timestamps, are ignored. A disagreement blocks `flow save` until someone changes the code or runs `flow accept <scenario>`, which records the result so it is checked from then on. A meet with no scenario stays a warning, and flow says so. Installed dependencies are shared into the checkouts; databases and outside services are whatever the scenario sets up.
 
+## One comment per change
+
+`flow comment` says in a few lines which journeys now behave differently, and flags the ones nobody asked for. Nobody writes or maintains anything:
+
+```
+Asked:     Mask the misspelling telegramm in guest messages
+Not asked: Referrers now get 80% of their share, rounded down.
+           Is that what you want?
+             flow decide "GET /api/cron/booking-fees" yes   or   flow decide "GET /api/cron/booking-fees" no "give referrers their full share"
+Changed:   Guests can no longer write telegramm in a message.
+             reaches 2 journeys: action sendGuestMessage, action sendOwnerMessage
+Kept:      no earlier decision was touched
+```
+
+What was asked comes from `--asked`, `--asked-file`, the pull request description in GitHub Actions, or the prompts your coding agent was given since the last save. With none of those there is no question: the comment lists what changed, most significant first. A change that reaches many journeys the same way is one line and one question, and one answer covers them all. `--full` unfolds everything.
+
+A journey that reads a constant counts as reaching it: changing `MAX_NIGHTS` shows up in every journey whose code reads it, directly or through another constant. Comparing with no agent is done by words. A journey counts as asked if the request names it, words most journeys share do not count, and the rarest matching word decides.
+
+`flow decide` saves the answer as one line in `decisions.md`, a plain file every agent already reads as context. The trailing HTML comment ties the line to the journey and to what it does:
+
+```
+- Annual customers who upgrade then cancel are refunded the full price. (2026-11-04) <!-- flow: POST /api/cancel | open -->
+- Promo and loyalty credit do not stack. (2026-11-03)
+```
+
+Yes keeps what the journey does now, and the question is not asked again until it does something else. No says what it should do, and stays open on every change to that journey. If a later change alters a decided journey, the comment says so under Touched, and deleting a decision is reported under Removed. A line written by hand has no journey attached, so without an agent it shows under May touch when it shares two distinctive words with a change. Two branches adding decisions merge without a collision.
+
+`flow diff` draws the same change for the browser: each touched journey as its steps in order, changed steps highlighted with before and after, untouched steps quiet, and the code one click behind each step.
+
+## Your own agent
+
+Git never involves AI, but flow can. It uses the `claude` or `codex` command already on your machine, on your own subscription, with no key of its own. On a machine with neither, such as a CI runner, flow reports plain facts and matches words. Choose with `ai = "claude"`, `"codex"` or `"off"` in `flow.toml`, or `FLOW_AI`.
+
+`flow word` has the agent say a change in one plain sentence and judge it against the request. The results go in `flow.words.jsonl`, one per line, which is committed and reviewed like `flow.names.json`. The comment only reads that file and never calls anything, so the same saved change always gets the same comment. Three things keep the sentences honest:
+
+- A line is keyed by the journey's behaviour before and after, so it can only describe the change it was written for.
+- The agent describes the change without seeing the request, so it cannot repeat what was asked.
+- Every number in a sentence must come from the code, or be the same rate as a percentage. A sentence that fails is refused and the plain facts stay.
+
+A saved judgement outranks word matching, and it can flag part of a journey's change, so a request for longer stays that also doubled the booking window flags the booking window. Different agents can judge differently; the saved line is what counts, and a line with `"by": "person"` is never replaced. One sentence is written per distinct change, for at most 12 per run.
+
+`flow hook install` tells flow when to fire. For Claude Code it adds hooks to `.claude/settings.local.json`, which stays on this machine. Each prompt becomes what was asked, and when a turn ends flow words the change in a process of its own that finishes even if the agent exits, and shows the comment. It waits at most 15 seconds, so a sentence that takes longer appears the next time the comment is shown. For Codex it prints the `notify` line to add yourself, since Codex allows one program across all repos; a turn's prompts and sentences are saved, and `flow comment` shows the result. `flow save` also words the change first, so the sentences go in with the commit, unless you pass `--no-words`. Prompts stay in `.git` and never go into a commit.
+
+On a pull request, `--markdown` turns each question into checkboxes, and `flow answer <file>` records ticked boxes and replies like `/flow no <journey>: what it should do`. The same answer twice stays one line. These two workflow jobs do both (a sketch: they have not been run on GitHub):
+
+```yaml
+# on: pull_request
+- run: flow comment origin/${{ github.base_ref }} HEAD --markdown > comment.md
+- run: gh pr comment ${{ github.event.number }} --body-file comment.md
+
+# on: issue_comment (created, edited)
+- if: github.event.comment.user.login == 'github-actions[bot]' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+  run: |
+    gh pr checkout ${{ github.event.issue.number }}
+    jq -r .comment.body "$GITHUB_EVENT_PATH" > answer.md
+    flow answer answer.md --base origin/main
+    git add decisions.md && git commit -m "Record decisions" && git push
+```
+
+The check on who commented matters on a public repo: without it, anyone could write your decisions.
+
 ## Commands
 
 ```
@@ -56,6 +117,12 @@ flow name                  # Claude proposes plain names into flow.names.json
 flow view                  # open the journeys in the browser
 flow run [name] [--record] # run scenarios, compare with recorded outcomes
 flow accept <scenario>     # accept what a merge does
+flow comment [base] [head] --asked "..."     # one short comment on a change
+flow decide <journey> yes|no ["sentence"]    # save the answer to decisions.md
+flow word [base] [head]    # have your agent put a change into plain sentences
+flow answer <file>         # record the answers in a pull request comment
+flow hook install          # connect this repo to the agents on this machine
+flow diff [base] [head]    # the change as journeys, in the browser
 flow accuracy              # score the universal reader against the grammar reader
 flow status | save | log | history | explain | merge | resolve   # version control, below
 ```
@@ -125,7 +192,7 @@ Calls on values are followed by where the value came from: `new X()` or `: X` fo
 ## Next
 
 1. Scenarios: one executable file per journey (starting state, action, expected end), run with tracing to record real steps and footprints, and to cross-check the static flows.
-2. `flow diff <a> <b>`: run every journey on two commits and report what each one now does differently.
+2. Run every journey on two commits and report what each one now does differently.
 3. Collisions: run each change alone and merged to find where changes decide the same thing.
 4. A local web UI built from the prototype screens: the journey player, before and after, and collisions.
 5. Permanent flow and step IDs stored in the flow document, so renames do not break history.
