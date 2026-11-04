@@ -94,7 +94,24 @@ fn asked_path(v: &Vcs) -> PathBuf {
 
 /// What the agent has been asked since the last save.
 pub fn asked_so_far(v: &Vcs) -> Option<String> {
-    std::fs::read_to_string(asked_path(v)).ok().map(|t| t.trim().to_string()).filter(|t| !t.is_empty())
+    let held = std::fs::read_to_string(turn_path(v)).ok().and_then(|t| t.split_once('\n').map(|(_, a)| a.to_string()));
+    held.or_else(|| std::fs::read_to_string(asked_path(v)).ok()).map(|t| t.trim().to_string()).filter(|t| !t.is_empty())
+}
+
+fn turn_path(v: &Vcs) -> std::path::PathBuf {
+    v.git_path("flow-turn")
+}
+
+/// What was asked is settled when the code changes. A later turn that changes nothing, like a
+/// question, adds to the prompts but not to what this change was asked to do.
+fn hold_what_was_asked(v: &Vcs, state: &str) -> Result<()> {
+    let key = crate::util::fnv64(state);
+    let same = std::fs::read_to_string(turn_path(v)).ok().is_some_and(|t| t.split('\n').next() == Some(key.as_str()));
+    if !same {
+        let prompts = std::fs::read_to_string(asked_path(v)).unwrap_or_default();
+        std::fs::write(turn_path(v), format!("{key}\n{prompts}"))?;
+    }
+    Ok(())
 }
 
 fn note_prompt(v: &Vcs, prompt: &str) -> Result<()> {
@@ -128,6 +145,12 @@ fn word_apart(v: &Vcs, fired: &str) {
 
 /// A turn ended: describe the change, and return the comment if it says something new.
 fn turn_ended(v: &mut Vcs, fired: &str) -> Result<Option<String>> {
+    let plain = comment::between(v, "HEAD", None, |a, b, r| comment::write_with(a, b, &r, None, None, &words::Words::default()))?;
+    if plain.is_empty() {
+        let _ = std::fs::remove_file(turn_path(v));
+        return Ok(None);
+    }
+    hold_what_was_asked(v, &comment::render(&plain, true))?;
     let asked = asked_so_far(v);
     word_apart(v, fired);
     let root = v.root.clone();
@@ -142,6 +165,38 @@ fn turn_ended(v: &mut Vcs, fired: &str) -> Result<Option<String>> {
     }
     std::fs::write(seen, &text)?;
     Ok(Some(text))
+}
+
+/// Sent again on every prompt, so it stays small. A long file keeps its newest lines.
+const DECISIONS_SENT: usize = 4000;
+
+/// What Claude is told before each prompt, because nothing makes an agent open `decisions.md`.
+pub fn decisions_context(root: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(root.join(comment::FILE)).ok()?;
+    let all = comment::parse(&text);
+    let lines: Vec<String> = all
+        .iter()
+        .map(|d| match &d.journey {
+            Some(j) if !d.text.contains(j.as_str()) => format!("- {} [{j}]", d.text),
+            _ => format!("- {}", d.text),
+        })
+        .collect();
+    let mut room = DECISIONS_SENT;
+    let mut kept: Vec<&str> = vec![];
+    for l in lines.iter().rev() {
+        if l.len() + 1 > room {
+            break;
+        }
+        room -= l.len() + 1;
+        kept.push(l);
+    }
+    if kept.is_empty() {
+        return None;
+    }
+    kept.reverse();
+    let left = all.len() - kept.len();
+    let older = if left > 0 { format!(" {left} older ones are in {} and still apply.", comment::FILE) } else { String::new() };
+    Some(format!("This repo records product decisions in {}. Changes here should follow them, and a request that conflicts with one is worth raising with the user before changing the code.{older}\n{}", comment::FILE, kept.join("\n")))
 }
 
 fn stdin_json() -> Value {
@@ -193,7 +248,7 @@ pub fn install(v: &Vcs) -> Result<String> {
         said += if added { "Claude Code: connected for this repo, on this machine.\n" } else { "Claude Code: already connected.\n" };
     }
     if on_path("codex") {
-        said += &format!("Codex: add this line to ~/.codex/config.toml (it applies to every repo, and flow ignores folders that are not git repositories):\n  notify = [{exe:?}, \"hook\", \"codex\"]\n");
+        said += &format!("Codex: add this line to ~/.codex/config.toml (it applies to every repo, and flow ignores folders that are not git repositories):\n  notify = [{exe:?}, \"hook\", \"codex\"]\nCodex has no hook that can pass it decisions, so add this to AGENTS.md: Read decisions.md before changing behaviour, and follow it.\n");
     }
     if said.is_empty() {
         said = "Neither claude nor codex is installed here. Flow still works, with plain facts.\n".into();
@@ -212,6 +267,9 @@ pub fn hook(root: &Path, out: &str, names: crate::names::Names, what: &str, arg:
             let v = open(root, names)?;
             if let Some(p) = stdin_json()["prompt"].as_str() {
                 note_prompt(&v, p)?;
+            }
+            if let Some(text) = decisions_context(&v.root) {
+                println!("{}", json!({ "hookSpecificOutput": { "hookEventName": "UserPromptSubmit", "additionalContext": text } }));
             }
         }
         "done" => {

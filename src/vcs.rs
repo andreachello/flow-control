@@ -229,6 +229,7 @@ impl Vcs {
         let _ = std::fs::remove_file(ms);
         // What the agent was asked belongs to the change just saved.
         let _ = std::fs::remove_file(self.git_path("flow-asked"));
+        let _ = std::fs::remove_file(self.git_path("flow-turn"));
         Ok((self.head().unwrap_or_default(), report))
     }
 }

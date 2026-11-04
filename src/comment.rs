@@ -1,6 +1,6 @@
 //! One short comment per change: which journeys now behave differently, which of those nobody
 //! asked for, and whether an earlier decision was touched. Answers are kept as lines in a plain
-//! `decisions.md`, so any agent reads them as context. No AI: the same change, request and
+//! `decisions.md`, a file people and agents can read and merge. No AI: the same change, request and
 //! decisions always give the same comment.
 
 use crate::change::{compare, JState, Report};
@@ -532,7 +532,7 @@ pub fn asked_text(asked: Option<String>, file: Option<std::path::PathBuf>) -> Re
     let text = match (asked, file) {
         (Some(a), _) => Some(a),
         (None, Some(p)) => Some(std::fs::read_to_string(&p).with_context(|| format!("could not read {}", p.display()))?),
-        (None, None) => std::env::var("GITHUB_EVENT_PATH").ok().and_then(|p| std::fs::read_to_string(p).ok()).and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()).and_then(|v| v["pull_request"]["body"].as_str().map(str::to_string)),
+        (None, None) => std::env::var("GITHUB_EVENT_PATH").ok().and_then(|p| std::fs::read_to_string(p).ok()).and_then(|s| serde_json::from_str::<serde_json::Value>(&s).ok()).and_then(|v| v["pull_request"]["body"].as_str().or(v["issue"]["body"].as_str()).map(str::to_string)),
     };
     Ok(text.map(|t| t.trim().to_string()).filter(|t| !t.is_empty()))
 }
@@ -571,6 +571,7 @@ pub fn decide(v: &mut Vcs, journey: &str, answer: &str, sentence: Option<&str>, 
     };
     let names = v.names.clone();
     let root = v.root.clone();
+    let asked = asked_text(None, None)?.or_else(|| crate::agent::asked_so_far(v));
     let (id, item, mark, peers) = between(v, base, None, |a, b, r| -> Result<(String, Option<Item>, String, Vec<(String, String)>)> {
         let mut hits = find_journey(journey, b, &names);
         if hits.is_empty() {
@@ -582,16 +583,18 @@ pub fn decide(v: &mut Vcs, journey: &str, answer: &str, sentence: Option<&str>, 
             _ => bail!("{journey:?} matches several journeys: {}", hits.join(", ")),
         }
         let id = hits.remove(0);
-        let c = write_with(a, b, &r, None, None, &Words::load(b, &root));
-        // The comment asks once for a change that reaches several journeys, so the answer covers them all.
+        let c = write_with(a, b, &r, asked, None, &Words::load(b, &root));
+        // An answer covers the journeys the comment showed with this question, and no others.
         let all = items(&r);
+        let shown: Vec<&Item> = c.not_asked.iter().chain(&c.changed).collect();
         let item = all.iter().find(|i| i.id == id).cloned().map(|mut i| {
-            let mine = c.changed.iter().find(|x| x.id == i.id || x.also.contains(&i.title));
+            let mine = shown.iter().find(|x| x.id == i.id || x.also.contains(&i.title));
             i.sentence = mine.and_then(|x| x.sentence.clone());
             i.undo = mine.and_then(|x| x.undo.clone());
             i
         });
-        let same = |o: &&Item| item.as_ref().is_some_and(|i| !i.facts.is_empty() && o.facts == i.facts && o.id != i.id);
+        let line = item.as_ref().and_then(|i| shown.iter().find(|x| x.id == i.id || x.also.contains(&i.title)));
+        let same = |o: &&Item| item.as_ref().is_some_and(|i| o.id != i.id) && line.is_some_and(|x| x.id == o.id || x.also.contains(&o.title));
         let peers: Vec<(String, String)> = all.iter().filter(same).map(|o| (o.id.clone(), fingerprint(b, &o.id))).collect();
         let mark = fingerprint(b, &id);
         Ok((id, item, mark, peers))

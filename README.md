@@ -58,11 +58,11 @@ Changed:   Guests can no longer write telegramm in a message.
 Kept:      no earlier decision was touched
 ```
 
-What was asked comes from `--asked`, `--asked-file`, the pull request description in GitHub Actions, or the prompts your coding agent was given since the last save. With none of those there is no question: the comment lists what changed, most significant first. A change that reaches many journeys the same way is one line and one question, and one answer covers them all. `--full` unfolds everything.
+What was asked comes from `--asked`, `--asked-file`, the pull request description in GitHub Actions, or the prompts your coding agent was given since the last save. With none of those there is no question: the comment lists what changed, most significant first. A change that reaches many journeys the same way is one line and one question, and one answer covers them all. Journeys wanted differently stay apart, even when the same value changed in both. `--full` unfolds everything.
 
 A journey that reads a constant counts as reaching it: changing `MAX_NIGHTS` shows up in every journey whose code reads it, directly or through another constant. Comparing with no agent is done by words. A journey counts as asked if the request names it, words most journeys share do not count, and the rarest matching word decides.
 
-`flow decide` saves the answer as one line in `decisions.md`, a plain file every agent already reads as context. The trailing HTML comment ties the line to the journey and to what it does:
+`flow decide` saves the answer as one line in `decisions.md`, a plain file in the repo. The trailing HTML comment ties the line to the journey and to what it does:
 
 ```
 - Annual customers who upgrade then cancel are refunded the full price. (2026-11-04) <!-- flow: POST /api/cancel | open -->
@@ -85,22 +85,51 @@ Git never involves AI, but flow can. It uses the `claude` or `codex` command alr
 
 A saved judgement outranks word matching, and it can flag part of a journey's change, so a request for longer stays that also doubled the booking window flags the booking window. Different agents can judge differently; the saved line is what counts, and a line with `"by": "person"` is never replaced. One sentence is written per distinct change, for at most 12 per run.
 
-`flow hook install` tells flow when to fire. For Claude Code it adds hooks to `.claude/settings.local.json`, which stays on this machine. Each prompt becomes what was asked, and when a turn ends flow words the change in a process of its own that finishes even if the agent exits, and shows the comment. It waits at most 15 seconds, so a sentence that takes longer appears the next time the comment is shown. For Codex it prints the `notify` line to add yourself, since Codex allows one program across all repos; a turn's prompts and sentences are saved, and `flow comment` shows the result. `flow save` also words the change first, so the sentences go in with the commit, unless you pass `--no-words`. Prompts stay in `.git` and never go into a commit.
+`flow hook install` tells flow when to fire. For Claude Code it adds hooks to `.claude/settings.local.json`, which stays on this machine. Each prompt becomes what was asked, and when a turn ends flow words the change in a process of its own that finishes even if the agent exits, and shows the comment. It waits at most 15 seconds, so a sentence that takes longer appears the next time the comment is shown. For Codex it prints the `notify` line to add yourself, since Codex allows one program across all repos; a turn's prompts and sentences are saved, and `flow comment` shows the result. A turn that changes no code, like a question, stays silent and adds nothing to what was asked. `flow save` also words the change first, so the sentences go in with the commit, unless you pass `--no-words`. Prompts stay in `.git` and never go into a commit.
 
-On a pull request, `--markdown` turns each question into checkboxes, and `flow answer <file>` records ticked boxes and replies like `/flow no <journey>: what it should do`. The same answer twice stays one line. These two workflow jobs do both (a sketch: they have not been run on GitHub):
+Agents do not open `decisions.md` on their own, so the same hook hands Claude Code the decisions with each prompt, and it is told to raise a conflict before changing the code. Only the newest 4,000 characters go, and it is told how many older decisions the file holds. Codex has no hook for this, so `flow hook install` gives the line to add to `AGENTS.md`.
+
+On a pull request, `--markdown` turns each question into checkboxes, and `flow answer <file>` records ticked boxes and replies like `/flow no <journey>: what it should do`. The same answer twice stays one line. These two workflows do both (a sketch: they have not been run on GitHub):
 
 ```yaml
 # on: pull_request
-- run: flow comment origin/${{ github.base_ref }} HEAD --markdown > comment.md
-- run: gh pr comment ${{ github.event.number }} --body-file comment.md
+permissions:
+  contents: read
+  pull-requests: write
+steps:
+  - uses: actions/checkout@v4
+    with:
+      fetch-depth: 0
+  - run: cargo install --git https://github.com/andreachello/flow-control --locked
+  - run: flow comment origin/${{ github.base_ref }} HEAD --markdown > comment.md
+  - run: gh pr comment ${{ github.event.number }} --body-file comment.md
+    env:
+      GH_TOKEN: ${{ github.token }}
+```
 
+```yaml
 # on: issue_comment (created, edited)
-- if: github.event.comment.user.login == 'github-actions[bot]' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
-  run: |
-    gh pr checkout ${{ github.event.issue.number }}
-    jq -r .comment.body "$GITHUB_EVENT_PATH" > answer.md
-    flow answer answer.md --base origin/main
-    git add decisions.md && git commit -m "Record decisions" && git push
+permissions:
+  contents: write
+  pull-requests: read
+jobs:
+  answer:
+    if: github.event.issue.pull_request && (github.event.comment.user.login == 'github-actions[bot]' || contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - run: cargo install --git https://github.com/andreachello/flow-control --locked
+      - run: |
+          gh pr checkout ${{ github.event.issue.number }}
+          jq -r .comment.body "$GITHUB_EVENT_PATH" > /tmp/answer.md
+          flow answer /tmp/answer.md --base origin/main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add decisions.md 2>/dev/null || true
+          git diff --cached --quiet || { git commit -m "Record decisions" && git push; }
 ```
 
 The check on who commented matters on a public repo: without it, anyone could write your decisions.

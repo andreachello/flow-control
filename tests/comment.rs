@@ -501,3 +501,112 @@ fn the_part_nobody_asked_for_replaces_the_sentence() {
     fill(&mut open(&d), "HEAD", None, Some(ASKED), 2, "claude", &ask).unwrap();
     assert!(render(&saved_comment(&d, Some(ASKED)), false).contains("It also lowers the pro price to 22"));
 }
+
+/// Upgrade and cancel both read one value, so a change to it gives both identical facts.
+fn shared_rate(name: &str) -> PathBuf {
+    let d = repo(name);
+    edit(&d, "lib/billing.ts", "export function resolvePrice", "export const RATE = 1;\nexport function refundFor(paid: number) {\n  return paid * RATE;\n}\n\nexport function resolvePrice");
+    edit(&d, "lib/billing.ts", "return table[plan];", "return table[plan] * RATE;");
+    edit(&d, "app/api/cancel/route.ts", "import { renderHeader } from \"@/lib/ui\";", "import { renderHeader } from \"@/lib/ui\";\nimport { refundFor } from \"@/lib/billing\";");
+    edit(&d, "app/api/cancel/route.ts", "  renderHeader();", "  renderHeader();\n  refundFor(20);");
+    open(&d).save("Rate").unwrap();
+    edit(&d, "lib/billing.ts", "RATE = 1;", "RATE = 0.9;");
+    d
+}
+
+#[test]
+fn the_same_facts_can_be_asked_for_in_one_journey_and_a_surprise_in_another() {
+    let d = shared_rate("c-split");
+    let prompts = std::sync::Mutex::new(vec![]);
+    let ask = |p: &str, s: &Value| -> anyhow::Result<Value> {
+        prompts.lock().unwrap().push(p.to_string());
+        if s["properties"].get("sentence").is_none() {
+            let cancel = p.lines().find(|l| l.ends_with("POST /api/cancel") && l.starts_with(|c: char| c.is_ascii_digit())).unwrap().split('.').next().unwrap().parse::<u64>().unwrap();
+            return Ok(json!({"asked": false, "unasked": "", "not_called_for": [cancel], "touches": []}));
+        }
+        let also = p.contains("also reaches");
+        let cancel = p.contains("Journey: POST /api/cancel") && !also;
+        Ok(json!({"sentence": if also { "Annual customers pay less" } else if cancel { "Cancel refunds 90% of what was paid" } else { "Upgrade charges 10% less" }, "undo": "keep the full rate"}))
+    };
+    let f = fill(&mut open(&d), "HEAD", None, Some(ASKED), 1, "claude", &ask).unwrap();
+    assert!(f.failed.is_empty() && f.refused.is_empty(), "{:?} {:?}", f.failed, f.refused);
+    let c = saved_comment(&d, Some(ASKED));
+    let t = render(&c, false);
+    let (no, yes) = t.split_once("Changed:").unwrap_or_else(|| panic!("{t}"));
+    assert!(no.contains("Cancel refunds 90%") && !no.contains("Upgrade"), "{t}");
+    assert!(yes.contains("Upgrade charges 10% less"), "{t}");
+    assert!(prompts.lock().unwrap().iter().any(|p| p.contains("refundFor")), "the writer sees where the value is used");
+}
+
+#[test]
+fn a_question_after_the_change_does_not_repeat_the_comment_or_alter_what_was_asked() {
+    let d = shared_rate("c-turns");
+    flow(&d, &["hook", "prompt"], &json!({"prompt": ASKED}).to_string());
+    assert!(flow(&d, &["hook", "done"], "{}").contains("Flow:"));
+    flow(&d, &["hook", "prompt"], &json!({"prompt": "what does refundFor do?"}).to_string());
+    assert_eq!(flow(&d, &["hook", "done"], "{}"), "", "a turn that changed nothing says nothing");
+    assert_eq!(flowcontrol::agent::asked_so_far(&open(&d)).as_deref(), Some(ASKED));
+    // Prompts are only held back while the code stands still.
+    flow(&d, &["hook", "prompt"], &json!({"prompt": "and lower it to 0.8"}).to_string());
+    edit(&d, "lib/billing.ts", "RATE = 0.9;", "RATE = 0.8;");
+    assert!(flow(&d, &["hook", "done"], "{}").contains("Flow:"));
+    let asked = flowcontrol::agent::asked_so_far(&open(&d)).unwrap();
+    assert!(asked.contains("what does refundFor do?") && asked.contains("lower it to 0.8"), "{asked}");
+    open(&d).save("Done").unwrap();
+    assert_eq!(flowcontrol::agent::asked_so_far(&open(&d)), None);
+}
+
+#[test]
+fn planning_turns_before_any_change_still_count_as_what_was_asked() {
+    let d = shared_rate("c-plan");
+    git(&d, &["checkout", "-q", "--", "."]);
+    flow(&d, &["hook", "prompt"], &json!({"prompt": ASKED}).to_string());
+    assert_eq!(flow(&d, &["hook", "done"], "{}"), "");
+    flow(&d, &["hook", "prompt"], &json!({"prompt": "go ahead"}).to_string());
+    edit(&d, "lib/billing.ts", "RATE = 1;", "RATE = 0.9;");
+    flow(&d, &["hook", "done"], "{}");
+    assert!(flowcontrol::agent::asked_so_far(&open(&d)).unwrap().contains(ASKED));
+}
+
+#[test]
+fn an_answer_stays_with_the_journeys_shown_with_it() {
+    let d = shared_rate("c-sides");
+    let ask = |_: &str, s: &Value| -> anyhow::Result<Value> {
+        Ok(if s["properties"].get("sentence").is_some() { json!({"sentence": "Annual customers pay less", "undo": ""}) } else { json!({"asked": false, "unasked": "", "not_called_for": [1], "touches": []}) })
+    };
+    fill(&mut open(&d), "HEAD", None, Some(ASKED), 1, "claude", &ask).unwrap();
+    flow(&d, &["hook", "prompt"], &json!({"prompt": ASKED}).to_string());
+    decide(&mut open(&d), "POST /api/cancel", "yes", None, "HEAD").unwrap();
+    let text = std::fs::read_to_string(d.join(FILE)).unwrap();
+    assert_eq!(text.lines().filter(|l| l.starts_with("- ")).count(), 1, "{text}");
+    assert!(text.contains("POST /api/cancel |") && !text.contains("POST /api/upgrade |"), "{text}");
+}
+
+#[test]
+fn claude_is_handed_the_decisions_with_each_prompt() {
+    let d = repo("c-told");
+    assert_eq!(flow(&d, &["hook", "prompt"], &json!({"prompt": ASKED}).to_string()), "", "no decisions, nothing to say");
+    std::fs::write(d.join("decisions.md"), "# decisions.md\n- Refunds stay full price. (2026-11-04) <!-- flow: POST /api/cancel | open -->\n- Promo and loyalty credit do not stack. (2026-11-03)\n").unwrap();
+    let out = flow(&d, &["hook", "prompt"], &json!({"prompt": ASKED}).to_string());
+    let v: Value = serde_json::from_str(&out).unwrap();
+    assert_eq!(v["hookSpecificOutput"]["hookEventName"], "UserPromptSubmit");
+    let told = v["hookSpecificOutput"]["additionalContext"].as_str().unwrap();
+    assert!(told.contains("- Refunds stay full price. (2026-11-04) [POST /api/cancel]"), "{told}");
+    assert!(told.contains("- Promo and loyalty credit do not stack."), "{told}");
+    assert!(!told.contains("<!--"), "{told}");
+    the_change(&d);
+    assert!(flow(&d, &["comment"], "").contains("Asked:     annual"), "the prompt is still what was asked");
+}
+
+#[test]
+fn a_long_decisions_file_sends_its_newest_lines_and_counts_the_rest() {
+    let d = repo("c-told-long");
+    let lines: String = (0..300).map(|i| format!("- Decision number {i} about something that was settled a while ago. (2026-11-04)\n")).collect();
+    std::fs::write(d.join("decisions.md"), lines).unwrap();
+    let told = flowcontrol::agent::decisions_context(&d).unwrap();
+    assert!(told.contains("Decision number 299 "), "{told}");
+    assert!(!told.contains("Decision number 0 "), "{told}");
+    let sent = told.lines().filter(|l| l.starts_with("- ")).count();
+    assert!(told.contains(&format!(" {} older ones are in decisions.md", 300 - sent)), "{told}");
+    assert!(told.len() < 5000, "{}", told.len());
+}
