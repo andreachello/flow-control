@@ -10,7 +10,7 @@
 <style>
 
 :root{
-  --a:#2563eb; --b:#9333ea; --ok-soft:#ecf8f1; --warn-soft:#fdf6e3; --paper:#f7f7f8; --sheet:#ffffff; --sheet-2:#f4f4f5; --ink:#18181b; --ink-2:#52525b; --ink-3:#71717a; --rule:#e4e4e7;
+  --a:#2563eb; --b:#9333ea; --ok-soft:#ecf8f1; --warn-soft:#fdf6e3; --paper:#ffffff; --sheet:#ffffff; --sheet-2:#f5f5f6; --side:#fafafa; --ink:#111113; --ink-2:#4e4e56; --ink-3:#6b6b74; --rule:#ebebed;
   --signal:#c62a1f; --signal-soft:#fbeae7;
   --add:#ecf6ef; --add-ink:#1d6b41; --add-mark:#cfe9d8; --del:#fbeef0; --del-ink:#9b2c43; --del-mark:#f1d3d9;
   --hover:#e9eef2;
@@ -20,7 +20,7 @@
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --a:#60a5fa; --b:#c084fc; --ok-soft:#17291f; --warn-soft:#2f2813; --paper:#16191c; --sheet:#1d2125; --sheet-2:#24292e; --ink:#eef1f3; --ink-2:#c5ccd2; --ink-3:#97a2ab; --rule:#343b42;
+    --a:#60a5fa; --b:#c084fc; --ok-soft:#17291f; --warn-soft:#2f2813; --paper:#101012; --sheet:#101012; --sheet-2:#1b1b1e; --side:#141416; --ink:#ededef; --ink-2:#b6b6be; --ink-3:#8e8e98; --rule:#27272b;
     --signal:#ff6b5f; --signal-soft:#3a2321;
     --add:#1a2b22; --add-ink:#8fdcb0; --add-mark:#25402f; --del:#2f1f23; --del-ink:#f2a5b4; --del-mark:#4a2a32;
     --hover:#2a3138;
@@ -29,7 +29,7 @@
   }
 }
 :root[data-theme="dark"]{
-  --paper:#16191c; --sheet:#1d2125; --sheet-2:#24292e; --ink:#eef1f3; --ink-2:#c5ccd2; --ink-3:#97a2ab; --rule:#343b42;
+  --paper:#101012; --sheet:#101012; --sheet-2:#1b1b1e; --side:#141416; --ink:#ededef; --ink-2:#b6b6be; --ink-3:#8e8e98; --rule:#27272b;
   --signal:#ff6b5f; --signal-soft:#3a2321;
   --add:#1a2b22; --add-ink:#8fdcb0; --add-mark:#25402f; --del:#2f1f23; --del-ink:#f2a5b4; --del-mark:#4a2a32;
   --hover:#2a3138;
@@ -447,7 +447,12 @@ kbd{font:500 11px var(--f-ui);letter-spacing:0;padding:1px 5px;border-radius:5px
 .cv-h h2{margin:0;font-size:30px;font-weight:600;line-height:1.2;letter-spacing:-.02em;text-wrap:balance}
 .cv-h p{margin:8px 0 0;font-size:14px;color:var(--ink-3)}
 .cv-say{margin:0;padding:8px 16px 18px;font-size:18px;line-height:1.5;letter-spacing:-.01em;text-wrap:pretty}
-.cv-sub{margin:20px 0 10px;font-size:13px;font-weight:500;color:var(--ink-3)}
+.cv-sub{margin:0;font-size:13px;font-weight:500;color:var(--ink-3)}
+.cv-subr{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:18px 0 10px}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:var(--sheet-2)}
+.seg button{padding:4px 11px;border:0;border-radius:7px;background:none;font-size:13px;font-weight:500;color:var(--ink-2);cursor:pointer}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 2px rgba(24,24,27,.08)}
 .cv-jh{display:flex;align-items:center;gap:10px;padding:13px 14px 4px 16px;color:var(--ink);text-decoration:none}
 .cv-jh .bdg{width:24px;height:24px;box-shadow:none}
 .cv-jh b{font-size:15px;font-weight:600;letter-spacing:-.008em}
@@ -465,7 +470,7 @@ kbd{font:500 11px var(--f-ui);letter-spacing:0;padding:1px 5px;border-radius:5px
 .cv-jh small{margin-left:4px;font-size:12.5px;color:var(--ink-3)}
 .cv-rest{padding:0 16px 14px}
 .cv-rest h4{margin:0 0 4px;font-size:12.5px;font-weight:500;color:var(--ink-3)}
-.cv-rest ul{margin:0;padding-left:16px;font-size:14px;line-height:1.5;color:var(--ink-2)}
+.cv-rest{--c:var(--ink-3)}
 .cv-stops li:last-child::after{display:none}
 .cv-list{list-style:none;margin:0;padding:6px 8px 8px}
 .cv-list a{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:14px}
@@ -475,6 +480,36 @@ kbd{font:500 11px var(--f-ui);letter-spacing:0;padding:1px 5px;border-radius:5px
 .cv-list .bdg{flex:none;width:22px;height:22px;box-shadow:none}
 .cv-list .off .bdg{opacity:.4}
 .cv-list .off span{color:var(--ink-3)}
+.jw-p{position:sticky;top:82px;z-index:5;box-shadow:0 8px 24px -16px rgba(24,24,27,.25)}
+.jw-w{max-height:52vh;overflow:auto;padding:14px 16px 2px}
+.jw-s{display:grid;grid-template-columns:repeat(var(--n),minmax(130px,1fr));gap:0 14px;list-style:none;margin:0;padding:0}
+.jw-s li{position:relative;min-width:0;padding-top:22px;transition:opacity .15s}
+.jw-s i{position:absolute;left:0;top:1px;z-index:1;width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:0 0 0 3px var(--sheet);transition:transform .15s}
+.jw-s li::after{content:"";position:absolute;left:6px;right:-20px;top:6px;height:2px;background:color-mix(in srgb,var(--c) 30%,var(--rule))}
+.jw-s li:last-child::after{display:none}
+.jw-s b{display:block;font-size:13.5px;font-weight:500;line-height:1.35;text-wrap:pretty}
+.jw-s li.dim b{color:var(--ink-3)}
+.jw-s li.dim i{background:var(--sheet);box-shadow:inset 0 0 0 2px color-mix(in srgb,var(--c) 40%,var(--rule)),0 0 0 3px var(--sheet)}
+.jw-s li.hit i{transform:scale(1.35)}
+.jw-s li.hit b{font-weight:600}
+.jw-say{margin:0;padding:10px 16px 14px;font-size:13.5px;color:var(--ink-2)}
+.jw-l li{display:flex;align-items:center;padding-right:12px;gap:8px}
+.jw-l li.on{background:color-mix(in srgb,var(--c, var(--ink)) 6%,var(--sheet-2))}
+.jw{flex:1;display:flex;align-items:center;gap:12px;min-width:0;min-height:42px;padding:6px 4px 6px 16px;border:0;background:none;font:inherit;color:var(--ink);text-align:left;cursor:pointer}
+.jw-l li:hover{background:var(--sheet-2)}
+.jw-l li + li{box-shadow:inset 0 1px 0 var(--rule)}
+@media (max-height:700px),(max-width:760px){ .jw-p{position:static} }
+@media (prefers-reduced-motion: reduce){ .ft{animation:none} .jw-s li,.jw-s i{transition:none} }
+.ft{margin-top:7px;border-radius:9px;overflow:hidden;font-size:14px;line-height:1.4;animation:rise .16s ease-out}
+.ft > div{display:grid;grid-template-columns:38px minmax(0,1fr);gap:8px;padding:7px 10px}
+.ft em{font-size:12px;font-style:normal;font-weight:500;line-height:19.6px}
+.ft-a{background:var(--sheet-2);color:var(--ink-3)}
+.ft-a span{text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--ink-3) 55%,transparent)}
+.ft-b{background:color-mix(in srgb,var(--c) 16%,var(--sheet));color:var(--ink);font-weight:500}
+.ft-b em{color:color-mix(in srgb,var(--c) 70%,var(--ink))}
+.jw-s .ft{font-size:12.5px}
+.jw-s .ft > div{display:block;padding:6px 8px}
+.jw-s .ft em{display:block;line-height:16px}
 .cv-note{margin:0;padding:0 16px 14px;font-size:12.5px;line-height:1.45;color:var(--ink-3)}
 .ghc.kb{box-shadow:inset 2px 0 0 var(--l-up);background:var(--sheet-2)}
 .sk{display:block;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--sheet-2) 30%,color-mix(in srgb,var(--rule) 60%,var(--sheet-2)) 50%,var(--sheet-2) 70%);background-size:300% 100%;animation:shine 1.3s linear infinite}
@@ -508,20 +543,166 @@ kbd{font:500 11px var(--f-ui);letter-spacing:0;padding:1px 5px;border-radius:5px
 .live i{width:6px;height:6px;border-radius:50%;background:var(--l-up)}
 @media (max-width:900px){ .stats{grid-template-columns:repeat(2,minmax(0,1fr))} .cols,.cols.even{grid-template-columns:minmax(0,1fr)} .find{width:auto} .find span,.find kbd{display:none} .ppl li{grid-template-columns:32px minmax(0,1fr) auto} .ppl .ic,.ppl li > small:last-child{display:none} }
 @media (prefers-reduced-motion: reduce){ .enter > *,.sk,.ov,.ov-box,.toast{animation:none} }
+/* the app around every page */
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100vh}
+.side{position:sticky;top:0;height:100vh;box-sizing:border-box;display:flex;flex-direction:column;gap:12px;padding:12px;background:var(--sheet);border-right:1px solid var(--rule);overflow-y:auto}
+.side-t{display:flex;flex-direction:column;gap:8px}
+.side .brand{padding:6px 8px;color:var(--ink);text-decoration:none}
+.side .crumb{position:relative;display:block;min-width:0}
+.side .crumb .bar-sl{display:none}
+.side .sw{display:flex;width:100%;max-width:none;box-sizing:border-box;padding:7px 8px;border:1px solid var(--rule);background:var(--sheet)}
+.side .sw .chev{margin-left:auto}
+.side .sec{display:flex;flex-direction:column;gap:2px;margin:0;padding:0;max-width:none;overflow:visible}
+.side .sec a{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;font-size:14px;color:var(--ink-2)}
+.side .sec a svg{flex:none}
+.side .sec a:hover{background:var(--sheet-2);color:var(--ink)}
+.side .sec a.on{background:var(--sheet-2);color:var(--ink);font-weight:500}
+.side .sec a.on::after{content:none}
+.side-all{margin-top:auto;padding:7px 8px;border-radius:8px;font-size:13.5px;color:var(--ink-2);text-decoration:none}
+.side-all:hover{background:var(--sheet-2);color:var(--ink)}
+.main{min-width:0}
+.main nav .in{max-width:none;justify-content:flex-end;min-height:52px}
+.main .wrap{max-width:1120px}
+.pr-l{list-style:none;margin:0;padding:0}
+.pr-l li + li{border-top:1px solid var(--rule)}
+.pr-l a{display:flex;align-items:center;gap:12px;padding:12px 16px;color:inherit;text-decoration:none}
+.pr-l a:hover{background:var(--sheet-2)}
+.pr-m{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.pr-m b{font-weight:500;overflow-wrap:anywhere}
+.pr-m span{font-size:13px;color:var(--ink-3)}
+.pr-tag{display:inline-block;flex:none;padding:1px 8px;border:1px solid var(--rule);border-radius:999px;font-size:12px;font-weight:500;color:var(--ink-2)}
+.pr-tag.open{background:var(--add);border-color:var(--add-mark);color:var(--add-ink)}
+.pr-tag.merged{background:color-mix(in srgb,var(--b) 10%,var(--sheet));border-color:color-mix(in srgb,var(--b) 25%,var(--sheet));color:var(--b)}
+.pr-tag.closed{background:var(--del);border-color:var(--del-mark);color:var(--del-ink)}
+.pr-note{margin:0 0 12px;font-size:13.5px;color:var(--ink-2)}
+.pr-body{white-space:pre-wrap;overflow-wrap:anywhere}
+/* the finish, shared by every page */
+body{font-size:14px;letter-spacing:-.003em}
+.app{grid-template-columns:224px minmax(0,1fr)}
+.side{padding:10px;gap:10px;background:var(--side)}
+.side-t{gap:4px}
+.side .brand{padding:6px 8px;font-size:14px}
+.side .sw{padding:6px 8px;border:0;background:none;font-size:13.5px}
+.side .sw:hover{background:var(--sheet-2)}
+.side .sec a{gap:9px;padding:6px 8px;border-radius:6px;font-size:13.5px}
+.side .sec a svg{color:var(--ink-3)}
+.side .sec a.on svg{color:var(--ink)}
+.side-all{border-radius:6px;font-size:13px;color:var(--ink-3)}
+.main nav{background:color-mix(in srgb,var(--paper) 86%,transparent);border-bottom:1px solid var(--rule)}
+.main nav .in{justify-content:space-between;gap:16px;min-height:48px;padding:0 24px}
+.trail{display:flex;align-items:center;gap:7px;min-width:0;font-size:13.5px;color:var(--ink-3)}
+.trail a{flex:none;color:var(--ink-3);text-decoration:none}
+.trail a:hover{color:var(--ink)}
+.trail i{flex:none;font-style:normal;color:var(--rule)}
+.trail span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:500;color:var(--ink)}
+.nav-r{flex:none;display:flex;align-items:center;gap:6px}
+.find{width:200px;height:32px;padding:0 6px 0 10px;border-radius:7px;background:var(--sheet-2);border-color:transparent}
+.find:hover{background:var(--sheet-2);border-color:var(--rule)}
+.theme{display:grid;place-items:center;width:32px;height:32px;padding:0;border:0;border-radius:7px;background:none;color:var(--ink-3)}
+.theme:hover{background:var(--sheet-2);color:var(--ink)}
+.main .wrap{max-width:1240px;padding:28px 32px 80px}
+.page-h{padding:0 0 18px}
+.page-h h2{font-size:20px;font-weight:600;letter-spacing:-.018em}
+.pn,.stats,.pj{border-radius:10px}
+.pn{margin-bottom:16px}
+.cols{gap:16px}
+.pn-h{padding:12px 16px 0}
+.pn-h b{font-size:13.5px;font-weight:500}
+.pn-h a{text-decoration:none}
+.pn-h a:hover{color:var(--ink)}
+.stats{gap:1px;margin-bottom:16px;background:var(--rule);border:1px solid var(--rule);overflow:hidden}
+.stat{display:flex;flex-direction:column-reverse;gap:4px;padding:14px 16px;border:0;border-radius:0;background:var(--sheet)}
+.stat b{font-size:24px;font-weight:500;line-height:1.15;letter-spacing:-.022em}
+.chart{gap:0;height:104px;padding-top:0}
+.chart button{justify-content:center}
+.chart i{width:min(60%,18px);background:var(--ink);opacity:.82}
+.chart i.none{height:2px !important;background:var(--rule);opacity:1;border-radius:1px}
+.chart:hover i{opacity:.4}
+.chart button:hover i,.chart button:focus i{opacity:.82}
+.rank a{margin:0 -8px;padding:6px 8px;border-radius:6px;gap:5px 10px}
+.rank u{height:3px;background:var(--sheet-2)}
+.rank u i{background:var(--ink-3)}
+.fd{padding:6px 0 2px}
+.fd a{min-height:40px;gap:10px}
+.fd li + li a{box-shadow:inset 0 1px 0 var(--rule)}
+.fd b{font-size:13.5px}
+.fd .dt{width:64px;text-align:right;font-variant-numeric:tabular-nums}
+.who{flex:none;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--sheet-2);font-size:10.5px;font-style:normal;font-weight:600;color:var(--ink-2)}
+.pj{gap:0;border:1px solid var(--rule);overflow:hidden}
+.pj li + li{border-top:1px solid var(--rule)}
+.pj a{border:0;border-radius:0}
+.bar-s,.seg{border-radius:7px}
+.seg button{border-radius:5px}
+.pr-l{border-radius:10px}
+.pr-tag{padding:0 7px;font-size:11.5px;line-height:18px}
+.cv-h h2{letter-spacing:-.02em}
+
+.cv-top .bar-c{display:none}
+.ghl-top{padding:0 0 12px}
+.ghl-top h2{font-size:20px;letter-spacing:-.018em}
+.ghl-day{padding-bottom:20px}
+.ghl-day ol{border-radius:10px}
+.ghl-day h3{margin-bottom:6px}
+.ghc{padding:10px 12px 10px 16px}
+.ghc-title{font-size:14px;font-weight:500}
+.jgrid{gap:16px}
+.jc{padding:14px 16px 16px;border-radius:10px;transition:border-color .12s}
+.jc:hover{border-color:color-mix(in srgb,var(--ink) 24%,var(--rule));box-shadow:none}
+.jc-t{font-size:14px;font-weight:500}
+.jc-t .bdg{width:22px;height:22px}
+.spark{justify-content:space-between;gap:3px;height:24px}
+.spark i{flex:0 1 8px;border-radius:2px 2px 0 0;background:var(--ink-3);opacity:.75}
+
+.me{display:flex;align-items:center;gap:8px;padding:8px;border-top:1px solid var(--rule);font-size:13px}
+.me img,.me .who{flex:none;width:22px;height:22px;border-radius:50%}
+.me span{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:500}
+.me button{flex:none;padding:2px 6px;border:0;border-radius:5px;background:none;font-size:12.5px;color:var(--ink-3);cursor:pointer}
+.me button:hover{background:var(--sheet-2);color:var(--ink)}
+.signin{display:none}
+body.out .app{display:none}
+body.out .signin{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;background:var(--paper);text-align:center}
+.signin h1{margin:12px 0 0;font-size:22px;font-weight:600;letter-spacing:-.02em}
+.signin p{margin:0;max-width:340px;font-size:14px;color:var(--ink-3)}
+.signin .signin-say{margin-top:8px;padding:8px 12px;border-radius:8px;background:var(--signal-soft);color:var(--signal);font-size:13.5px}
+.signin-gh{display:inline-flex;align-items:center;justify-content:center;gap:10px;width:280px;max-width:100%;height:40px;margin-top:16px;border-radius:8px;background:var(--ink);color:var(--paper);font-size:14px;font-weight:500;text-decoration:none}
+.signin-gh:hover{opacity:.88}
+.signin small{margin-top:8px;font-size:12.5px;color:var(--ink-3)}
+@media (max-width:760px){
+  .app{display:block}
+  .side{position:static;height:auto;gap:8px;border-right:0;border-bottom:1px solid var(--rule);overflow:visible}
+  .side .sec{flex-direction:row;overflow-x:auto;scrollbar-width:none}
+  .side .sec a{white-space:nowrap}
+  .side-all{margin-top:0}
+  .main .wrap{padding:20px 16px 64px}
+  .main nav .in{padding:0 16px}
+  .trail{display:none}
+  .nav-r{margin-left:auto}
+}
 </style>
 </head>
 <body>
-<nav><div class="in">
+<div class="app"><aside class="side"><div class="side-t">
   <a class="brand" href="#/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v18M12 3v8a4 4 0 0 0 4 4h3" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="12" cy="11" r="3" fill="#e8a200"/></svg>Flow control</a>
-  <div class="crumb" id="crumb"></div>
+  <div class="crumb" id="crumb"></div></div>
+  <div class="sec" id="sec"></div>
+  <a class="side-all" id="side-all" href="#/" hidden>All projects</a>
+  <div class="me" id="me" hidden></div>
+</aside><div class="main"><nav><div class="in">
+  <div class="trail" id="trail"></div>
   <div class="nav-r"><span id="live"></span><button class="find" id="find"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M7 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM10 10l3.5 3.5"/></svg><span>Search</span><kbd>⌘K</kbd></button><button class="theme" id="theme" aria-label="Switch light or dark">Dark</button></div>
-</div><div class="sec" id="sec"></div></nav>
-<div class="wrap" id="view"></div>
+</div></nav>
+<div class="wrap" id="view"></div></div></div>
+<main class="signin"><svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"><path d="M5 3v18M12 3v8a4 4 0 0 0 4 4h3" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="12" cy="11" r="3" fill="#e8a200"/></svg><h1>Sign in to Flow control</h1><p>See what every change does to the people using your product.</p><p class="signin-say" id="signin-say" role="alert" hidden></p><a class="signin-gh" href="/auth/github"><svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>Continue with GitHub</a><small>Flow control only reads your public GitHub profile.</small></main>
 <div id="over"></div><div id="toast"></div><div id="tip" hidden></div>
 <script>
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-const get = async u => { const r = await fetch(u), d = await r.json(); if (!r.ok) throw new Error(d.error || "Something went wrong"); return d; };
+const get = async u => { const r = await fetch(u); if (r.status === 401) { signedOut(); throw new Error("Sign in first"); } const d = await r.json(); if (!r.ok) throw new Error(d.error || "Something went wrong"); return d; };
+const SIGNIN = { denied:"This GitHub account does not have access. Ask whoever runs this server to add your username.", cancelled:"Sign-in was cancelled.", failed:"Sign-in did not finish. Try again." };
+function signedOut(){ const said = new URLSearchParams(location.search).get("signin"); $("signin-say").textContent = SIGNIN[said] || ""; $("signin-say").hidden = !SIGNIN[said]; document.body.classList.add("out"); }
+function signedIn(u){ const box = $("me"); box.hidden = false; const name = esc(u.name || u.login);
+  box.innerHTML = `${u.avatar ? `<img src="${esc(u.avatar)}" alt="" referrerpolicy="no-referrer">` : `<i class="who">${esc(u.login.charAt(0).toUpperCase())}</i>`}<span title="${esc(u.login)}">${name}</span><button id="signout">Sign out</button>`;
+  $("signout").onclick = async () => { await fetch("/auth/logout", { method:"POST" }); location.href = "/"; }; }
 const KW = new Set("export function return if else for while throw const let var import from new await async class fn pub use def".split(" "));
 function hl(src){
   const re = /(\/\/.*$)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`[^`]*`)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_$][\w$]*)(?=\s*\()|([A-Za-z_$][\w$]*)|([{}()[\];,.:?=+*<>!|&…-]+)/g;
@@ -549,12 +730,15 @@ const badges = (titles, most = 5) => titles.slice(0, most).map(t => badge(t)).jo
 const SHAPE = { enter:"M7 3h6v10H7M3 8h7M8 5l3 3-3 3", plus:"M8 3v10M3 8h10", cross:"M4 4l8 8M12 4l-8 8", up:"M8 13V3M4 7l4-4 4 4", spark:"M8 2l1.6 4.4L14 8l-4.4 1.6L8 14l-1.6-4.4L2 8l4.4-1.6z", plug:"M6 2v4M10 2v4M4 6h8v3a4 4 0 0 1-8 0zM8 13v2",
   home:"M3 7.500L8 3l5 4.500M4.5 6.500V13h7V6.5", calendar:"M3 4.500h10V13H3zM3 7.500h10M5.5 2.500v3M10.5 2.500v3", chat:"M3 3.500h10v7H7l-3 2.500v-2.500H3z", card:"M2.5 4.500h11v7h-11zM2.5 7.500h11", search:"M7 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM10 10l3.5 3.5", key:"M6 7a3 3 0 1 0-.1.6M8.7 7.500H14M12 7.500v2.5", star:"M8 2.500l1.7 3.6 3.9.5-2.9 2.7.8 3.900L8 11.300l-3.5 1.9.8-3.9-2.9-2.7 3.9-.5z", photo:"M2.5 3.500h11v9h-11zM2.5 10.500l3-3 2.5 2.5 2-2 3.5 3.5", mail:"M2.5 4h11v8h-11zM2.5 4.500L8 9l5.5-4.5", chart:"M3 13V8M8 13V3M13 13V6", globe:"M8 2.500a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zM2.5 8h11M8 2.500c3 3 3 8 0 11M8 2.500c-3 3-3 8 0 11", people:"M6 7.500a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM1.5 13.500c.5-3 2-4 4.5-4s4 1 4.5 4M10.5 2.800a2.5 2.5 0 0 1 0 4.500M12 9.800c1.3.5 2 1.7 2.5 3.7", doc:"M4 2.500h5.500L12 5v8.500H4zM6 8h4M6 10.500h4", pin:"M8 14s4.5-4.3 4.5-7.500a4.5 4.5 0 0 0-9 0C3.5 9.7 8 14 8 14zM8 8a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z", gear:"M8 5.500a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM8 1.800v2M8 12.200v2M1.8 8h2M12.2 8h2M3.6 3.600L5 5M11 11l1.4 1.400M3.6 12.400L5 11M11 5l1.4-1.4" };
 const TINT = ["li","su","ca","up","ag","te","or","in","ol"];
-let BOOK = [], READ = false, PROJ = [], ACT = null, CAT = null, REDRAW = null, TAB = "", SWITCH = false, KB = null, PAL = null, back = null;
+let BOOK = [], JPICK = null, READ = false, PROJ = [], ACT = null, CAT = null, REDRAW = null, TAB = "", SWITCH = false, KB = null, PAL = null, back = null;
 const tint = (g, book = BOOK) => book[g].icon === "gear" ? "var(--l-pl)" : `var(--l-${TINT[g % TINT.length]})`;
 const gbadge = (g, off, book = BOOK) => `<span class="bdg ${off?"off":""}" style="background:${tint(g, book)}" title="${esc(book[g].title)}${off===undefined?"":off?": no change":": changes"}"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${SHAPE[book[g].icon] || SHAPE.star}"/></svg></span>`;
 const groupsOf = js => [...new Set(js.map(j => j.group).filter(g => g != null))].sort((a, b) => a - b);
 const words = ts => ts.length < 2 ? ts.join("") : ts.length > 3 ? `${ts.slice(0, 3).join(", ")} and ${ts.length - 3} more` : `${ts.slice(0, -1).join(", ")} and ${ts.at(-1)}`;
-const when = d => new Date(d + "T12:00:00").toLocaleDateString("en-US", { month:"short", day:"numeric", year:"numeric" });
+const when = d => { const x = new Date(d + "T12:00:00"); return x.toLocaleDateString("en-US", x.getFullYear() === new Date().getFullYear() ? { month:"short", day:"numeric" } : { month:"short", day:"numeric", year:"numeric" }); };
+// A list reads best in days; a page about one thing keeps the date.
+const ago = d => { const n = Math.round((new Date(new Date().toDateString()) - new Date(d + "T00:00:00")) / 864e5); return n === 0 ? "Today" : n === 1 ? "Yesterday" : when(d); };
+const who = name => `<i class="who" title="${esc(name)}">${esc(String(name || "?").charAt(0).toUpperCase())}</i>`;
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const stat = f => `${f.add?`<i class="ok-t">+${f.add}</i> `:""}${f.del?`<i class="bad-t">−${f.del}</i>`:""}`;
 const COPY = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="8" cy="8" r="2.75"/><path d="M1 8h4.25M10.75 8H15"/></svg>`;
@@ -563,7 +747,7 @@ const CLOSE = `<svg viewBox="0 0 16 16" width="12" height="12" fill="none" strok
 /* theme */
 (function(){ const b = $("theme"), r = document.documentElement;
   const dark = () => r.dataset.theme ? r.dataset.theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-  const label = () => { b.textContent = dark() ? "Light" : "Dark"; };
+  const label = () => { b.innerHTML = `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${dark() ? "M8 5a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM8 1.5v1M8 13.5v1M1.5 8h1M13.5 8h1M3.4 3.4l.7.7M11.9 11.9l.7.7M3.4 12.6l.7-.7M11.9 4.1l.7-.7" : "M13.5 9.5A6 6 0 0 1 6.5 2.5a6 6 0 1 0 7 7z"}"/></svg>`; };
   try { const t = localStorage.getItem("flow-theme"); if (t) r.dataset.theme = t; } catch {}
   label(); b.onclick = () => { r.dataset.theme = dark() ? "light" : "dark"; try { localStorage.setItem("flow-theme", r.dataset.theme); } catch {} label(); };
 })();
@@ -575,12 +759,17 @@ const api = (what, q = "") => `/api/p/${encodeURIComponent(P)}/${what}${q}`;
 const hash = (...p) => "#/" + ["p", encodeURIComponent(P), ...p].join("/");
 const page = html => { $("view").innerHTML = html; };
 const failed = e => { page(`<div class="pj-empty"><b>That did not load</b><p>${esc(e.message)}</p><p><button class="bar-s" id="retry">Try again</button></p></div>`); $("retry").onclick = route; };
-const SECTIONS = [["overview", "Overview", ""], ["journeys", "Journeys", "journeys"], ["changes", "Changes", "changes"], ["people", "People", "people"]];
+const SECTIONS = [["overview", "Overview", "", "M2.5 7 8 2.5 13.5 7v6.5h-11zM6.5 13.5V10h3v3.5"], ["pulls", "Pull requests", "pulls", "M4 5.5v5M12 10.5V7a2 2 0 0 0-2-2H8m1.5-2L7.5 5l2 2M4 2.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM4 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"], ["journeys", "Journeys", "journeys", "M3 13V3M3 3.5h8l-2 2.5 2 2.5H3"], ["changes", "Changes", "changes", "M8 2.5v3M8 10.5v3M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"], ["people", "People", "people", "M6 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM1.5 13.5c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4M10.5 2.8a2.5 2.5 0 0 1 0 4.4M12 9.8c1.5.5 2.5 1.8 2.5 3.7"]];
+const secIcon = d => `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 function nav(tab, here){
   const me = PROJ.find(p => p.name === P);
   $("crumb").innerHTML = !P ? "" : `<span class="bar-sl">/</span><button class="sw" id="sw" aria-expanded="${SWITCH}"><i class="tile" style="--c:${colour(P)}">${esc(P.charAt(0).toUpperCase())}</i><span>${esc(P)}</span><i class="chev"></i></button>${SWITCH ? `<div class="cp-menu" style="top:38px;left:14px;width:280px">${PROJ.map(p => `<a class="${p.name === P ? "on" : ""}" href="#/p/${encodeURIComponent(p.name)}"><b>${esc(p.name)}</b><span>${plural(p.changes, "change")}</span></a>`).join("")}<a href="#/"><b>All projects</b></a></div>` : ""}`;
   if ($("sw")) $("sw").onclick = e => { e.stopPropagation(); SWITCH = !SWITCH; nav(tab, here); };
-  $("sec").innerHTML = P ? SECTIONS.map(([k, label, path]) => `<a href="${hash(...(path ? [path] : []))}" class="${k === tab ? "on" : ""}" ${k === tab ? 'aria-current="page"' : ""}>${label}</a>`).join("") : "";
+  $("sec").innerHTML = P ? SECTIONS.map(([k, label, path, d]) => `<a href="${hash(...(path ? [path] : []))}" class="${k === tab ? "on" : ""}" ${k === tab ? 'aria-current="page"' : ""}>${secIcon(d)}${label}</a>`).join("")
+    : PROJ.map(p => `<a href="#/p/${encodeURIComponent(p.name)}"><i class="tile" style="--c:${colour(p.name)}">${esc(p.name.charAt(0).toUpperCase())}</i>${esc(p.name)}</a>`).join("");
+  $("side-all").hidden = !P || PROJ.length < 2;
+  const label = (SECTIONS.find(x => x[0] === tab) || [])[1];
+  $("trail").innerHTML = !P ? "<span>Projects</span>" : `<a href="${hash()}">${esc(P)}</a><i>/</i>${here ? `<a href="${hash(...(tab === "overview" ? [] : [tab]))}">${label}</a><i>/</i><span>${esc(here)}</span>` : `<span>${label || ""}</span>`}`;
   document.title = !P ? "Flow control" : `${here || (SECTIONS.find(x => x[0] === tab) || [0, "Change"])[1]}, ${P}`;
   TAB = tab; void me;
 }
@@ -588,7 +777,7 @@ function nav(tab, here){
 /* projects */
 async function projects(){
   P = null; REDRAW = null; nav(); if (!PROJ.length) page(skPage());
-  const list = PROJ = await get("/api/projects");
+  const list = PROJ = await get("/api/projects"); nav();
   if (list.length === 1) { location.replace(`#/p/${encodeURIComponent(list[0].name)}`); return; }
   const go = p => `#/p/${encodeURIComponent(p.name)}`, sorted = [...list].sort((a, b) => (b.last ? b.last.date : "").localeCompare(a.last ? a.last.date : ""));
   const feed = list.flatMap(p => (p.recent || []).filter(c => !c.quiet).map(c => ({ p, c }))).sort((a, b) => b.c.date.localeCompare(a.c.date)).slice(0, 8);
@@ -619,10 +808,10 @@ function commitRow(c, i){
 }
 function drawChanges(){
   const days = [];
-  LIST.forEach((c, i) => days.push({ date:c.date, rows:[[c, i]] }));
+  LIST.forEach((c, i) => { const last = days[days.length - 1]; if (last && last.date === c.date) last.rows.push([c, i]); else days.push({ date:c.date, rows:[[c, i]] }); });
   page(`<div class="ex-cards on"><div class="ghl-top"><h2>What changed</h2><span class="ghl-n">${plural(TOTAL, "change")}</span></div>
     ${BOOK.length ? `<div class="ghl-key">${BOOK.map((b, g) => `<span>${gbadge(g)}${esc(b.title)}</span>`).join("")}</div>` : LIST.length ? `<p class="ghl-hint">These letters are single requests, not journeys yet. Run <code>flow journeys</code> to group them into what people come to do.</p>` : ""}
-    ${LIST.length ? `<div class="ghl">${days.map(d => `<section class="ghl-day ${d.rows.every(([c]) => calm(c)) ? "quiet" : ""}"><h3>${esc(when(d.date))}</h3><ol>${d.rows.map(([c, i]) => commitRow(c, i)).join("")}</ol></section>`).join("")}</div>
+    ${LIST.length ? `<div class="ghl">${days.map(d => `<section class="ghl-day ${d.rows.every(([c]) => calm(c)) ? "quiet" : ""}"><h3>${esc(ago(d.date))}</h3><ol>${d.rows.map(([c, i]) => commitRow(c, i)).join("")}</ol></section>`).join("")}</div>
     
     ${MORE ? `<button class="more" id="more">Show older changes</button>` : ""}
     <details class="key hfoot"${READ ? " open" : ""}><summary>How to read this</summary><p>Each row is one saved change. A colored icon shows which journey the change is about. Open a row to see what changed, then Show details for everything behind it.</p></details>` : `<div class="pj-empty"><b>Nothing saved yet</b><p>This project has no commits.</p></div>`}</div>`);
@@ -813,7 +1002,7 @@ async function route(){
     const name = decodeURIComponent(parts[1]);
     if (name !== P) { P = name; ACT = null; CAT = null; KB = null; $("live").innerHTML = ""; LIST = []; MORE = true; SUMM = {}; OPEN = new Set(); D = null; }
     SWITCH = false;
-    const go = { journeys, change:() => change(parts[3]), journey:() => journey(+parts[3]), request:() => request(decodeURIComponent(parts[3] || "")), changes, explore:() => explore(parts[3]), people };
+    const go = { journeys, pulls, pull:() => pull(+parts[3]), change:() => change(parts[3]), journey:() => journey(+parts[3]), request:() => request(decodeURIComponent(parts[3] || "")), changes, explore:() => explore(parts[3]), people };
     await (go[parts[2]] || overview)();
   } catch (e) { failed(e); }
 }
@@ -827,14 +1016,14 @@ const noted = c => SUMM[c.id] && !c.quiet ? SUMM[c.id].focus : [];
 const touches = (c, g) => noted(c).includes(g);
 const readNote = () => { const n = read().length; return n < LIST.length ? `Reading ${n} of ${LIST.length} changes` : `From the latest ${plural(n, "change")}`; };
 const icons = gs => `<span class="ic">${gs.map(g => gbadge(g)).join("")}</span>`;
-const feedRow = c => `<li><a href="${hash("change", c.id)}"><b class="${c.quiet ? "q" : ""}">${esc(c.title)}</b>${BOOK.length ? icons(noted(c)) : ""}<small>${esc(c.author.split(" ")[0])}</small><small>${esc(when(c.date))}</small></a></li>`;
+const feedRow = c => `<li><a href="${hash("change", c.id)}"><b class="${c.quiet ? "q" : ""}">${esc(c.title)}</b>${BOOK.length ? icons(noted(c)) : ""}${who(c.author)}<small class="dt">${esc(ago(c.date))}</small></a></li>`;
 const monday = d => { const x = new Date(d + "T12:00:00"); x.setDate(x.getDate() - (x.getDay() + 6) % 7); return x; };
 const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 function weeks(dates, n){ const end = monday(iso(new Date())), out = [];
   for (let i = n - 1; i >= 0; i--) { const d = new Date(end); d.setDate(d.getDate() - i * 7); out.push({ at:iso(d), n:0 }); }
   const at = Object.fromEntries(out.map(w => [w.at, w])); for (const d of dates) { const w = at[iso(monday(d))]; if (w) w.n++; } return out; }
 function chart(rows){ const top = Math.max(1, ...rows.map(w => w.n)), day = d => new Date(d + "T12:00:00").toLocaleDateString("en-US", { month:"short", day:"numeric" });
-  return `<div class="chart" role="img" aria-label="${rows.reduce((n, w) => n + w.n, 0)} changes over ${rows.length} weeks">${rows.map(w => `<button data-tip="Week of ${day(w.at)}: ${plural(w.n, "change")}" aria-label="Week of ${day(w.at)}: ${plural(w.n, "change")}"><i style="height:${w.n ? Math.max(3, w.n / top * 100) : 0}%"></i></button>`).join("")}</div><div class="axis"><span>${day(rows[0].at)}</span><span>This week</span></div>`; }
+  return `<div class="chart" role="img" aria-label="${rows.reduce((n, w) => n + w.n, 0)} changes over ${rows.length} weeks">${rows.map(w => `<button data-tip="Week of ${day(w.at)}: ${plural(w.n, "change")}" aria-label="Week of ${day(w.at)}: ${plural(w.n, "change")}"><i class="${w.n ? "" : "none"}" style="height:${w.n ? Math.max(3, w.n / top * 100) : 0}%"></i></button>`).join("")}</div><div class="axis"><span>${day(rows[0].at)}</span><span>This week</span></div>`; }
 const spark = (rows, c) => { const top = Math.max(1, ...rows.map(w => w.n)); return `<div class="spark" style="--c:${c}" aria-hidden="true">${rows.map(w => `<i style="height:${w.n ? Math.max(8, w.n / top * 100) : 0}%"></i>`).join("")}</div>`; };
 const figure = (n, label) => `<div class="stat"><b>${n}</b><span>${label}</span></div>`;
 const kinds = { page:"Pages", action:"Actions", route:"Routes", metadata:"Search engines", middleware:"Middleware" };
@@ -848,10 +1037,10 @@ async function overview(){
 }
 function drawOverview(){
   const oldest = ACT.length ? ACT[ACT.length - 1][0] : iso(new Date()), span = Math.ceil((monday(iso(new Date())) - monday(oldest)) / 6048e5) + 1, shown = Math.max(8, Math.min(26, span));
-  const rows = weeks(ACT.map(a => a[0]), shown), people = new Set(ACT.map(a => a[1])).size, recent = rows.slice(-4).reduce((n, w) => n + w.n, 0);
+  const rows = weeks(ACT.map(a => a[0]), shown), people = new Set(ACT.map(a => a[1])).size, thisWeek = rows[rows.length - 1].n;
   const counts = BOOK.map((b, g) => ({ g, n:read().filter(c => touches(c, g)).length })).sort((a, b) => b.n - a.n), top = Math.max(1, ...counts.map(x => x.n));
-  page(`<div class="ex-cards on"><div class="page-h"><h2>Overview</h2><span class="ghl-n">${LIST[0] ? `Last change ${esc(when(LIST[0].date))}` : ""}</span></div>
-    <div class="stats">${figure(TOTAL, "Changes")}${figure(recent, "In the last 4 weeks")}${figure(BOOK.length || (CAT ? CAT.length : "…"), BOOK.length ? "Journeys" : "Requests")}${figure(people, "People")}</div>
+  page(`<div class="ex-cards on"><div class="page-h"><h2>${esc(P)}</h2><span class="ghl-n">${LIST[0] ? `Last change ${esc(ago(LIST[0].date).toLowerCase() === "today" || ago(LIST[0].date) === "Yesterday" ? ago(LIST[0].date).toLowerCase() : when(LIST[0].date))}` : ""}</span></div>
+    <div class="stats">${figure(TOTAL, "Changes")}${figure(thisWeek, "This week")}${figure(BOOK.length || (CAT ? CAT.length : "…"), BOOK.length ? "Journeys" : "Requests")}${figure(people, "People")}</div>
     <div class="cols"><div><div class="pn"><div class="pn-h"><b>Activity</b><small>Last ${shown} weeks</small></div><div class="pn-b">${chart(rows)}</div></div>
       <div class="pn"><div class="pn-h"><b>Latest changes</b><a href="${hash("changes")}">All changes</a></div><ul class="fd">${LIST.slice(0, 6).map(feedRow).join("")}</ul></div></div>
       <div class="pn"><div class="pn-h"><b>Most changed journeys</b></div>${BOOK.length ? `<div class="pn-b"><ul class="rank">${counts.map(({ g, n }) => `<li><a href="${hash("journey", g)}">${gbadge(g)}<span>${esc(BOOK[g].title)}</span><small>${n}</small><u style="--c:${tint(g)}"><i style="width:${n / top * 100}%"></i></u></a></li>`).join("")}</ul></div><div class="pn-e" style="padding-top:0">${readNote()}</div>` : NOBOOK}</div></div></div>`);
@@ -870,17 +1059,34 @@ function drawJourneys(){
     ${loose.length ? `<div class="pn" style="margin-top:12px"><div class="pn-h"><b>${BOOK.length ? "Not in a journey yet" : "Requests"}</b><small>${plural(loose.length, "request")}</small></div>${reqList(loose)}</div>` : ""}</div>`);
 }
 async function journey(g){
-  nav("journeys"); page(skPage()); await loadAll(); await loadCat(); if (!BOOK[g]) throw new Error("This project has no such journey."); REDRAW = () => drawJourney(g); drawJourney(g); fill();
+  JPICK = null; nav("journeys"); page(skPage()); await loadAll(); await loadCat(); if (!BOOK[g]) throw new Error("This project has no such journey."); REDRAW = () => drawJourney(g); drawJourney(g); fill();
+}
+// The journey runs left to right. Pick a change and it lights up the steps it reached.
+function walkView(g){
+  const route = BOOK[g].stops, parts = c => (SUMM[c.id].parts || []).filter(p => p.groups.includes(g));
+  const list = read().filter(c => !c.quiet && (touches(c, g) || parts(c).length)), most = 30, on = list.find(c => c.id === JPICK);
+  const { notes, rest } = on ? placed(g, parts(on)) : { notes:route.map(() => []), rest:[] }, hit = notes.filter(x => x.length).length;
+  const stop = (t, i) => `<li class="${on ? (notes[i].length ? "hit" : "dim") : ""}"><i></i><b>${esc(t.say)}</b>${notes[i].map(fromTo).join("")}</li>`;
+  const say = !on ? "Pick a change to see which steps it affects." : hit ? `${esc(on.title)} ${hit === 1 ? "This step changed." : `${hit} steps changed.`}` : `${esc(on.title)} No step changes for people here. This journey only runs shared code that changed.`;
+  const row = c => `<li class="${c === on ? "on" : ""}"><button class="jw" data-c="${esc(c.id)}" aria-pressed="${c === on}"><b>${esc(c.title)}</b>${BOOK.length ? icons(noted(c)) : ""}<small>${esc(c.author.split(" ")[0])}</small><small>${esc(when(c.date))}</small></button>${c === on ? `<a class="bar-s" href="${hash("change", c.id)}">Show details</a>` : ""}</li>`;
+  return `<section class="pn jw-p" style="--c:${tint(g)};--n:${route.length}"><div class="pn-h"><b>How it goes</b><small>${plural(route.length, "step")}</small></div>
+      <div class="jw-w"><ol class="jw-s">${route.map(stop).join("")}</ol></div><p class="jw-say">${say}</p>${rest.length ? `<p class="jw-say" style="padding-top:0">Also: ${esc(rest.map(sentence).join(" "))}</p>` : ""}</section>
+    <div class="pn"><div class="pn-h"><b>Changes to this journey</b><small>${list.length > most ? `Latest ${most} of ${list.length}` : readNote()}</small></div>${list.length ? `<ul class="fd jw-l">${list.slice(0, most).map(row).join("")}</ul>` : `<div class="pn-e">No change has reached this journey yet.</div>`}</div>`;
 }
 function drawJourney(g){
-  const mine = read().filter(c => touches(c, g)), rs = CAT.filter(r => r.group === g);
+  const mine = read().filter(c => touches(c, g)), rs = CAT.filter(r => r.group === g), route = BOOK[g].stops || [];
   document.title = `${BOOK[g].title}, ${P}`;
   page(`<div class="ex-cards on"><div class="page-h">${gbadge(g)}<h2>${esc(BOOK[g].title)}</h2><span class="ghl-n"><a href="${hash("journeys")}" style="color:inherit">All journeys</a></span></div>
     <div class="stats">${figure(rs.length, "Requests")}${figure(mine.length, "Changes")}${figure(rs.reduce((n, r) => n + r.steps, 0), "Steps run")}${figure(new Set(mine.map(c => c.author)).size, "People")}</div>
-    ${(BOOK[g].stops || []).length ? `<div class="pn"><div class="pn-h"><b>How it goes</b><small>${plural(BOOK[g].stops.length, "step")}</small></div><ol class="cv-stops" style="--c:${tint(g)}">${BOOK[g].stops.map(t => `<li class="hit"><b style="font-weight:500">${esc(t.say)}</b></li>`).join("")}</ol></div>` : ""}
-    <div class="cols"><div class="pn"><div class="pn-h"><b>History</b><small>${readNote()}</small></div>${mine.length ? `<ul class="fd">${mine.slice(0, 30).map(feedRow).join("")}</ul>` : `<div class="pn-e">No change is about this journey yet.</div>`}</div>
-      <div class="pn"><div class="pn-h"><b>What it runs</b></div>${reqList(rs)}</div></div></div>`);
+    ${route.length ? walkView(g) : `<div class="pn"><div class="pn-h"><b>History</b><small>${readNote()}</small></div>${mine.length ? `<ul class="fd">${mine.slice(0, 30).map(feedRow).join("")}</ul>` : `<div class="pn-e">No change is about this journey yet.</div>`}</div>`}
+    <div class="pn"><div class="pn-h"><b>What it runs</b><small>${plural(rs.length, "request")}</small></div>${reqList(rs)}</div></div>`);
+  document.querySelectorAll("[data-c]").forEach(b => b.onclick = () => { JPICK = JPICK === b.dataset.c ? null : b.dataset.c; const y = scrollY, id = b.dataset.c; drawJourney(g); scrollTo(0, y); const n = document.querySelector(`[data-c="${id}"]`); if (n) n.focus({ preventScroll:true }); });
 }
+
+// Each clause of a change at the stop of a journey where a person meets it.
+function placed(g, parts){ const route = BOOK[g].stops || [], notes = route.map(() => []), rest = [];
+  for (const p of parts) { const named = route.findIndex(t => t.say === p.at), at = named >= 0 ? named : route.findIndex(t => t.requests.some(u => p.requests.includes(u))); (at < 0 ? rest : notes[at]).push(p); }
+  return { route, notes, rest }; }
 
 /* one change, in plain words */
 let CUR = null;
@@ -893,7 +1099,12 @@ async function change(id){
   REDRAW = null; drawChange(c); wants++;
 }
 // A clause runs on into the next one, so a line of its own needs its own sentence.
+// What a change did, from how it was to how it is. Without a before, it only says how it is now.
+const fromTo = p => { const to = p.after || sentence(p); return `<div class="ft">${p.before ? `<div class="ft-a"><em>From</em><span>${esc(p.before)}</span></div>` : ""}<div class="ft-b"><em>${p.before ? "To" : "Now"}</em><span>${esc(to)}</span></div></div>`; };
 const sentence = p => { if (p.line) return p.line; const x = p.say.trim().replace(/[,;:]$/, ""); return x.charAt(0).toUpperCase() + x.slice(1); };
+let COMPACT = false;
+try { COMPACT = localStorage.getItem("flow-compact") === "1"; } catch {}
+function setCompact(on){ COMPACT = on; try { localStorage.setItem("flow-compact", on ? "1" : ""); } catch {} if ($("pr")) { const y = scrollY; REDRAW(); scrollTo(0, y); return; } const c = LIST.find(x => x.id === CUR); if (c && $("cv")) { const y = scrollY; drawChange(c); scrollTo(0, y); } }
 function drawChange(c){
   const s = SUMM[c.id], gs = groupsOf(s.journeys), i = LIST.indexOf(c), loose = s.journeys.filter(j => j.group == null);
   const stops = g => s.parts.filter(p => p.groups.includes(g)), lead = c.quiet ? [] : gs.filter(g => stops(g).length).sort((a, b) => stops(b).length - stops(a).length || a - b);
@@ -901,17 +1112,16 @@ function drawChange(c){
   const step = (k, label) => LIST[k] ? `<a class="bar-s" href="${hash("change", LIST[k].id)}" title="${esc(LIST[k].title)}">${label}</a>` : `<span class="bar-s off">${label}</span>`;
   const story = !c.quiet && s.parts.length ? s.parts.map(p => esc(p.say)).join(" ") : c.quiet ? (gs.length ? "Nobody using the product will notice this. It changes how things work underneath, not what people see." : "Nobody using the product will notice this. No journey runs the code it changed.") : esc(s.line) + ".";
   // The whole journey, with what changed written at the stop it happens.
-  const walked = g => { const route = BOOK[g].stops || [], notes = route.map(() => []), rest = [];
-    for (const p of stops(g)) { const named = route.findIndex(t => t.say === p.at), at = named >= 0 ? named : route.findIndex(t => t.requests.some(u => p.requests.includes(u))); (at < 0 ? rest : notes[at]).push(p); }
-    return { route, notes, rest }; };
-  const stopRow = (say, ps) => `<li class="${ps.length ? "hit" : ""}"><b>${esc(say)}</b>${ps.length ? `<span class="cv-tag">Changed</span>${ps.map(p => `<p>${esc(sentence(p))}</p>`).join("")}` : ""}</li>`;
+  const walked = g => placed(g, stops(g));
+  const stopRow = (say, ps) => `<li class="${ps.length ? "hit" : ""}"><b>${esc(say)}</b>${ps.length ? `<span class="cv-tag">Changed</span>${ps.map(fromTo).join("")}` : ""}</li>`;
   const card = g => { const { route, notes, rest } = walked(g), n = notes.filter(x => x.length).length;
-    return `<section class="pn cv-j"><a class="cv-jh" href="${hash("journey", g)}">${gbadge(g)}<b>${esc(BOOK[g].title)}</b>${route.length && n ? `<small>${n} of ${plural(route.length, "step")} changed</small>` : ""}<i class="chev"></i></a><ol class="cv-stops" style="--c:${tint(g)}">${route.length ? route.map((t, i) => stopRow(t.say, notes[i])).join("") : stops(g).map(p => `<li class="hit"><b>${esc(sentence(p))}</b></li>`).join("")}</ol>${route.length && rest.length ? `<div class="cv-rest"><h4>Also changed here</h4><ul>${rest.map(p => `<li>${esc(sentence(p))}</li>`).join("")}</ul></div>` : ""}</section>`; };
+    return `<section class="pn cv-j"><a class="cv-jh" href="${hash("journey", g)}">${gbadge(g)}<b>${esc(BOOK[g].title)}</b>${route.length && n ? `<small>${n} of ${plural(route.length, "step")} changed</small>` : ""}<i class="chev"></i></a><ol class="cv-stops" style="--c:${tint(g)}">${route.length ? route.map((t, i) => COMPACT && !notes[i].length ? "" : stopRow(t.say, notes[i])).join("") : stops(g).map(p => `<li class="hit">${fromTo(p)}</li>`).join("")}</ol>${route.length && rest.length ? `<div class="cv-rest"><h4>Also changed here</h4>${rest.map(fromTo).join("")}</div>` : ""}</section>`; };
   const line = (g, note) => `<li><a href="${hash("journey", g)}">${gbadge(g)}<span>${esc(BOOK[g].title)}</span><small>${note}</small></a></li>`;
   page(`<div class="ex-cards on" id="cv"><div class="cv-top"><a class="bar-c" href="${hash("changes")}">Changes</a><span class="bar-pos">${i + 1} of ${TOTAL}</span>${step(i - 1, "Newer")}${step(i + 1, "Older")}<a class="bar-s" href="${hash("explore", c.id)}">Advanced view</a></div>
     <header class="cv-h"><h2>${esc(c.title)}</h2><p>${esc(c.author)}, ${esc(when(c.date))}</p></header>
-    <div class="cols"><div><section class="pn"><div class="pn-h">What changes for people</div><p class="cv-say">${story}</p></section>${lead.length ? `<h3 class="cv-sub">${lead.length === 1 ? "The journey this changes" : "The journeys this changes"}</h3>${lead.map(card).join("")}` : ""}</div>
+    <div class="cols"><div><section class="pn"><div class="pn-h">What changes for people</div><p class="cv-say">${story}</p></section>${lead.length ? `<div class="cv-subr"><h3 class="cv-sub">${lead.length === 1 ? "The journey this changes" : "The journeys this changes"}</h3><div class="seg" role="group" aria-label="How much of the journey to show"><button data-view="" aria-pressed="${!COMPACT}">Full journey</button><button data-view="1" aria-pressed="${COMPACT}">Compact</button></div></div>${lead.map(card).join("")}` : ""}</div>
       <div>${BOOK.length ? `<section class="pn"><div class="pn-h"><b>Journeys</b></div><ul class="cv-list">${lead.map(g => line(g, "Changed")).join("")}${also.map(g => line(g, "Shared code")).join("")}${still.map(g => line(g, "No change").replace("<li>", '<li class="off">')).join("")}</ul>${also.length ? `<p class="cv-note">Shared code means the journey runs something that changed, but what people see there stays the same.</p>` : ""}</section>` : s.journeys.length ? `<section class="pn"><div class="pn-h"><b>Reaches</b><small>${plural(s.journeys.length, "request")}</small></div><div class="pn-e">Run <code>flow journeys</code> to see this as journeys.</div></section>` : ""}${loose.length && BOOK.length ? `<section class="pn"><div class="pn-e">${plural(loose.length, "request")} not in a journey yet.</div></section>` : ""}</div></div></div>`);
+  document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => setCompact(!!b.dataset.view));
 }
 
 /* one request */
@@ -927,6 +1137,56 @@ function drawRequest(r){
     ${r.group != null && BOOK[r.group] ? `<p class="page-sub">Part of <a href="${hash("journey", r.group)}">${esc(BOOK[r.group].title)}</a></p>` : ""}
     <div class="cols"><div class="pn"><div class="pn-h"><b>What runs</b><small>${plural(r.steps.length, "step")}</small></div><ol class="stp" style="--c:${c}">${r.steps.map(s => `<li style="--d:${Math.min(s.depth, 6)}"><span>${esc(s.name)}</span><small title="${esc(s.file)}">${esc(s.file.split("/").pop())}</small></li>`).join("")}</ol></div>
       <div>${box("Changes this data", r.writes)}${box("Reads this data", r.reads)}${box("Calls outside", r.outside)}<div class="pn"><div class="pn-h"><b>History</b><small>${readNote()}</small></div>${list.length ? `<ul class="fd">${list.slice(0, 12).map(feedRow).join("")}</ul>` : `<div class="pn-e">No recent change touched this.</div>`}</div></div></div></div>`);
+}
+
+/* pull requests */
+// What the author wrote, without the markup GitHub would have drawn or the line a tool signed it with.
+const prose = s => String(s || "").replace(/^.*Generated with \[Claude Code\].*$/gm, "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/^#+\s*/gm, "").replace(/\*\*|__/g, "").replace(/^\s*[-*]\s+/gm, "• ").trim();
+const PR_STATE = { open:"Open", draft:"Draft", merged:"Merged", closed:"Closed" };
+const prTag = s => `<span class="pr-tag ${s}">${PR_STATE[s]}</span>`;
+let PR_SHOW = null;
+async function pulls(){
+  nav("pulls"); page(skPage()); const mine = wants, d = await get(api("pulls")); if (mine !== wants) return;
+  REDRAW = () => drawPulls(d); drawPulls(d);
+}
+function drawPulls(d){
+  if (!d.linked) return page(`<div class="ex-cards on"><div class="page-h"><h2>Pull requests</h2></div><div class="pj-empty"><b>This project is not linked to GitHub</b><p>Pull requests come from GitHub. Give this project a GitHub remote and sign in with <code>gh auth login</code>, then reload.</p></div></div>`);
+  const count = k => d.pulls.filter(p => k === "open" ? p.state === "open" || p.state === "draft" : p.state === k).length;
+  const show = PR_SHOW || (count("open") ? "open" : "merged"), rows = show === "all" ? d.pulls : d.pulls.filter(p => show === "open" ? p.state === "open" || p.state === "draft" : p.state === show);
+  const tabs = [["open", "Open"], ["merged", "Merged"], ["closed", "Closed"]].map(([k, label]) => `<button data-pr="${k}" aria-pressed="${k === show}" class="${k === show ? "on" : ""}">${label} ${count(k)}</button>`).join("");
+  page(`<div class="ex-cards on"><div class="page-h"><h2>Pull requests</h2><div class="seg" role="group" aria-label="Which pull requests to show">${tabs}</div></div>
+    ${rows.length ? `<ol class="pr-l pn">${rows.map(p => `<li><a href="${hash("pull", p.number)}"><div class="pr-m"><b>${esc(p.title)}</b><span>#${p.number} by ${esc(p.author || "someone")}, ${esc(ago(p.ended || p.opened))}</span></div>${prTag(p.state)}<i class="chev"></i></a></li>`).join("")}</ol>` : `<div class="pj-empty"><b>No ${show} pull requests</b><p>New pull requests on GitHub show up here.</p></div>`}</div>`);
+  document.querySelectorAll("[data-pr]").forEach(b => b.onclick = () => { PR_SHOW = b.dataset.pr; drawPulls(d); });
+}
+async function pull(n){
+  nav("pulls", `#${n}`); page(skPage()); await ensureList(); const mine = wants, d = await get(api(`pull/${n}`)); if (mine !== wants) return;
+  nav("pulls", d.pull.title); REDRAW = () => drawPull(d); drawPull(d);
+  const ids = d.commits.map(c => c.id).filter(id => !SUMM[id]);
+  for (let i = 0; i < ids.length && mine === wants; i += 4) {
+    try { Object.assign(SUMM, await get(api("summaries", `?ids=${ids.slice(i, i + 4).join(",")}`))); }
+    catch { for (const id of ids.slice(i, i + 4)) SUMM[id] = { journeys:[], focus:[], parts:[], line:"Could not read this change", untouched:0 }; }
+    if (mine === wants) { const y = scrollY; drawPull(d); scrollTo(0, y); }
+  }
+}
+function drawPull(d){
+  const p = d.pull, done = d.commits.filter(c => SUMM[c.id]), waiting = done.length < d.commits.length, loud = done.filter(c => !c.quiet);
+  const parts = loud.flatMap(c => SUMM[c.id].parts || []), stops = g => parts.filter(x => x.groups.includes(g));
+  const lead = BOOK.map((b, g) => g).filter(g => stops(g).length).sort((a, b) => stops(b).length - stops(a).length || a - b);
+  const touched = BOOK.map((b, g) => g).filter(g => !lead.includes(g) && loud.some(c => touches(c, g)));
+  const card = g => { const { route, notes, rest } = placed(g, stops(g)), n = notes.filter(x => x.length).length;
+    const row = (say, ps) => `<li class="${ps.length ? "hit" : ""}"><b>${esc(say)}</b>${ps.length ? `<span class="cv-tag">Changed</span>${ps.map(fromTo).join("")}` : ""}</li>`;
+    const body = route.length ? route.map((t, i) => COMPACT && !notes[i].length ? "" : row(t.say, notes[i])).join("") : stops(g).map(x => `<li class="hit">${fromTo(x)}</li>`).join("");
+    return `<section class="pn cv-j"><a class="cv-jh" href="${hash("journey", g)}">${gbadge(g)}<b>${esc(BOOK[g].title)}</b>${route.length && n ? `<small>${n} of ${plural(route.length, "step")} changed</small>` : ""}<i class="chev"></i></a><ol class="cv-stops" style="--c:${tint(g)}">${body}</ol>${rest.length ? `<div class="cv-rest">${rest.map(fromTo).join("")}</div>` : ""}</section>`; };
+  const none = waiting ? `Reading ${done.length} of ${plural(d.commits.length, "change")}.` : !d.commits.length ? "None of this pull request's changes are on this machine yet." : loud.length ? "No journey has a written change here yet. Run <code>flow titles</code> to write them." : "Nobody using the product will notice this.";
+  const short = d.missing ? `<p class="pr-note">${plural(d.missing, "change")} of ${d.total} ${d.missing === 1 ? "is" : "are"} not on this machine, so ${d.missing === 1 ? "it is" : "they are"} left out. Run <code>git fetch</code> in the project to read ${d.missing === 1 ? "it" : "them"}.</p>` : d.cut ? `<p class="pr-note">Showing the newest ${d.commits.length} of ${d.total} changes.</p>` : "";
+  const line = (g, note) => `<li><a href="${hash("journey", g)}">${gbadge(g)}<span>${esc(BOOK[g].title)}</span><small>${note}</small></a></li>`;
+  page(`<div class="ex-cards on" id="pr"><div class="cv-top"><a class="bar-c" href="${hash("pulls")}">Pull requests</a><a class="bar-s" style="margin-left:auto" href="${esc(p.url)}" target="_blank" rel="noreferrer">View on GitHub</a></div>
+    <header class="cv-h"><h2>${esc(p.title)}</h2><p>${prTag(p.state)} #${p.number} by ${esc(p.author || "someone")}, ${esc(when(p.opened))}. ${esc(p.head)} into ${esc(p.base)}</p></header>${short}
+    <div class="cols"><div>
+      ${lead.length ? `<div class="cv-subr"><h3 class="cv-sub">${lead.length === 1 ? "The journey this changes" : "The journeys this changes"}</h3><div class="seg" role="group" aria-label="How much of the journey to show"><button data-view="" aria-pressed="${!COMPACT}" class="${COMPACT ? "" : "on"}">Full journey</button><button data-view="1" aria-pressed="${COMPACT}" class="${COMPACT ? "on" : ""}">Compact</button></div></div>${lead.map(card).join("")}` : `<section class="pn"><div class="pn-h">What changes for people</div><p class="cv-say">${none}</p></section>`}${prose(p.body) ? `<section class="pn"><div class="pn-h">What the author says</div><p class="cv-say pr-body">${esc(prose(p.body))}</p></section>` : ""}</div>
+      <div>${BOOK.length && (lead.length || touched.length) ? `<section class="pn"><div class="pn-h"><b>Journeys</b></div><ul class="cv-list">${lead.map(g => line(g, "Changed")).join("")}${touched.map(g => line(g, "Shared code")).join("")}</ul></section>` : ""}
+        <section class="pn"><div class="pn-h"><b>Changes</b><small>${plural(d.commits.length, "change")}</small></div>${d.commits.length ? `<ul class="fd">${d.commits.map(c => `<li><a href="${hash("change", c.id)}"><b class="${c.quiet ? "q" : ""}">${esc(c.title)}</b><small>${esc(when(c.date))}</small></a></li>`).join("")}</ul>` : `<div class="pn-e">Nothing to read here yet.</div>`}</section></div></div></div>`);
+  document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => setCompact(!!b.dataset.view));
 }
 
 /* people */
@@ -987,7 +1247,7 @@ function palette(){
 function keySheet(){
   back = document.activeElement; PAL = { sheet:true };
   const row = (t, ...k) => `<dt>${t}</dt><dd>${k.map(x => `<kbd>${x}</kbd>`).join("")}</dd>`;
-  over(`<div class="ov" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts"><div class="ov-box" style="max-width:420px"><div class="keys"><h3>Keyboard shortcuts</h3><dl>${row("Search", "⌘", "K")}${row("Go to a section", "1", "2", "3", "4")}${row("Move through changes", "J", "K")}${row("Open a change", "↵")}${row("Show its details", "D")}${row("Simple or advanced view", "A")}${row("Newer or older change", "[", "]")}${row("Back to changes", "B")}${row("Switch light or dark", "T")}</dl></div></div></div>`);
+  over(`<div class="ov" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts"><div class="ov-box" style="max-width:420px"><div class="keys"><h3>Keyboard shortcuts</h3><dl>${row("Search", "⌘", "K")}${row("Go to a section", "1", "2", "3", "4")}${row("Move through changes", "J", "K")}${row("Open a change", "↵")}${row("Show its details", "D")}${row("Simple or advanced view", "A")}${row("Full or compact journey", "C")}${row("Newer or older change", "[", "]")}${row("Back to changes", "B")}${row("Switch light or dark", "T")}</dl></div></div></div>`);
 }
 
 /* keyboard */
@@ -1007,6 +1267,7 @@ addEventListener("keydown", e => {
   if (list && KB && e.key === "Enter" && !e.target.closest("a,button")) { e.preventDefault(); if (!OPEN.delete(KB)) OPEN.add(KB); return drawChanges(); }
   if (list && KB && k === "d") { location.hash = hash("change", KB); return; }
   const plain = !!$("cv");
+  if (plain && k === "c") return setCompact(!COMPACT);
   if (plain || $("ex-bar")) { const at = LIST.findIndex(c => c.id === (plain ? CUR : D && D.commit.id)), to = LIST[at + (e.key === "[" ? -1 : e.key === "]" ? 1 : 0)];
     if ((e.key === "[" || e.key === "]") && to) location.hash = hash(plain ? "change" : "explore", to.id);
     if (k === "a") location.hash = hash(plain ? "explore" : "change", plain ? CUR : D.commit.id);
@@ -1026,7 +1287,13 @@ async function watch(){
 setInterval(watch, 20000);
 
 addEventListener("hashchange", () => { const v = $("view"); route(); scrollTo(0, 0); v.classList.add("enter"); setTimeout(() => v.classList.remove("enter"), 240); });
-(async () => { try { PROJ = await get("/api/projects"); } catch {} route(); })();
+(async () => {
+  const me = await get("/api/me");
+  if (me.required && !me.user) return signedOut();
+  if (me.user) signedIn(me.user);
+  if (location.search.includes("signin=")) history.replaceState(null, "", "/" + location.hash);
+  try { PROJ = await get("/api/projects"); } catch {} route();
+})();
 </script>
 </body>
 </html>

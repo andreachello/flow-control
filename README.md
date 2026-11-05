@@ -252,11 +252,11 @@ A page, an action and a route are each one request. A journey is what those requ
 
 It also writes each journey out as its stops, what a person does from start to finish, so a change can be shown at the place in the journey it reaches. Running it again only fills in what is missing, placing new requests in the journeys you already have, so titles and colours stay put. A request stays listed after its code is gone, so old changes still read as the journey they belonged to. Nothing asks Claude when a page loads, and the lifter never reads the file: a journey only groups what the lift found. Until the file exists, `flow serve` shows single requests and says so.
 
-`flow titles` does the same for the list of changes: one short sentence per commit in `flow.titles.json`, or "Nothing changes for people." Edit any of them by hand. A commit without a title shows its message.
+`flow titles` does the same for the list of changes: one short sentence per commit in `flow.titles.json`, or "Nothing changes for people." It reads each diff, so every point can say how things were and how they are now, at the step of the journey where a person meets it. Edit any of them by hand. A commit without a title shows its message.
 
 ## In the browser
 
-`flow serve` shows your projects on `http://localhost:4000`: every project with recent activity across them, then for each one an overview, its journeys, its changes and the people behind them. A journey opens to its history and the requests it runs, and a request to the steps it runs and the data it touches. A change opens in plain words: what is different for people and which journeys it reaches. Its advanced view has the files and diff, step by step. `⌘K` searches everything, and `?` lists the keyboard shortcuts.
+`flow serve` shows your projects on `http://localhost:4000`: every project with recent activity across them, then for each one an overview, its pull requests, its journeys, its changes and the people behind them. A journey opens to its history and the requests it runs, and a request to the steps it runs and the data it touches. A change opens in plain words: what is different for people and which journeys it reaches. Its advanced view has the files and diff, step by step. `⌘K` searches everything, and `?` lists the keyboard shortcuts.
 
 ```
 flow serve                              # the repository you are in
@@ -265,6 +265,21 @@ flow serve --port 4100
 ```
 
 It only reads: everything comes from git and from lifts in memory, nothing is written to a repo, and it answers only on this machine. A change is shown as `git diff` shows it, so renames are detected the way git detects them, while journeys come from the lifts. The list comes from git at once, and what each change reached follows a moment later, because working that out takes two lifts. Next.js routes are only found at the top of a repo, so a monorepo's `apps/web/app/` shows server actions but not its pages and routes.
+
+Pull requests come from the `gh` command, so your own GitHub sign-in decides what you can see, and a project off GitHub just says so. One opens to the journeys it changes, step by step, from the changes it holds. `flow serve` never fetches: a change that is not on this machine is counted and left out until you run `git fetch`.
+
+### Sign in with GitHub
+
+`flow serve` is open to this machine unless you turn sign-in on. To turn it on, create an OAuth app at [github.com/settings/developers](https://github.com/settings/developers) with the callback `http://localhost:4000/auth/github/callback`, then start the server with its keys and the usernames who may sign in:
+
+```bash
+export FLOW_GITHUB_CLIENT_ID=...
+export FLOW_GITHUB_CLIENT_SECRET=...
+export FLOW_ALLOWED_USERS=your-username,a-teammate
+flow serve
+```
+
+Flow asks GitHub for no permissions, reads the public profile once and drops GitHub's token. Sessions last a week and end when the server restarts. The server still only listens on this machine: signing in does not make it safe to expose on its own.
 
 ## Permanent ids
 

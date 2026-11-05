@@ -84,7 +84,7 @@ fn a_title_must_fit_a_row_and_a_clause_must_name_a_step_that_changed() {
     let known: Known = [("abc123aaaa", "a.ts#pay"), ("def456bbbb", "b.ts#x"), ("aaa000cccc", "c.ts#y")].iter().map(|(k, s)| (k.to_string(), [s.to_string()].into_iter().collect())).collect();
     let answer = json!({"titles": [
         {"id": "abc123", "title": "Pay yearly for the price of ten months.", "parts": [
-            {"say": "People can pay yearly,", "line": "People can now pay once a year.", "at": "Pick a plan.", "step": "a.ts#pay"},
+            {"say": "People can pay yearly,", "line": "People can now pay once a year.", "at": "Pick a plan.", "before": "People paid monthly.", "after": "People can pay yearly.", "step": "a.ts#pay"},
             {"say": "and something imagined.", "step": "a.ts#never"},
         ]},
         {"id": "fff999", "title": "A change that was never saved.", "parts": []},
@@ -97,6 +97,7 @@ fn a_title_must_fit_a_row_and_a_clause_must_name_a_step_that_changed() {
     assert_eq!(paid.parts[0].say, "People can pay yearly,");
     assert_eq!(paid.parts[0].line, "People can now pay once a year.");
     assert_eq!(paid.parts[0].at, "Pick a plan.");
+    assert_eq!((paid.parts[0].before.as_str(), paid.parts[0].after.as_str()), ("People paid monthly.", "People can pay yearly."));
     assert!(t["aaa000cccc"].parts.is_empty(), "a change nobody notices has nothing to say");
     assert_eq!(t.len(), 2);
 }

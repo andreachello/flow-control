@@ -8,6 +8,7 @@ use crate::journeys::{self, Journeys, Places};
 use crate::titles::{self, Titles};
 use crate::names::Names;
 use crate::repo::SRef;
+use crate::auth::{self, Auth};
 use crate::source::{all_paths, git, Source};
 use crate::vcs::{Commit, Vcs};
 use crate::{lift_source, Lift};
@@ -18,7 +19,7 @@ use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::time::SystemTime;
+use std::time::{Duration, Instant, SystemTime};
 
 const PAGE: &str = include_str!("serve.html");
 /// What a commit with no parent is compared with: git's id for an empty folder.
@@ -27,6 +28,9 @@ const EMPTY_TREE: &str = "4b825dc642cb6eb9a060e54bf8d69288fbee4904";
 const MOST_ROWS: usize = 3000;
 const PAGE_OF_COMMITS: usize = 40;
 const LIFTS_KEPT: usize = 24;
+const PULLS_KEPT_FOR: Duration = Duration::from_secs(60);
+/// Past this a pull request is read from its newest commits, so one huge branch cannot stop the page.
+const MOST_PULL_COMMITS: usize = 60;
 
 struct Project {
     name: String,
@@ -43,6 +47,8 @@ struct Project {
     /// Every request at the newest commit, worked out once per commit.
     catalog: Option<(String, Value)>,
     titles: Titles,
+    /// The list from GitHub, kept briefly: asking takes a second or more.
+    pulled: Option<(Instant, Value)>,
 }
 
 fn word(s: &JState) -> &'static str {
@@ -66,7 +72,7 @@ impl Project {
         let n = taken.entry(base.clone()).or_insert(0);
         *n += 1;
         let name = if *n == 1 { base } else { format!("{base}-{n}") };
-        let mut p = Project { name, root, v, details: HashMap::new(), summaries: HashMap::new(), book: Journeys::default(), places: Places::default(), ids: Ids::default(), read: None, catalog: None, titles: Titles::new() };
+        let mut p = Project { name, root, v, details: HashMap::new(), summaries: HashMap::new(), book: Journeys::default(), places: Places::default(), ids: Ids::default(), read: None, catalog: None, titles: Titles::new(), pulled: None };
         p.refresh()?;
         Ok(p)
     }
@@ -123,7 +129,30 @@ impl Project {
             let f = r.functions.iter().find(|f| f.sid == p.step);
             f.into_iter().flat_map(|f| f.journeys.iter()).filter_map(|t| r.journeys.iter().find(|j| j.title == *t)).map(|j| j.uid.clone()).collect()
         };
-        t.parts.iter().map(|p| json!({ "say": p.say, "line": p.line, "at": p.at, "step": p.step, "groups": hit(p), "requests": runs(p) })).collect()
+        t.parts.iter().map(|p| json!({ "say": p.say, "line": p.line, "at": p.at, "before": p.before, "after": p.after, "step": p.step, "groups": hit(p), "requests": runs(p) })).collect()
+    }
+
+    fn pulls(&mut self) -> Value {
+        if let Some((at, v)) = &self.pulled {
+            if at.elapsed() < PULLS_KEPT_FOR {
+                return v.clone();
+            }
+        }
+        let v = crate::pulls::list(&self.root);
+        self.pulled = Some((Instant::now(), v.clone()));
+        v
+    }
+
+    /// A branch nobody fetched is not on this machine, and this never fetches it: the page says so instead.
+    fn pull(&mut self, number: &str) -> Result<Value> {
+        let number: u64 = number.parse().context("no such pull request")?;
+        let (pull, ids) = crate::pulls::one(&self.root, number)?;
+        let total = ids.len();
+        let here = |id: &&String| git(&self.root, &["cat-file", "-e", &format!("{id}^{{commit}}")]).is_ok();
+        let found: Vec<&String> = ids.iter().filter(here).collect();
+        let from = found.len().saturating_sub(MOST_PULL_COMMITS);
+        let commits = found[from..].iter().map(|id| self.commit(id).map(|c| self.shown(&c))).collect::<Result<Vec<_>>>()?;
+        Ok(json!({ "pull": pull, "commits": commits, "total": total, "missing": total - found.len(), "cut": from }))
     }
 
     /// Who changed what and when, for every change. This comes straight from git, so it is quick.
@@ -508,8 +537,24 @@ fn query(q: &str) -> HashMap<String, String> {
 }
 
 fn reply(s: &mut TcpStream, status: &str, kind: &str, body: &str) {
-    let head = format!("HTTP/1.1 {status}\r\nContent-Type: {kind}\r\nContent-Length: {}\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n", body.len());
+    answer(s, status, kind, "", body);
+}
+
+fn answer(s: &mut TcpStream, status: &str, kind: &str, more: &str, body: &str) {
+    let head = format!("HTTP/1.1 {status}\r\nContent-Type: {kind}\r\nContent-Length: {}\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\n{more}Connection: close\r\n\r\n", body.len());
     let _ = s.write_all(head.as_bytes()).and_then(|_| s.write_all(body.as_bytes()));
+}
+
+fn go_to(s: &mut TcpStream, to: &str, cookies: &[String]) {
+    let set: String = cookies.iter().map(|c| format!("Set-Cookie: {c}\r\n")).collect();
+    answer(s, "302 Found", "text/plain", &format!("Location: {to}\r\n{set}"), "");
+}
+
+fn signing_in(s: &mut TcpStream, a: &Auth) {
+    match a.start() {
+        Ok((to, state)) => go_to(s, &to, &[format!("{}={state}; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=600", auth::STATE)]),
+        Err(e) => reply(s, "400 Bad Request", "text/plain", &e.to_string()),
+    }
 }
 
 type Shared = Arc<Vec<Mutex<Project>>>;
@@ -533,6 +578,8 @@ fn api(projects: &Shared, path: &str, q: &HashMap<String, String>) -> Result<Val
     match (what, arg) {
         ("commits", None) => p.commits(q.get("skip").and_then(|s| s.parse().ok()).unwrap_or(0)),
         ("summaries", None) => p.summaries(&need("ids")?.split(',').map(str::to_string).collect::<Vec<_>>()),
+        ("pulls", None) => Ok(p.pulls()),
+        ("pull", Some(n)) => p.pull(n),
         ("activity", None) => p.activity(),
         ("requests", None) => p.requests(),
         ("request", Some(id)) => p.request(id),
@@ -543,14 +590,14 @@ fn api(projects: &Shared, path: &str, q: &HashMap<String, String>) -> Result<Val
     }
 }
 
-fn handle(mut s: TcpStream, projects: Shared, hosts: Arc<Vec<String>>) {
+fn handle(mut s: TcpStream, projects: Shared, hosts: Arc<Vec<String>>, a: Arc<Auth>) {
     let Ok(clone) = s.try_clone() else { return };
     let mut r = BufReader::new(clone);
     let mut first = String::new();
     if r.read_line(&mut first).is_err() {
         return;
     }
-    let mut host = String::new();
+    let (mut host, mut cookies, mut origin) = (String::new(), String::new(), String::new());
     loop {
         let mut l = String::new();
         match r.read_line(&mut l) {
@@ -558,6 +605,10 @@ fn handle(mut s: TcpStream, projects: Shared, hosts: Arc<Vec<String>>) {
                 if let Some((k, v)) = l.split_once(':') {
                     if k.eq_ignore_ascii_case("host") {
                         host = v.trim().to_string();
+                    } else if k.eq_ignore_ascii_case("cookie") {
+                        cookies = v.trim().to_string();
+                    } else if k.eq_ignore_ascii_case("origin") {
+                        origin = v.trim().to_string();
                     }
                 }
             }
@@ -570,12 +621,40 @@ fn handle(mut s: TcpStream, projects: Shared, hosts: Arc<Vec<String>>) {
     }
     let mut it = first.split_whitespace();
     let (method, target) = (it.next().unwrap_or(""), it.next().unwrap_or("/"));
+    let (path, q) = target.split_once('?').unwrap_or((target, ""));
+    let session = auth::cookie(&cookies, auth::SESSION);
+    if method == "POST" && path == "/auth/logout" {
+        // Signing someone out is a change, so another site must not be able to ask for it.
+        if origin != format!("http://{host}") {
+            return reply(&mut s, "403 Forbidden", "text/plain", "Not from this page.");
+        }
+        a.end(session);
+        return answer(&mut s, "200 OK", "application/json", &format!("Set-Cookie: {}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0\r\n", auth::SESSION), "{}");
+    }
     if method != "GET" {
         return reply(&mut s, "405 Method Not Allowed", "text/plain", "Read only.");
     }
-    let (path, q) = target.split_once('?').unwrap_or((target, ""));
     if path == "/" {
         return reply(&mut s, "200 OK", "text/html; charset=utf-8", PAGE);
+    }
+    if path == "/auth/github" {
+        // GitHub sends people back to one address, and the cookies must be on that one.
+        if host != hosts[0] {
+            return go_to(&mut s, &format!("http://{}/auth/github", hosts[0]), &[]);
+        }
+        return signing_in(&mut s, &a);
+    }
+    if path == "/auth/github/callback" {
+        let done = a.finish(&query(q), auth::cookie(&cookies, auth::STATE));
+        let mut set = vec![format!("{}=; Path=/auth; HttpOnly; SameSite=Lax; Max-Age=0", auth::STATE)];
+        set.extend(done.cookie);
+        return go_to(&mut s, done.to, &set);
+    }
+    if path == "/api/me" {
+        return reply(&mut s, "200 OK", "application/json; charset=utf-8", &a.me(session).to_string());
+    }
+    if !a.allows(session) {
+        return reply(&mut s, "401 Unauthorized", "application/json; charset=utf-8", &json!({ "error": "Sign in first" }).to_string());
     }
     if !path.starts_with("/api/") {
         return reply(&mut s, "404 Not Found", "text/plain", "Not here.");
@@ -592,12 +671,13 @@ pub fn run(roots: &[PathBuf], out: &str, port: u16) -> Result<()> {
     let projects: Vec<Mutex<Project>> = roots.iter().map(|r| Project::open(r, out, &mut taken).map(Mutex::new)).collect::<Result<_>>()?;
     let listener = TcpListener::bind(("127.0.0.1", port)).with_context(|| format!("port {port} is in use. Try --port with another number"))?;
     let port = listener.local_addr()?.port();
-    println!("Flow control on http://localhost:{port}  ({} project{}). Ctrl-C stops it.", projects.len(), if projects.len() == 1 { "" } else { "s" });
+    let a = Arc::new(Auth::from_env(port)?);
+    println!("Flow control on http://localhost:{port}  ({} project{}{}). Ctrl-C stops it.", projects.len(), if projects.len() == 1 { "" } else { "s" }, if a.required() { ", sign-in required" } else { "" });
     let hosts = Arc::new(vec![format!("localhost:{port}"), format!("127.0.0.1:{port}")]);
     let projects: Shared = Arc::new(projects);
     for s in listener.incoming().flatten() {
-        let (p, h) = (projects.clone(), hosts.clone());
-        std::thread::spawn(move || handle(s, p, h));
+        let (p, h, a) = (projects.clone(), hosts.clone(), a.clone());
+        std::thread::spawn(move || handle(s, p, h, a));
     }
     Ok(())
 }

@@ -19,6 +19,8 @@ pub const FILE: &str = "flow.titles.json";
 /// What a change that reaches nobody says.
 pub const QUIET: &str = "Nothing changes for people.";
 const MOST: usize = 60;
+/// How much of a change's diff Claude reads, so one huge change cannot crowd out the rest.
+const MOST_DIFF: usize = 6000;
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Part {
@@ -29,6 +31,11 @@ pub struct Part {
     /// The stop of a journey where a person meets this, in that stop's own words.
     #[serde(default, skip_serializing_if = "String::is_empty")]
     pub at: String,
+    /// How it was for a person before this change, and how it is after. No before means new.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub before: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub after: String,
     pub step: String,
 }
 
@@ -65,7 +72,7 @@ pub fn take(t: &mut Titles, known: &Known, answer: &Value) -> usize {
             continue;
         }
         let parts = a["parts"].as_array().into_iter().flatten();
-        let parts = parts.filter_map(|p| Some(Part { say: p["say"].as_str()?.trim().to_string(), line: p["line"].as_str().unwrap_or("").trim().to_string(), at: p["at"].as_str().unwrap_or("").trim().to_string(), step: p["step"].as_str()?.to_string() }));
+        let parts = parts.filter_map(|p| Some(Part { say: p["say"].as_str()?.trim().to_string(), line: p["line"].as_str().unwrap_or("").trim().to_string(), at: p["at"].as_str().unwrap_or("").trim().to_string(), before: p["before"].as_str().unwrap_or("").trim().to_string(), after: p["after"].as_str().unwrap_or("").trim().to_string(), step: p["step"].as_str()?.to_string() }));
         let parts = parts.filter(|p| !p.say.is_empty() && steps.contains(&p.step) && title != QUIET).collect();
         t.insert(sha.clone(), Title { title: title.to_string(), parts });
         n += 1;
@@ -81,7 +88,9 @@ fn described(v: &mut Vcs, c: &Commit, book: &Journeys, ids: &crate::ids::Ids) ->
     reached.dedup();
     let code: Vec<_> = r.functions.iter().filter(|f| f.state != "reformatted only" && !crate::output::is_test_file(&f.sid)).take(24).collect();
     let steps: Vec<String> = code.iter().map(|f| format!("- {} ({}): {}", f.sid, f.label, crate::util::short(f.facts.first().unwrap_or(&f.state), 110))).collect();
-    let text = format!("## {}\nmessage: {}\nreaches: {}\nfiles outside the code: {}\nchanged steps:\n{}\n\n", &c.id[..12], c.subject, reached.join(", "), r.other_files.iter().take(5).cloned().collect::<Vec<_>>().join(", "), steps.join("\n"));
+    let diff = crate::source::git(&v.root, &["show", "--format=", "-U1", "--no-color", &c.id, "--", ".", ":(exclude)*.lock", ":(exclude)pnpm-lock.yaml", ":(exclude)package-lock.json", ":(exclude)flows"]).unwrap_or_default();
+    let diff: String = diff.chars().take(MOST_DIFF).collect();
+    let text = format!("## {}\nmessage: {}\nreaches: {}\nfiles outside the code: {}\nchanged steps:\n{}\ndiff:\n{diff}\n\n", &c.id[..12], c.subject, reached.join(", "), r.other_files.iter().take(5).cloned().collect::<Vec<_>>().join(", "), steps.join("\n"));
     Ok((text, code.iter().map(|f| f.sid.clone()).collect()))
 }
 
@@ -97,12 +106,12 @@ pub fn write(v: &mut Vcs, book: &Journeys, have: &mut Titles, last: usize, model
     let lines: Vec<String> = book.journeys.iter().filter(|j| !j.stops.is_empty()).map(|j| format!("{}:\n{}", j.title, j.stops.iter().map(|s| format!("- {}", s.say)).collect::<Vec<_>>().join("\n"))).collect();
     let stops = if lines.is_empty() { String::new() } else { format!("The journey stops:\n{}\n\n", lines.join("\n")) };
     let mut batches = vec![];
-    for chunk in todo.chunks(25) {
+    for chunk in todo.chunks(10) {
         let mut p = format!(
             "Each block below is one saved change to a product. Write its title for the list of changes.\n\n{STYLE}\n\n\
              title: one short sentence ending in a full stop, at most 48 characters, saying what is different for the person using the product, like \"Pay yearly for the price of ten months.\", \"Agent replies name their tools.\" or \"Everyone who pays gets a receipt.\" Say what changed, not that something was updated. Use the words of the product, not of the code.\n\
              When nobody using the product would notice, such as a script, a test or a tidy-up, the title is exactly \"{QUIET}\" and parts is empty.\n\
-             parts: 1 to 7 short clauses that read in order as one flowing paragraph about what changed for people, each at most 40 characters, like \"People can pay yearly,\" then \"for ten months' price,\" then \"with unused days credited.\" Each clause has step: the id of the changed step it describes, copied exactly from that change's list. Only say what those steps show. Do not repeat the title. Each clause also has line: the same point as a complete sentence that makes sense alone, at most 70 characters, like \"Unused days are credited when people pay yearly.\" Each clause also has at: the stop where a person would meet this, copied exactly from the list of journey stops, or empty if none fits.\n\
+             parts: 1 to 7 short clauses that read in order as one flowing paragraph about what changed for people, each at most 40 characters, like \"People can pay yearly,\" then \"for ten months' price,\" then \"with unused days credited.\" Each clause has step: the id of the changed step it describes, copied exactly from that change's list. Only say what those steps show. Do not repeat the title. Each clause also has line: the same point as a complete sentence that makes sense alone, at most 70 characters, like \"Unused days are credited when people pay yearly.\" Each clause also has at: the stop where a person would meet this, copied exactly from the list of journey stops, or empty if none fits. Each clause also has before and after: how this worked for a person before the change and how it works now, as two short plain statements of at most 60 characters that can be read side by side, like before \"Everyone joined as an admin.\" and after \"Admins pick a role for each invite.\" Work them out from the diff: lines starting with - are how it was, lines starting with + are how it is now. State only what the diff shows. If this is brand new and nothing like it existed, before is empty.\n\
              id: exactly as given.\n\n"
         );
         p += &stops;
@@ -119,8 +128,8 @@ pub fn write(v: &mut Vcs, book: &Journeys, have: &mut Titles, last: usize, model
         "properties": {"titles": {"type": "array", "items": {
             "type": "object", "additionalProperties": false, "required": ["id", "title", "parts"],
             "properties": {"id": {"type": "string"}, "title": {"type": "string"}, "parts": {"type": "array", "items": {
-                "type": "object", "additionalProperties": false, "required": ["say", "line", "at", "step"],
-                "properties": {"say": {"type": "string"}, "line": {"type": "string"}, "at": {"type": "string"}, "step": {"type": "string"}}
+                "type": "object", "additionalProperties": false, "required": ["say", "line", "at", "before", "after", "step"],
+                "properties": {"say": {"type": "string"}, "line": {"type": "string"}, "at": {"type": "string"}, "before": {"type": "string"}, "after": {"type": "string"}, "step": {"type": "string"}}
             }}}
         }}}
     });

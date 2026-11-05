@@ -26,6 +26,8 @@ pub mod ids;
 pub mod journeys;
 pub mod titles;
 pub mod scenario;
+pub mod auth;
+pub mod pulls;
 pub mod serve;
 pub mod comment;
 pub mod map;
