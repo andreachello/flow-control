@@ -46,6 +46,23 @@ pub struct Stop {
 pub struct Journeys {
     #[serde(default)]
     pub journeys: Vec<Journey>,
+    /// How the journeys fit together, for the people who take them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub map: Option<Map>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct Map {
+    /// The product in one sentence, as the journeys add up to it.
+    pub say: String,
+    pub paths: Vec<Path_>,
+}
+
+/// One kind of person, and the journeys they go through in the order they usually do.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct Path_ {
+    pub who: String,
+    pub journeys: Vec<String>,
 }
 
 /// Which journey a request belongs to, through any rename since the file was written.
@@ -247,6 +264,62 @@ pub struct Report {
 }
 
 /// Group the requests that have no journey yet. Asks nothing when there are none.
+pub fn map_prompt(have: &Journeys) -> String {
+    let list: String = have.journeys.iter().filter(|j| j.icon != BEHIND).map(|j| {
+        let stops: Vec<&str> = j.stops.iter().map(|s| s.say.as_str()).collect();
+        format!("{}: {}\n", j.title, stops.join(" "))
+    }).collect();
+    format!(
+        "Below are the journeys of one product, each with the stops a person makes. Show how they fit together: who uses the product, and which journeys each kind of person goes through.\n\n{STYLE}\n\n\
+         say: one sentence at most 120 characters on what the product lets these people do together, ending in a full stop.\n\
+         paths: one per kind of person, at most 4.\n\
+         who: that person in one or two plain words, plural, like \"Guests\" or \"Team admins\".\n\
+         journeys: the journeys they go through, in the order they usually meet them, each title written exactly as below. A journey shared by two kinds of person goes in both paths. Every journey below must appear in at least one path.\n\n{list}"
+    )
+}
+
+pub fn map_schema() -> Value {
+    json!({
+        "type": "object", "additionalProperties": false, "required": ["say", "paths"],
+        "properties": {"say": {"type": "string"}, "paths": {"type": "array", "items": {
+            "type": "object", "additionalProperties": false, "required": ["who", "journeys"],
+            "properties": {"who": {"type": "string"}, "journeys": {"type": "array", "items": {"type": "string"}}}
+        }}}
+    })
+}
+
+/// Only a map that names real journeys and leaves none out. A partial one would mislead.
+pub fn take_map(have: &mut Journeys, answer: &Value) -> bool {
+    let say = answer["say"].as_str().unwrap_or("").trim().to_string();
+    let known = |t: &str| have.journeys.iter().any(|j| j.title == t && j.icon != BEHIND);
+    let mut paths = vec![];
+    for p in answer["paths"].as_array().into_iter().flatten() {
+        let who = p["who"].as_str().unwrap_or("").trim().to_string();
+        let journeys: Vec<String> = p["journeys"].as_array().into_iter().flatten().filter_map(Value::as_str).filter(|t| known(t)).map(str::to_string).collect();
+        if !who.is_empty() && !journeys.is_empty() {
+            paths.push(Path_ { who, journeys });
+        }
+    }
+    let whole = have.journeys.iter().filter(|j| j.icon != BEHIND).all(|j| paths.iter().any(|p| p.journeys.contains(&j.title)));
+    if say.is_empty() || say.chars().count() > 160 || paths.is_empty() || !whole {
+        return false;
+    }
+    have.map = Some(Map { say, paths });
+    true
+}
+
+/// Drawn once, like everything here: delete `map` from the file to ask again.
+pub fn draw(have: &mut Journeys, model: &str) -> Result<bool> {
+    if have.map.is_some() || have.journeys.iter().all(|j| j.icon == BEHIND) {
+        return Ok(false);
+    }
+    let answer = run_claude(model, &map_prompt(have), &map_schema())?;
+    if take_map(have, &answer) {
+        return Ok(true);
+    }
+    anyhow::bail!("the map did not name every journey")
+}
+
 pub fn group(l: &Lift, have: &mut Journeys, ids: &Ids, model: &str) -> Result<Report> {
     let todo = unplaced(l, have, ids);
     if todo.is_empty() {
@@ -255,4 +328,39 @@ pub fn group(l: &Lift, have: &mut Journeys, ids: &Ids, model: &str) -> Result<Re
     let answer = run_claude(model, &prompt(l, have, &todo), &schema())?;
     let placed = apply(have, &answer, &todo);
     Ok(Report { placed, left: unplaced(l, have, ids).into_iter().map(str::to_string).collect() })
+}
+
+#[cfg(test)]
+mod map_tests {
+    use super::*;
+
+    fn book() -> Journeys {
+        let j = |t: &str, i: &str| Journey { title: t.into(), icon: i.into(), requests: vec![], stops: vec![] };
+        Journeys { journeys: vec![j("Book a stay", "calendar"), j("List a home", "plus"), j("Behind the scenes", BEHIND)], map: None }
+    }
+
+    #[test]
+    fn a_map_keeps_real_journeys_and_a_shared_one_in_both_paths() {
+        let mut b = book();
+        let a = json!({ "say": "Hosts list homes and guests book them.", "paths": [{ "who": "Guests", "journeys": ["Book a stay", "Invented"] }, { "who": "Hosts", "journeys": ["List a home", "Book a stay"] }] });
+        assert!(take_map(&mut b, &a));
+        let m = b.map.unwrap();
+        assert_eq!(m.paths[0].journeys, ["Book a stay"], "a journey that does not exist is dropped");
+        assert_eq!(m.paths[1].journeys, ["List a home", "Book a stay"], "the order is the person's");
+    }
+
+    #[test]
+    fn a_map_that_leaves_a_journey_out_is_refused() {
+        let mut b = book();
+        let a = json!({ "say": "Guests book.", "paths": [{ "who": "Guests", "journeys": ["Book a stay"] }] });
+        assert!(!take_map(&mut b, &a));
+        assert!(b.map.is_none());
+    }
+
+    #[test]
+    fn an_old_file_without_a_map_still_reads_and_saves_the_same() {
+        let b: Journeys = serde_json::from_str(r#"{"journeys":[]}"#).unwrap();
+        assert!(b.map.is_none());
+        assert!(!serde_json::to_string(&b).unwrap().contains("map"));
+    }
 }

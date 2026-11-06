@@ -10,7 +10,7 @@
 <style>
 
 :root{
-  --a:#2563eb; --b:#9333ea; --ok-soft:#ecf8f1; --warn-soft:#fdf6e3; --paper:#ffffff; --sheet:#ffffff; --sheet-2:#f5f5f6; --side:#fafafa; --ink:#111113; --ink-2:#4e4e56; --ink-3:#6b6b74; --rule:#ebebed;
+  --a:#2563eb; --b:#9333ea; --ok-soft:#ecf8f1; --warn-soft:#fdf6e3; --accent:#2563eb; --paper:#ffffff; --sheet:#ffffff; --sheet-2:#f5f5f6; --side:#fafafa; --ink:#111113; --ink-2:#4e4e56; --ink-3:#6b6b74; --rule:#ebebed;
   --signal:#c62a1f; --signal-soft:#fbeae7;
   --add:#ecf6ef; --add-ink:#1d6b41; --add-mark:#cfe9d8; --del:#fbeef0; --del-ink:#9b2c43; --del-mark:#f1d3d9;
   --hover:#e9eef2;
@@ -20,7 +20,7 @@
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --a:#60a5fa; --b:#c084fc; --ok-soft:#17291f; --warn-soft:#2f2813; --paper:#101012; --sheet:#101012; --sheet-2:#1b1b1e; --side:#141416; --ink:#ededef; --ink-2:#b6b6be; --ink-3:#8e8e98; --rule:#27272b;
+    --a:#60a5fa; --b:#c084fc; --ok-soft:#17291f; --warn-soft:#2f2813; --accent:#60a5fa; --paper:#101012; --sheet:#101012; --sheet-2:#1b1b1e; --side:#141416; --ink:#ededef; --ink-2:#b6b6be; --ink-3:#8e8e98; --rule:#27272b;
     --signal:#ff6b5f; --signal-soft:#3a2321;
     --add:#1a2b22; --add-ink:#8fdcb0; --add-mark:#25402f; --del:#2f1f23; --del-ink:#f2a5b4; --del-mark:#4a2a32;
     --hover:#2a3138;
@@ -29,7 +29,7 @@
   }
 }
 :root[data-theme="dark"]{
-  --paper:#101012; --sheet:#101012; --sheet-2:#1b1b1e; --side:#141416; --ink:#ededef; --ink-2:#b6b6be; --ink-3:#8e8e98; --rule:#27272b;
+  --accent:#60a5fa; --paper:#101012; --sheet:#101012; --sheet-2:#1b1b1e; --side:#141416; --ink:#ededef; --ink-2:#b6b6be; --ink-3:#8e8e98; --rule:#27272b;
   --signal:#ff6b5f; --signal-soft:#3a2321;
   --add:#1a2b22; --add-ink:#8fdcb0; --add-mark:#25402f; --del:#2f1f23; --del-ink:#f2a5b4; --del-mark:#4a2a32;
   --hover:#2a3138;
@@ -172,6 +172,13 @@ nav .tabs a.on{color:var(--ink);background:var(--sheet);box-shadow:0 1px 2px rgb
 .hfoot{margin:14px 4px 0}
 .ghl-hint{margin:0 0 18px;font-size:13px;color:var(--ink-2)}
 .ghl-hint code{font:12.5px var(--f-code)}
+.run{display:flex;align-items:center;gap:14px;padding:14px 16px;font-size:13.5px;color:var(--ink-2)}
+.run-m{flex:1;min-width:0}.run-m span{display:block}.run-m small{display:block;margin-top:2px;font-size:12.5px;color:var(--ink-3)}.run-m small.bad-t{color:var(--bad,#dc2626);overflow-wrap:anywhere}
+.run .bar-s{flex:none;font-size:13px;cursor:pointer}.run .bar-s:hover{background:var(--sheet-2)}.run .bar-s:disabled{opacity:.5;cursor:default}
+.run .run-on{display:flex;align-items:center;gap:8px;color:var(--ink);font-variant-numeric:tabular-nums}
+.run-on i{flex:none;width:12px;height:12px;border:2px solid var(--rule);border-top-color:var(--ink-2);border-radius:50%;animation:turn .9s linear infinite}
+@keyframes turn{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){ .run-on i{animation:none} }
 .ghc-loose{margin:8px 0 0;font-size:12.5px;color:var(--ink-3)}
 .fl-sub{margin:2px 0 6px 31px!important}
 .fl-sub .fl-jr{padding:4px 8px;font-size:13px}
@@ -558,8 +565,6 @@ kbd{font:500 11px var(--f-ui);letter-spacing:0;padding:1px 5px;border-radius:5px
 .side .sec a:hover{background:var(--sheet-2);color:var(--ink)}
 .side .sec a.on{background:var(--sheet-2);color:var(--ink);font-weight:500}
 .side .sec a.on::after{content:none}
-.side-all{margin-top:auto;padding:7px 8px;border-radius:8px;font-size:13.5px;color:var(--ink-2);text-decoration:none}
-.side-all:hover{background:var(--sheet-2);color:var(--ink)}
 .main{min-width:0}
 .main nav .in{max-width:none;justify-content:flex-end;min-height:52px}
 .main .wrap{max-width:1120px}
@@ -579,15 +584,15 @@ kbd{font:500 11px var(--f-ui);letter-spacing:0;padding:1px 5px;border-radius:5px
 /* the finish, shared by every page */
 body{font-size:14px;letter-spacing:-.003em}
 .app{grid-template-columns:224px minmax(0,1fr)}
-.side{padding:10px;gap:10px;background:var(--side)}
+.side{padding:0 10px 10px;gap:6px;background:var(--side)}
 .side-t{gap:4px}
-.side .brand{padding:6px 8px;font-size:14px}
+.side .brand{display:flex;align-items:center;height:48px;padding:0 8px;font-size:14px}
+.side .brand svg{width:20px;height:20px}
 .side .sw{padding:6px 8px;border:0;background:none;font-size:13.5px}
 .side .sw:hover{background:var(--sheet-2)}
 .side .sec a{gap:9px;padding:6px 8px;border-radius:6px;font-size:13.5px}
 .side .sec a svg{color:var(--ink-3)}
 .side .sec a.on svg{color:var(--ink)}
-.side-all{border-radius:6px;font-size:13px;color:var(--ink-3)}
 .main nav{background:color-mix(in srgb,var(--paper) 86%,transparent);border-bottom:1px solid var(--rule)}
 .main nav .in{justify-content:space-between;gap:16px;min-height:48px;padding:0 24px}
 .trail{display:flex;align-items:center;gap:7px;min-width:0;font-size:13.5px;color:var(--ink-3)}
@@ -650,14 +655,110 @@ body{font-size:14px;letter-spacing:-.003em}
 .jc:hover{border-color:color-mix(in srgb,var(--ink) 24%,var(--rule));box-shadow:none}
 .jc-t{font-size:14px;font-weight:500}
 .jc-t .bdg{width:22px;height:22px}
-.spark{justify-content:space-between;gap:3px;height:24px}
-.spark i{flex:0 1 8px;border-radius:2px 2px 0 0;background:var(--ink-3);opacity:.75}
 
-.me{display:flex;align-items:center;gap:8px;padding:8px;border-top:1px solid var(--rule);font-size:13px}
-.me img,.me .who{flex:none;width:22px;height:22px;border-radius:50%}
-.me span{flex:1;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;font-weight:500}
-.me button{flex:none;padding:2px 6px;border:0;border-radius:5px;background:none;font-size:12.5px;color:var(--ink-3);cursor:pointer}
-.me button:hover{background:var(--sheet-2);color:var(--ink)}
+.tile{background:var(--sheet);color:var(--ink-2);box-shadow:inset 0 0 0 1px var(--rule)}
+.sw-menu{top:calc(100% + 4px);left:0;right:0;width:auto}
+.sw-menu b,.sw-menu span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.home-h{padding:0 0 20px}
+.home-h h2{margin:0;font-size:22px;font-weight:600;letter-spacing:-.022em}
+.home-h p{margin:2px 0 0;font-size:14px;color:var(--ink-3)}
+.pn,.stats{box-shadow:0 1px 2px rgba(17,17,19,.04)}
+.pn-h b{font-weight:600}
+.stat{position:relative;min-height:104px;padding:16px 18px}
+.stat b{font-size:28px;font-weight:600;letter-spacing:-.03em}
+.stat .spark{position:absolute;top:18px;right:18px;width:88px;height:32px}
+.dl{font-weight:500;color:var(--ink-2)}
+.ac{position:relative;display:grid;grid-template-columns:32px minmax(0,1fr);flex:1;min-height:176px}
+.ac-y{display:flex;flex-direction:column;justify-content:space-between;margin:-8px 0;font-size:11.5px;line-height:16px;color:var(--ink-3);font-variant-numeric:tabular-nums}
+.ac-p{position:relative;display:flex;flex-direction:column;justify-content:space-between}
+.ac-g{display:block;height:1px;background:var(--rule)}
+.ac-g:not(:last-of-type){opacity:.6}
+.ac-p svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.ac-h{position:absolute;inset:0;display:flex}
+.ac-h button{position:relative;flex:1;min-width:0;padding:0;border:0;background:none;cursor:default}
+.ac-h button:hover::before,.ac-h button:focus-visible::before{content:"";position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--rule)}
+.ac-h button:hover::after,.ac-h button:focus-visible::after{content:"";position:absolute;left:50%;top:var(--y);width:8px;height:8px;margin:-4px 0 0 -4px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 2px var(--sheet)}
+.ac-x{display:grid;grid-template-columns:repeat(var(--n),minmax(0,1fr));margin:8px 0 0 32px;font-size:11.5px;color:var(--ink-3)}
+.ac-x span{white-space:nowrap;text-align:center;overflow:visible;min-width:0}
+.ac-x span:last-child{direction:rtl}
+.ac-t{align-items:center}
+.ac-t .seg{padding:2px;border-radius:7px}
+.ac-t .seg button{padding:1px 8px;font-size:12px;border-radius:5px}
+.spark{display:block;width:100%;height:24px;margin:0;border:0;overflow:visible}
+.ptb .spark{height:24px;max-width:88px;border:0}
+.jc .spark{margin-top:12px;height:28px}
+.pr-i{flex:none;color:var(--ink-3)}
+.pr-i.open{color:var(--add-ink)}
+.pr-i.merged{color:var(--b)}
+.pr-i.closed{color:var(--del-ink)}
+.side .sec a.on svg{color:var(--accent)}
+.jm{margin-bottom:16px}
+.jm-say{margin:4px 16px 0;font-size:14px;color:var(--ink-2)}
+.jm-ls{display:flex;flex-direction:column;gap:10px;padding:16px}
+.jm-l{display:grid;grid-template-columns:104px minmax(0,1fr);align-items:center;gap:12px}
+.jm-l > b{font-size:13px;font-weight:500;color:var(--ink-3)}
+.jm-l ol{display:flex;flex-wrap:wrap;gap:8px 0;list-style:none;margin:0;padding:0}
+.jm-l li{display:flex;align-items:center}
+.jm-l li + li::before{content:"";width:22px;height:1px;margin:0 2px;background:var(--ink-3);opacity:.5}
+.jm-l a{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 12px 0 8px;border:1px solid var(--rule);border-radius:8px;background:var(--sheet);font-size:13.5px;font-weight:500;color:var(--ink);text-decoration:none;white-space:nowrap}
+.jm-l a:hover{border-color:color-mix(in srgb,var(--ink) 24%,var(--rule));background:var(--sheet-2)}
+.jm-l .bdg{width:20px;height:20px;box-shadow:none}
+.jm-b{padding-top:10px;border-top:1px solid var(--rule)}
+.sk-n{display:block;width:44px;height:24px;margin:2px 0;border-radius:6px}
+.sk-t{display:block;width:120px;height:9px;margin:4px 0}
+.stat b:has(.sk){line-height:1.15}
+.rank-sk a{pointer-events:none}
+.rank-sk .sk{width:20px;height:20px;border-radius:50%;grid-row:span 2}
+.rank-sk span.sk{width:45%;height:10px;border-radius:5px;grid-row:auto;align-self:center}
+.rank-sk u{background:var(--sheet-2)}
+.pn .pr-l a[href]:hover{background:var(--sheet-2)}
+.pr-l i.pr-i{display:block;width:16px;height:16px}
+.home-top{align-items:stretch}
+.home-top > .pn{display:flex;flex-direction:column}
+.home-top .pn-b{flex:1;display:flex;flex-direction:column}
+.stat small{font-size:12.5px;color:var(--ink-3)}
+.ptb-h,.ptb-r{display:grid;grid-template-columns:minmax(0,1fr) 150px 96px 76px 76px 84px 14px;align-items:center;gap:12px;padding-inline:16px}
+.ptb-h{height:36px;border-bottom:1px solid var(--rule);background:var(--side);font-size:12.5px;color:var(--ink-3)}
+.ptb-r{min-height:58px;color:inherit;text-decoration:none}
+.ptb-r + .ptb-r{border-top:1px solid var(--rule)}
+.ptb-r:hover{background:var(--sheet-2)}
+.ptb-r small{font-size:13px;color:var(--ink-3)}
+.ptb .num{text-align:right;font-variant-numeric:tabular-nums}
+.ptb-r small.num{color:var(--ink-2)}
+.ptb-n{display:flex;align-items:center;gap:12px;min-width:0}
+.ptb-n .pj-m b{font-size:14px;font-weight:500}
+.ptb .ghc-js{gap:3px}
+.ptb .ghc-js .bdg{width:18px;height:18px}
+.ptb .ghc-js .bdg svg{width:11px;height:11px}
+.ptb .chev{margin:0}
+.pn .pr-l li:first-child{border-top:1px solid var(--rule)}
+.pn .pr-l{margin-top:10px}
+.pn .pr-l a{padding:9px 16px}
+.pn .pr-l .pr-m b{font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pn .pr-l .pr-m span{font-size:12.5px}
+@media (max-width:760px){
+  .jm-l{grid-template-columns:minmax(0,1fr);gap:6px}
+  .jm-l a{white-space:normal}
+}
+@media (max-width:1000px){
+  .ptb-h,.ptb-r{grid-template-columns:minmax(0,1fr) 72px 76px 14px}
+  .ptb-h > :nth-child(2),.ptb-h > :nth-child(3),.ptb-h > :nth-child(4),.ptb-r > :nth-child(2),.ptb-r > :nth-child(3),.ptb-r > :nth-child(4){display:none}
+}
+.sec-l{margin:8px 8px 4px;font-size:12px;font-weight:500;color:var(--ink-3)}
+.me{position:relative;margin-top:auto}
+.me-b{display:flex;align-items:center;gap:9px;width:100%;padding:6px 8px;border:0;border-radius:6px;background:none;text-align:left;color:var(--ink-3);cursor:pointer}
+.me-b:hover,.me-b[aria-expanded="true"]{background:var(--sheet-2)}
+.me-b img,.me-b .who{flex:none;width:28px;height:28px;border-radius:50%}
+.me-b span{flex:1;min-width:0;display:flex;flex-direction:column}
+.me-b b,.me-b small{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.me-b b{font-size:13px;font-weight:500;line-height:1.3;color:var(--ink)}
+.me-b small{font-size:12px;line-height:1.3;color:var(--ink-3)}
+.me-b svg{flex:none}
+.me-menu{position:absolute;left:0;right:0;bottom:calc(100% + 6px);z-index:20;padding:4px;border:1px solid var(--rule);border-radius:8px;background:var(--sheet);box-shadow:0 8px 24px -8px rgba(0,0,0,.18)}
+.me-menu p{margin:0;padding:6px 8px;border-bottom:1px solid var(--rule);margin-bottom:4px;font-size:12.5px;color:var(--ink-3);overflow-wrap:anywhere}
+.me-menu b{font-weight:500;color:var(--ink-2)}
+.me-menu button{display:block;width:100%;padding:6px 8px;border:0;border-radius:5px;background:none;text-align:left;font-size:13.5px;color:var(--ink);cursor:pointer}
+.me-menu button:hover,.me-menu button:focus-visible{background:var(--sheet-2)}
 .signin{display:none}
 body.out .app{display:none}
 body.out .signin{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;background:var(--paper);text-align:center}
@@ -672,7 +773,8 @@ body.out .signin{position:fixed;inset:0;display:flex;flex-direction:column;align
   .side{position:static;height:auto;gap:8px;border-right:0;border-bottom:1px solid var(--rule);overflow:visible}
   .side .sec{flex-direction:row;overflow-x:auto;scrollbar-width:none}
   .side .sec a{white-space:nowrap}
-  .side-all{margin-top:0}
+  .me{margin-top:0}
+  .me-menu{left:0;right:auto;width:240px;bottom:auto;top:calc(100% + 6px)}
   .main .wrap{padding:20px 16px 64px}
   .main nav .in{padding:0 16px}
   .trail{display:none}
@@ -685,11 +787,10 @@ body.out .signin{position:fixed;inset:0;display:flex;flex-direction:column;align
   <a class="brand" href="#/"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v18M12 3v8a4 4 0 0 0 4 4h3" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="12" cy="11" r="3" fill="#e8a200"/></svg>Flow control</a>
   <div class="crumb" id="crumb"></div></div>
   <div class="sec" id="sec"></div>
-  <a class="side-all" id="side-all" href="#/" hidden>All projects</a>
   <div class="me" id="me" hidden></div>
 </aside><div class="main"><nav><div class="in">
   <div class="trail" id="trail"></div>
-  <div class="nav-r"><span id="live"></span><button class="find" id="find"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M7 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM10 10l3.5 3.5"/></svg><span>Search</span><kbd>⌘K</kbd></button><button class="theme" id="theme" aria-label="Switch light or dark">Dark</button></div>
+  <div class="nav-r"><span id="live"></span><button class="bar-s" id="soba-go" hidden>Connect compute</button><button class="find" id="find"><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M7 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM10 10l3.5 3.5"/></svg><span>Search</span><kbd>⌘K</kbd></button><button class="theme" id="theme" aria-label="Switch light or dark">Dark</button></div>
 </div></nav>
 <div class="wrap" id="view"></div></div></div>
 <main class="signin"><svg viewBox="0 0 24 24" width="32" height="32" aria-hidden="true"><path d="M5 3v18M12 3v8a4 4 0 0 0 4 4h3" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/><circle cx="12" cy="11" r="3" fill="#e8a200"/></svg><h1>Sign in to Flow control</h1><p>See what every change does to the people using your product.</p><p class="signin-say" id="signin-say" role="alert" hidden></p><a class="signin-gh" href="/auth/github"><svg viewBox="0 0 16 16" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>Continue with GitHub</a><small>Flow control only reads your public GitHub profile.</small></main>
@@ -699,10 +800,16 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
 const get = async u => { const r = await fetch(u); if (r.status === 401) { signedOut(); throw new Error("Sign in first"); } const d = await r.json(); if (!r.ok) throw new Error(d.error || "Something went wrong"); return d; };
 const SIGNIN = { denied:"This GitHub account does not have access. Ask whoever runs this server to add your username.", cancelled:"Sign-in was cancelled.", failed:"Sign-in did not finish. Try again." };
-function signedOut(){ const said = new URLSearchParams(location.search).get("signin"); $("signin-say").textContent = SIGNIN[said] || ""; $("signin-say").hidden = !SIGNIN[said]; document.body.classList.add("out"); }
-function signedIn(u){ const box = $("me"); box.hidden = false; const name = esc(u.name || u.login);
-  box.innerHTML = `${u.avatar ? `<img src="${esc(u.avatar)}" alt="" referrerpolicy="no-referrer">` : `<i class="who">${esc(u.login.charAt(0).toUpperCase())}</i>`}<span title="${esc(u.login)}">${name}</span><button id="signout">Sign out</button>`;
-  $("signout").onclick = async () => { await fetch("/auth/logout", { method:"POST" }); location.href = "/"; }; }
+function signedOut(){ forget(); const said = new URLSearchParams(location.search).get("signin"); $("signin-say").textContent = SIGNIN[said] || ""; $("signin-say").hidden = !SIGNIN[said]; document.body.classList.add("out"); }
+function signedIn(u){ const box = $("me"), name = esc(u.name || u.login); box.hidden = false;
+  const face = u.avatar ? `<img src="${esc(u.avatar)}" alt="" referrerpolicy="no-referrer">` : `<i class="who">${esc(u.login.charAt(0).toUpperCase())}</i>`;
+  box.innerHTML = `<div class="me-menu" id="me-menu" role="menu" hidden><p>Signed in as <b>${esc(u.login)}</b></p><button role="menuitem" id="signout">Sign out</button></div><button class="me-b" id="me-b" aria-haspopup="menu" aria-expanded="false" aria-controls="me-menu">${face}<span><b>${name}</b><small>${esc(u.login)}</small></span><svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 6l3-3 3 3M5 10l3 3 3-3"/></svg></button>`;
+  const b = $("me-b"), m = $("me-menu"), show = on => { m.hidden = !on; b.setAttribute("aria-expanded", on); };
+  b.onclick = e => { e.stopPropagation(); show(m.hidden); };
+  m.onclick = e => e.stopPropagation();
+  addEventListener("click", () => show(false));
+  addEventListener("keydown", e => { if (e.key === "Escape" && !m.hidden) { show(false); b.focus(); } });
+  $("signout").onclick = async () => { await fetch("/auth/logout", { method:"POST" }); forget(); location.href = "/"; }; }
 const KW = new Set("export function return if else for while throw const let var import from new await async class fn pub use def".split(" "));
 function hl(src){
   const re = /(\/\/.*$)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`[^`]*`)|(\b\d+(?:\.\d+)?\b)|([A-Za-z_$][\w$]*)(?=\s*\()|([A-Za-z_$][\w$]*)|([{}()[\];,.:?=+*<>!|&…-]+)/g;
@@ -737,7 +844,7 @@ const groupsOf = js => [...new Set(js.map(j => j.group).filter(g => g != null))]
 const words = ts => ts.length < 2 ? ts.join("") : ts.length > 3 ? `${ts.slice(0, 3).join(", ")} and ${ts.length - 3} more` : `${ts.slice(0, -1).join(", ")} and ${ts.at(-1)}`;
 const when = d => { const x = new Date(d + "T12:00:00"); return x.toLocaleDateString("en-US", x.getFullYear() === new Date().getFullYear() ? { month:"short", day:"numeric" } : { month:"short", day:"numeric", year:"numeric" }); };
 // A list reads best in days; a page about one thing keeps the date.
-const ago = d => { const n = Math.round((new Date(new Date().toDateString()) - new Date(d + "T00:00:00")) / 864e5); return n === 0 ? "Today" : n === 1 ? "Yesterday" : when(d); };
+const ago = d => { const n = Math.round((new Date(new Date().toDateString()) - new Date(d + "T00:00:00")) / 864e5); return n === 0 ? "Today" : n === 1 ? "Yesterday" : n > 0 && n < 7 ? `${n}d ago` : when(d); };
 const who = name => `<i class="who" title="${esc(name)}">${esc(String(name || "?").charAt(0).toUpperCase())}</i>`;
 const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const stat = f => `${f.add?`<i class="ok-t">+${f.add}</i> `:""}${f.del?`<i class="bad-t">−${f.del}</i>`:""}`;
@@ -757,40 +864,78 @@ let exAll = false, P = null, LIST = [], MORE = true, SUMM = {}, OPEN = new Set()
 let curFile = null, scope = { all:true }, selSid = null, whole = false, cache = {}, exOpen = null, exJourney = null, exGroup = null, exFresh = false, exPick = false, wants = 0;
 const api = (what, q = "") => `/api/p/${encodeURIComponent(P)}/${what}${q}`;
 const hash = (...p) => "#/" + ["p", encodeURIComponent(P), ...p].join("/");
-const page = html => { $("view").innerHTML = html; };
+let LOADING;
+const page = html => { clearTimeout(LOADING); $("view").innerHTML = html; };
+// Most pages arrive before a skeleton would be seen. Showing one anyway is a flash and a jump.
+const loading = () => { clearTimeout(LOADING); LOADING = setTimeout(() => page(skPage()), 300); };
+const kept = k => { try { return JSON.parse(sessionStorage.getItem(k)); } catch { return null; } };
+const keep = (k, v) => { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch {} };
+const forget = () => { try { sessionStorage.clear(); } catch {} };
 const failed = e => { page(`<div class="pj-empty"><b>That did not load</b><p>${esc(e.message)}</p><p><button class="bar-s" id="retry">Try again</button></p></div>`); $("retry").onclick = route; };
 const SECTIONS = [["overview", "Overview", "", "M2.5 7 8 2.5 13.5 7v6.5h-11zM6.5 13.5V10h3v3.5"], ["pulls", "Pull requests", "pulls", "M4 5.5v5M12 10.5V7a2 2 0 0 0-2-2H8m1.5-2L7.5 5l2 2M4 2.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM4 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"], ["journeys", "Journeys", "journeys", "M3 13V3M3 3.5h8l-2 2.5 2 2.5H3"], ["changes", "Changes", "changes", "M8 2.5v3M8 10.5v3M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"], ["people", "People", "people", "M6 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM1.5 13.5c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4M10.5 2.8a2.5 2.5 0 0 1 0 4.4M12 9.8c1.5.5 2.5 1.8 2.5 3.7"]];
 const secIcon = d => `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
 function nav(tab, here){
   const me = PROJ.find(p => p.name === P);
-  $("crumb").innerHTML = !P ? "" : `<span class="bar-sl">/</span><button class="sw" id="sw" aria-expanded="${SWITCH}"><i class="tile" style="--c:${colour(P)}">${esc(P.charAt(0).toUpperCase())}</i><span>${esc(P)}</span><i class="chev"></i></button>${SWITCH ? `<div class="cp-menu" style="top:38px;left:14px;width:280px">${PROJ.map(p => `<a class="${p.name === P ? "on" : ""}" href="#/p/${encodeURIComponent(p.name)}"><b>${esc(p.name)}</b><span>${plural(p.changes, "change")}</span></a>`).join("")}<a href="#/"><b>All projects</b></a></div>` : ""}`;
+  $("crumb").innerHTML = !P ? "" : `<span class="bar-sl">/</span><button class="sw" id="sw" aria-expanded="${SWITCH}"><i class="tile" style="--c:${colour(P)}">${esc(P.charAt(0).toUpperCase())}</i><span>${esc(P)}</span><i class="chev"></i></button>${SWITCH ? `<div class="cp-menu sw-menu">${PROJ.map(p => `<a class="${p.name === P ? "on" : ""}" href="#/p/${encodeURIComponent(p.name)}"><b>${esc(p.name)}</b><span>${plural(p.changes, "change")}</span></a>`).join("")}<a href="#/"><b>All projects</b></a></div>` : ""}`;
   if ($("sw")) $("sw").onclick = e => { e.stopPropagation(); SWITCH = !SWITCH; nav(tab, here); };
   $("sec").innerHTML = P ? SECTIONS.map(([k, label, path, d]) => `<a href="${hash(...(path ? [path] : []))}" class="${k === tab ? "on" : ""}" ${k === tab ? 'aria-current="page"' : ""}>${secIcon(d)}${label}</a>`).join("")
-    : PROJ.map(p => `<a href="#/p/${encodeURIComponent(p.name)}"><i class="tile" style="--c:${colour(p.name)}">${esc(p.name.charAt(0).toUpperCase())}</i>${esc(p.name)}</a>`).join("");
-  $("side-all").hidden = !P || PROJ.length < 2;
+    : `<a href="#/" class="on" aria-current="page">${secIcon(SECTIONS[0][3])}Overview</a><p class="sec-l">Projects</p>${PROJ.map(p => `<a href="#/p/${encodeURIComponent(p.name)}"><i class="tile">${esc(p.name.charAt(0).toUpperCase())}</i>${esc(p.name)}</a>`).join("")}`;
   const label = (SECTIONS.find(x => x[0] === tab) || [])[1];
-  $("trail").innerHTML = !P ? "<span>Projects</span>" : `<a href="${hash()}">${esc(P)}</a><i>/</i>${here ? `<a href="${hash(...(tab === "overview" ? [] : [tab]))}">${label}</a><i>/</i><span>${esc(here)}</span>` : `<span>${label || ""}</span>`}`;
+  $("trail").innerHTML = !P ? "<span>Overview</span>" : `<a href="${hash()}">${esc(P)}</a><i>/</i>${here ? `<a href="${hash(...(tab === "overview" ? [] : [tab]))}">${label}</a><i>/</i><span>${esc(here)}</span>` : `<span>${label || ""}</span>`}`;
   document.title = !P ? "Flow control" : `${here || (SECTIONS.find(x => x[0] === tab) || [0, "Change"])[1]}, ${P}`;
   TAB = tab; void me;
 }
 
 /* projects */
+let HOME = null, RANGE = 12, ME = null, MAP = null, STAMP = 0;
 async function projects(){
-  P = null; REDRAW = null; nav(); if (!PROJ.length) page(skPage());
-  const list = PROJ = await get("/api/projects"); nav();
+  P = null; REDRAW = null; const mine = wants;
+  nav("home"); if (PROJ.length > 1) { REDRAW = drawHome; drawHome(); } else loading();
+  const list = PROJ = await get("/api/projects"); if (mine !== wants) return;
   if (list.length === 1) { location.replace(`#/p/${encodeURIComponent(list[0].name)}`); return; }
-  const go = p => `#/p/${encodeURIComponent(p.name)}`, sorted = [...list].sort((a, b) => (b.last ? b.last.date : "").localeCompare(a.last ? a.last.date : ""));
-  const feed = list.flatMap(p => (p.recent || []).filter(c => !c.quiet).map(c => ({ p, c }))).sort((a, b) => b.c.date.localeCompare(a.c.date)).slice(0, 8);
-  const total = list.reduce((n, p) => n + p.changes, 0), journeys = list.reduce((n, p) => n + p.journeys.length, 0);
-  page(`<div class="ex-cards on"><div class="page-h"><h2>Projects</h2><span class="ghl-n">${plural(list.length, "project")}, ${plural(total, "change")}${journeys ? `, ${plural(journeys, "journey")}` : ""}</span></div>
-    <ol class="pj">${sorted.map(p => `<li><a href="${go(p)}" title="${esc(p.path)}"><i class="tile big" style="--c:${colour(p.name)}">${esc(p.name.charAt(0).toUpperCase())}</i><div class="pj-m"><b>${esc(p.name)}</b><span>${esc(p.says || "Nothing saved yet")}</span></div>${p.journeys.length ? `<div class="ghc-js" role="img" aria-label="${esc(words(p.journeys.map(j => j.title)))}">${p.journeys.map((j, g) => gbadge(g, undefined, p.journeys)).join("")}</div>` : ""}<div class="ghc-r pj-r"><div><span>${plural(p.changes, "change")}</span>${p.last ? `<span>${esc(when(p.last.date))}</span>` : ""}</div><i class="chev"></i></div></a></li>`).join("")}</ol>
-    ${feed.length ? `<div class="pn" style="margin-top:16px"><div class="pn-h"><b>Recent activity</b><small>Across your projects</small></div><ul class="fd">${feed.map(({ p, c }) => `<li><a href="#/p/${encodeURIComponent(p.name)}/change/${c.id}"><i class="tile" style="--c:${colour(p.name)}">${esc(p.name.charAt(0).toUpperCase())}</i><b>${esc(c.title)}</b><small>${esc(p.name)}</small><small>${esc(when(c.date))}</small></a></li>`).join("")}</ul></div>` : ""}</div>`);
+  nav("home"); REDRAW = drawHome; drawHome();
+  // Git answers quickly and GitHub can take seconds. What was already right is not drawn again.
+  HOME = HOME || {};
+  const set = (name, x) => { const was = HOME[name], next = { ...was, ...x }; if (JSON.stringify(was) === JSON.stringify(next)) return;
+    HOME[name] = next; keep("flow-home", { list, home:HOME }); if (mine === wants) { const y = scrollY; drawHome(); scrollTo(0, y); } };
+  for (const p of list) { const at = `/api/p/${encodeURIComponent(p.name)}`;
+    get(`${at}/activity`).then(act => set(p.name, { act }), () => set(p.name, { act:[] }));
+    get(`${at}/pulls`).then(v => set(p.name, { pulls:v.pulls }), () => set(p.name, { pulls:[] })); }
+  keep("flow-home", { list, home:HOME });
+}
+const kpi = (label, value, note, trend = "") => `<div class="stat">${trend}<small>${note}</small><b>${value}</b><span>${label}</span></div>`;
+const PR_ICON = { open:"M4 5.5v5M4 2.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM4 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 10.5V7a2 2 0 0 0-2-2H8", merged:"M4 5.5v5M4 2.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM4 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 6.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM4 5.5c0 2 2 2.5 6.5 2.5", closed:"M4 5.5v5M4 2.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM4 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM10.5 3.5l3 3M13.5 3.5l-3 3" };
+const prIcon = s => `<svg class="pr-i ${s}" viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="${PR_STATE[s]}"><title>${PR_STATE[s]}</title><path d="${PR_ICON[s === "draft" ? "open" : s]}"/></svg>`;
+const greet = () => { const h = new Date().getHours(); return `Good ${h < 12 ? "morning" : h < 18 ? "afternoon" : "evening"}, ${esc((ME.name || ME.login).split(" ")[0])}`; };
+function drawHome(){
+  const list = PROJ, H = HOME || {}, of = p => ({ act:[], pulls:[], ...H[p.name] }), acts = list.every(p => H[p.name] && H[p.name].act), prs = list.every(p => H[p.name] && H[p.name].pulls), sorted = [...list].sort((a, b) => (b.last ? b.last.date : "").localeCompare(a.last ? a.last.date : ""));
+  const total = list.reduce((n, p) => n + p.changes, 0), journeys = list.reduce((n, p) => n + p.journeys.length, 0), mapped = list.filter(p => p.journeys.length).length;
+  const all = list.flatMap(p => of(p).act.map(a => a[0])), recent = weeks(all, 12), now = recent[11].n, was = recent[10].n, rows = weeks(all, RANGE);
+  const trend = !was ? (now ? "New this week" : "None last week") : now === was ? "Same as last week" : `<span class="dl">${now > was ? "↑" : "↓"} ${Math.abs(Math.round((now - was) / was * 100))}%</span> from last week`;
+  const busy = list.filter(p => { const w = weeks(of(p).act.map(a => a[0]), 1); return w[0].n > 0; }).length;
+  const pulls = list.flatMap(p => of(p).pulls.map(x => ({ ...x, project:p.name }))).sort((a, b) => (b.ended || b.opened).localeCompare(a.ended || a.opened));
+  const open = pulls.filter(x => x.state === "open" || x.state === "draft").length, cut = iso(monday(iso(new Date()))), merged = pulls.filter(x => x.state === "merged" && x.ended >= cut).length;
+  const feed = list.flatMap(p => (p.recent || []).filter(c => !c.quiet).map(c => ({ p, c }))).sort((a, b) => b.c.date.localeCompare(a.c.date)).slice(0, 6);
+  const go = p => `#/p/${encodeURIComponent(p.name)}`, wait = `<span class="sk sk-n"></span>`, soon = `<span class="sk sk-t"></span>`;
+  const row = p => { const w = weeks(of(p).act.map(x => x[0]), 8), known = H[p.name] && H[p.name].act;
+    return `<a class="ptb-r" href="${go(p)}" title="${esc(p.path)}"><div class="ptb-n"><i class="tile big">${esc(p.name.charAt(0).toUpperCase())}</i><div class="pj-m"><b>${esc(p.name)}</b><span>${esc(p.says || "Nothing saved yet")}</span></div></div>
+      <div>${p.journeys.length ? `<div class="ghc-js" role="img" aria-label="${esc(words(p.journeys.map(j => j.title)))}">${p.journeys.map((j, g) => gbadge(g, undefined, p.journeys)).join("")}</div>` : `<small>None yet</small>`}</div>
+      <div>${known ? spark(w, "var(--accent)") : ""}</div><small class="num">${known ? w[w.length - 1].n : wait}</small><small class="num">${p.changes.toLocaleString("en-US")}</small><small class="num">${p.last ? esc(ago(p.last.date)) : wait}</small><i class="chev"></i></a>`; };
+  page(`<div class="ex-cards on"><div class="home-h"><h2>${ME ? greet() : "Overview"}</h2><p>${acts ? (now ? `${plural(now, "change")} across ${plural(busy, "project")} this week.` : "Nothing has changed this week.") : `<span class="sk" style="width:240px;height:10px;margin:7px 0"></span>`}</p></div>
+    <div class="stats">${kpi("Changes this week", acts ? now : wait, acts ? trend : soon, acts ? spark(recent, "var(--accent)") : "")}${kpi("Open pull requests", prs ? open : wait, prs ? `${merged} merged this week` : soon)}${kpi("All changes", total.toLocaleString("en-US"), `Across ${plural(list.length, "project")}`)}${kpi("Journeys", journeys, `In ${mapped} of ${plural(list.length, "project")}`)}</div>
+    <div class="cols home-top"><section class="pn"><div class="pn-h ac-t"><b>Activity</b><div class="seg" role="group" aria-label="How far back to show">${[4, 12, 26].map(n => `<button data-range="${n}" aria-pressed="${n === RANGE}" class="${n === RANGE ? "on" : ""}">${n}w</button>`).join("")}</div></div><div class="pn-b">${acts ? chart(rows) : `<div class="ac"></div>`}</div></section>
+      <section class="pn"><div class="pn-h"><b>Pull requests</b></div>${pulls.length ? `<ol class="pr-l">${pulls.slice(0, 4).map(x => `<li><a href="#/p/${encodeURIComponent(x.project)}/pull/${x.number}">${prIcon(x.state)}<div class="pr-m"><b>${esc(x.title)}</b><span>${esc(x.project)} #${x.number}, ${esc(ago(x.ended || x.opened))}</span></div></a></li>`).join("")}</ol>` : prs ? `<div class="pn-e">No pull requests yet.</div>` : `<ol class="pr-l" aria-hidden="true">${[70, 88, 80, 64].map(w => `<li><a><i class="pr-i"></i><div class="pr-m"><b><span class="sk" style="width:${w}%;height:10px;margin:5px 0"></span></b><span><span class="sk" style="width:36%;height:8px;margin:5px 0"></span></span></div></a></li>`).join("")}</ol>`}</section></div>
+    <section class="pn ptb"><div class="ptb-h"><span>Project</span><span>Journeys</span><span>Last 8 weeks</span><span class="num">This week</span><span class="num">Changes</span><span class="num">Updated</span><span></span></div>${sorted.map(row).join("")}</section>
+    ${feed.length ? `<section class="pn"><div class="pn-h"><b>Recent activity</b><small>Across your projects</small></div><ul class="fd">${feed.slice(0, 5).map(({ p, c }) => `<li><a href="#/p/${encodeURIComponent(p.name)}/change/${c.id}"><i class="tile">${esc(p.name.charAt(0).toUpperCase())}</i><b>${esc(c.title)}</b><small>${esc(p.name)}</small><small class="dt">${esc(ago(c.date))}</small></a></li>`).join("")}</ul></section>` : ""}</div>`);
+  document.querySelectorAll("[data-range]").forEach(b => b.onclick = () => { RANGE = +b.dataset.range; const y = scrollY; drawHome(); scrollTo(0, y); });
 }
 
 /* changes */
 async function more(){
   const d = await get(api("commits", `?skip=${LIST.length}`));
-  LIST.push(...d.commits); MORE = d.commits.length === d.size; TOTAL = d.project.changes; BOOK = d.journeys; return d;
+  LIST.push(...d.commits); MORE = d.commits.length === d.size; TOTAL = d.project.changes; BOOK = d.journeys; MAP = d.map || null; STAMP = d.stamp;
+  if (!Object.keys(SUMM).length) Object.assign(SUMM, kept(`flow-summ:${P}:${STAMP}`) || {});
+  return d;
 }
 let TOTAL = 0;
 async function ensureList(){ if (!LIST.length) await more(); }
@@ -810,7 +955,7 @@ function drawChanges(){
   const days = [];
   LIST.forEach((c, i) => { const last = days[days.length - 1]; if (last && last.date === c.date) last.rows.push([c, i]); else days.push({ date:c.date, rows:[[c, i]] }); });
   page(`<div class="ex-cards on"><div class="ghl-top"><h2>What changed</h2><span class="ghl-n">${plural(TOTAL, "change")}</span></div>
-    ${BOOK.length ? `<div class="ghl-key">${BOOK.map((b, g) => `<span>${gbadge(g)}${esc(b.title)}</span>`).join("")}</div>` : LIST.length ? `<p class="ghl-hint">These letters are single requests, not journeys yet. Run <code>flow journeys</code> to group them into what people come to do.</p>` : ""}
+    ${BOOK.length ? `<div class="ghl-key">${BOOK.map((b, g) => `<span>${gbadge(g)}${esc(b.title)}</span>`).join("")}</div>` : LIST.length ? `${runSlot("journeys", "These letters are single requests, not journeys yet.")}` : ""}
     ${LIST.length ? `<div class="ghl">${days.map(d => `<section class="ghl-day ${d.rows.every(([c]) => calm(c)) ? "quiet" : ""}"><h3>${esc(ago(d.date))}</h3><ol>${d.rows.map(([c, i]) => commitRow(c, i)).join("")}</ol></section>`).join("")}</div>
     
     ${MORE ? `<button class="more" id="more">Show older changes</button>` : ""}
@@ -826,13 +971,14 @@ async function fill(){
   const mine = ++wants;
   for (;;) {
     const ids = LIST.filter(c => !SUMM[c.id]).slice(0, 4).map(c => c.id);
-    if (!ids.length || mine !== wants) return;
+    if (!ids.length) { if (mine === wants) keep(`flow-summ:${P}:${STAMP}`, SUMM); return; }
+    if (mine !== wants) return;
     try { Object.assign(SUMM, await get(api("summaries", `?ids=${ids.join(",")}`))); }
     catch { for (const id of ids) SUMM[id] = { journeys:[], focus:[], line:"Could not read this change", untouched:0 }; }
     if (mine === wants && REDRAW) { const y = scrollY; REDRAW(); scrollTo(0, y); }
   }
 }
-async function changes(){ nav("changes"); if (!LIST.length) page(skPage()); await ensureList(); REDRAW = drawChanges; drawChanges(); fill(); }
+async function changes(){ nav("changes"); if (!LIST.length) loading(); await ensureList(); REDRAW = drawChanges; drawChanges(); fill(); }
 
 /* explore */
 async function explore(id){
@@ -1000,7 +1146,7 @@ async function route(){
   try {
     if (parts[0] !== "p") return await projects();
     const name = decodeURIComponent(parts[1]);
-    if (name !== P) { P = name; ACT = null; CAT = null; KB = null; $("live").innerHTML = ""; LIST = []; MORE = true; SUMM = {}; OPEN = new Set(); D = null; }
+    if (name !== P) { P = name; KB = null; $("live").innerHTML = ""; OPEN = new Set(); dropLoaded(); RUN = null; followRun(); }
     SWITCH = false;
     const go = { journeys, pulls, pull:() => pull(+parts[3]), change:() => change(parts[3]), journey:() => journey(+parts[3]), request:() => request(decodeURIComponent(parts[3] || "")), changes, explore:() => explore(parts[3]), people };
     await (go[parts[2]] || overview)();
@@ -1022,44 +1168,92 @@ const iso = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")
 function weeks(dates, n){ const end = monday(iso(new Date())), out = [];
   for (let i = n - 1; i >= 0; i--) { const d = new Date(end); d.setDate(d.getDate() - i * 7); out.push({ at:iso(d), n:0 }); }
   const at = Object.fromEntries(out.map(w => [w.at, w])); for (const d of dates) { const w = at[iso(monday(d))]; if (w) w.n++; } return out; }
-function chart(rows){ const top = Math.max(1, ...rows.map(w => w.n)), day = d => new Date(d + "T12:00:00").toLocaleDateString("en-US", { month:"short", day:"numeric" });
-  return `<div class="chart" role="img" aria-label="${rows.reduce((n, w) => n + w.n, 0)} changes over ${rows.length} weeks">${rows.map(w => `<button data-tip="Week of ${day(w.at)}: ${plural(w.n, "change")}" aria-label="Week of ${day(w.at)}: ${plural(w.n, "change")}"><i class="${w.n ? "" : "none"}" style="height:${w.n ? Math.max(3, w.n / top * 100) : 0}%"></i></button>`).join("")}</div><div class="axis"><span>${day(rows[0].at)}</span><span>This week</span></div>`; }
-const spark = (rows, c) => { const top = Math.max(1, ...rows.map(w => w.n)); return `<div class="spark" style="--c:${c}" aria-hidden="true">${rows.map(w => `<i style="height:${w.n ? Math.max(8, w.n / top * 100) : 0}%"></i>`).join("")}</div>`; };
+// A rounded top for the scale, so the axis reads 0, 50, 100 and not 0, 47, 94.
+function niceTop(n){ const m = Math.max(n, 4), p = 10 ** Math.floor(Math.log10(m)); for (const k of [1, 1.5, 2, 3, 4, 6, 8, 10]) if (k * p >= m) return k * p; return 10 * p; }
+// Curves between points without overshooting them, so a line never dips below zero.
+function curve(pts){ return pts.map(([x, y], i) => { if (!i) return `M${x} ${y}`; const [a, b] = pts[i - 1], m = (a + x) / 2; return `C${m} ${b} ${m} ${y} ${x} ${y}`; }).join(""); }
+function chart(rows){ const day = d => new Date(d + "T12:00:00").toLocaleDateString("en-US", { month:"short", day:"numeric" }), n = rows.length, top = niceTop(Math.max(...rows.map(w => w.n)));
+  const pts = rows.map((w, i) => [(i + .5) / n * 100, 100 - w.n / top * 100]), line = curve(pts), every = Math.max(1, Math.round(n / 4));
+  const ticks = [top, top / 2, 0].map(v => `<span>${Number.isInteger(v) ? v : v.toFixed(1)}</span>`).join("");
+  const labels = rows.map((w, i) => `<span>${i === n - 1 ? "This week" : (n - 1 - i) % every === 0 ? day(w.at) : ""}</span>`).join("");
+  return `<div class="ac" role="img" aria-label="${rows.reduce((t, w) => t + w.n, 0)} changes over ${n} weeks"><div class="ac-y" aria-hidden="true">${ticks}</div><div class="ac-p"><i class="ac-g"></i><i class="ac-g"></i><i class="ac-g"></i>
+    <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="acf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".16"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs><path d="${line}L${pts[n - 1][0]} 100L${pts[0][0]} 100Z" fill="url(#acf)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>
+    <div class="ac-h">${rows.map((w, i) => `<button style="--y:${pts[i][1]}%" data-tip="Week of ${day(w.at)}: ${plural(w.n, "change")}" aria-label="Week of ${day(w.at)}: ${plural(w.n, "change")}"></button>`).join("")}</div></div></div>
+    <div class="ac-x" style="--n:${n}" aria-hidden="true">${labels}</div>`; }
+const spark = (rows, c) => { const top = Math.max(1, ...rows.map(w => w.n)), n = rows.length, pts = rows.map((w, i) => [i / (n - 1) * 100, 28 - w.n / top * 26]), line = curve(pts);
+  return `<svg class="spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true" style="--c:${c}"><path d="${line}L100 30L0 30Z" fill="var(--c)" opacity=".1"/><path d="${line}" fill="none" stroke="var(--c)" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg>`; };
 const figure = (n, label) => `<div class="stat"><b>${n}</b><span>${label}</span></div>`;
 const kinds = { page:"Pages", action:"Actions", route:"Routes", metadata:"Search engines", middleware:"Middleware" };
 const reqList = list => { const by = {}; for (const r of list) (by[r.kind] ||= []).push(r);
   return Object.entries(by).map(([k, rs]) => `<div class="rq-k">${esc(kinds[k] || k)}</div><ul class="rq">${rs.map(r => `<li><a href="${hash("request", r.uid)}"><span>${esc(r.title)}</span><small>${plural(r.steps, "step")}</small></a></li>`).join("")}</ul>`).join(""); };
-const NOBOOK = `<div class="pn-e">Run <code>flow journeys</code> to group this project by what people come to do.</div>`;
+/* work the page starts, so nobody needs a terminal for it */
+const TASKS = { journeys:{ go:"Find journeys", doing:"Finding journeys" }, titles:{ go:"Write the changes", doing:"Writing the changes" } };
+let RUN = null, RUN_T = null, SOBA = false;
+const took = n => n < 60 ? `${n}s` : `${Math.floor(n / 60)}m ${n % 60}s`;
+const dropLoaded = () => { ACT = null; CAT = null; LIST = []; MORE = true; SUMM = {}; D = null; };
+function runBody(task, lead){ const t = TASKS[task], r = RUN;
+  if (r && r.running) return r.task === task ? `<div class="run-m"><span class="run-on"><i></i>${t.doing}, ${took(r.secs)}</span><small>You can leave this page. It keeps going, and the page fills in when it's done.</small></div>` : `<div class="run-m"><span>${esc(lead)}</span><small>${TASKS[r.task].doing} first.</small></div>`;
+  const stopped = r && r.task === task && r.failed, blocked = stopped && r.code === "no_compute";
+  if (blocked) return `<div class="run-m"><span>Connect your computer to run this.</span><small>Nothing you've connected is reachable right now.</small></div><button class="bar-s" data-connect>Connect compute</button><button class="bar-s" data-run="${task}">Try again</button>`;
+  const why = !stopped ? SOBA ? "Runs on the computer you connected and can take a few minutes." : "Uses your Claude plan and can take a few minutes." : r.code === "payment_required" ? "This plan's allowance is used up." : r.code ? "The run could not finish." : r.failed;
+  return `<div class="run-m"><span>${stopped ? "That stopped before it finished." : esc(lead)}</span><small class="${stopped ? "bad-t" : ""}">${esc(why)}</small></div><button class="bar-s" data-run="${task}">${stopped ? "Try again" : t.go}</button>`; }
+const runSlot = (task, lead) => `<div class="run" data-task="${task}" data-lead="${esc(lead)}" aria-live="polite">${runBody(task, lead)}</div>`;
+// Soba runs this flow itself. The tab opens first, because a browser blocks one opened after a wait.
+async function connectSoba(){ if (window.flowSoba) return window.flowSoba.open(); const tab = window.open("", "_blank");
+  try { const r = await fetch("/api/soba/session", { method:"POST" }); if (r.status === 401) { tab.close(); return signedOut(); } const d = await r.json(); if (!r.ok || !d.url) throw new Error((d.error && d.error.message) || d.error || "Soba did not offer a way to connect"); tab.location = d.url; }
+  catch (err) { tab.close(); RUN = { task:RUN ? RUN.task : "journeys", running:false, failed:err.message, secs:0 }; paintRuns(); } }
+document.addEventListener("click", e => { if (e.target.closest("#soba-go,[data-connect]")) connectSoba(); });
+const paintRuns = () => document.querySelectorAll(".run").forEach(el => { el.innerHTML = runBody(el.dataset.task, el.dataset.lead); });
+async function followRun(){
+  clearTimeout(RUN_T); const at = P; if (!at) return;
+  let r; try { r = (await get(api("run"))).run; } catch { return; }
+  if (at !== P) return;
+  const was = RUN && RUN.running; RUN = r; paintRuns();
+  if (was && r && !r.running) { dropLoaded(); route(); } // A run that stopped partway can still have saved work.
+  if (r && r.running) RUN_T = setTimeout(followRun, 2000);
+}
+document.addEventListener("click", async e => { const b = e.target.closest("[data-run]"); if (!b) return; const task = b.dataset.run; b.disabled = true;
+  try { const r = await fetch(api(`run/${task}`), { method:"POST" }); if (r.status === 401) return signedOut(); const d = await r.json(); if (!r.ok) throw new Error(d.error || "Something went wrong"); RUN = d.run; paintRuns(); followRun(); }
+  catch (err) { RUN = { task, running:false, failed:err.message, secs:0 }; paintRuns(); } });
+const NOBOOK = () => runSlot("journeys", "Group this project by what people come to do.");
 
 /* overview */
 async function overview(){
-  nav("overview"); page(skPage()); await loadAll(); await loadAct(); REDRAW = drawOverview; drawOverview(); loadCat().then(() => { if (REDRAW === drawOverview) drawOverview(); }, () => {}); fill();
+  nav("overview"); loading(); await loadAll(); await loadAct(); REDRAW = drawOverview; drawOverview(); loadCat().then(() => { if (REDRAW === drawOverview) drawOverview(); }, () => {}); fill();
 }
 function drawOverview(){
   const oldest = ACT.length ? ACT[ACT.length - 1][0] : iso(new Date()), span = Math.ceil((monday(iso(new Date())) - monday(oldest)) / 6048e5) + 1, shown = Math.max(8, Math.min(26, span));
   const rows = weeks(ACT.map(a => a[0]), shown), people = new Set(ACT.map(a => a[1])).size, thisWeek = rows[rows.length - 1].n;
-  const counts = BOOK.map((b, g) => ({ g, n:read().filter(c => touches(c, g)).length })).sort((a, b) => b.n - a.n), top = Math.max(1, ...counts.map(x => x.n));
+  const counts = BOOK.map((b, g) => ({ g, n:read().filter(c => touches(c, g)).length })).sort((a, b) => b.n - a.n || a.g - b.g), top = Math.max(1, ...counts.map(x => x.n));
   page(`<div class="ex-cards on"><div class="page-h"><h2>${esc(P)}</h2><span class="ghl-n">${LIST[0] ? `Last change ${esc(ago(LIST[0].date).toLowerCase() === "today" || ago(LIST[0].date) === "Yesterday" ? ago(LIST[0].date).toLowerCase() : when(LIST[0].date))}` : ""}</span></div>
     <div class="stats">${figure(TOTAL, "Changes")}${figure(thisWeek, "This week")}${figure(BOOK.length || (CAT ? CAT.length : "…"), BOOK.length ? "Journeys" : "Requests")}${figure(people, "People")}</div>
     <div class="cols"><div><div class="pn"><div class="pn-h"><b>Activity</b><small>Last ${shown} weeks</small></div><div class="pn-b">${chart(rows)}</div></div>
       <div class="pn"><div class="pn-h"><b>Latest changes</b><a href="${hash("changes")}">All changes</a></div><ul class="fd">${LIST.slice(0, 6).map(feedRow).join("")}</ul></div></div>
-      <div class="pn"><div class="pn-h"><b>Most changed journeys</b></div>${BOOK.length ? `<div class="pn-b"><ul class="rank">${counts.map(({ g, n }) => `<li><a href="${hash("journey", g)}">${gbadge(g)}<span>${esc(BOOK[g].title)}</span><small>${n}</small><u style="--c:${tint(g)}"><i style="width:${n / top * 100}%"></i></u></a></li>`).join("")}</ul></div><div class="pn-e" style="padding-top:0">${readNote()}</div>` : NOBOOK}</div></div></div>`);
+      <div class="pn"><div class="pn-h"><b>Most changed journeys</b></div>${BOOK.length ? `<div class="pn-b"><ul class="rank">${read().length < LIST.length ? BOOK.map(() => `<li class="rank-sk"><a><i class="sk"></i><span class="sk"></span><small></small><u></u></a></li>`).join("") : counts.map(({ g, n }) => `<li><a href="${hash("journey", g)}">${gbadge(g)}<span>${esc(BOOK[g].title)}</span><small>${n}</small><u style="--c:${tint(g)}"><i style="width:${n / top * 100}%"></i></u></a></li>`).join("")}</ul></div><div class="pn-e" style="padding-top:0">${readNote()}</div>` : NOBOOK()}</div></div></div>`);
 }
 
 /* journeys */
 async function journeys(){
-  nav("journeys"); page(skPage()); await loadAll(); await loadCat(); REDRAW = drawJourneys; drawJourneys(); fill();
+  nav("journeys"); loading(); await loadAll(); await loadCat(); REDRAW = drawJourneys; drawJourneys(); fill();
 }
+// How the journeys fit together: one row per kind of person, in the order they go.
+function mapView(){
+  if (!MAP) return "";
+  const at = t => BOOK.findIndex(b => b.title === t), node = g => `<li><a href="${hash("journey", g)}">${gbadge(g)}<span>${esc(BOOK[g].title)}</span></a></li>`;
+  const behind = BOOK.map((b, g) => g).filter(g => BOOK[g].icon === "gear");
+  return `<section class="pn jm"><div class="pn-h"><b>How it all fits together</b></div><p class="jm-say">${esc(MAP.say)}</p>
+    <div class="jm-ls">${MAP.paths.map(p => `<div class="jm-l"><b>${esc(p.who)}</b><ol>${p.journeys.map(at).filter(g => g >= 0).map(node).join("")}</ol></div>`).join("")}
+    ${behind.length ? `<div class="jm-l jm-b"><b>Behind it all</b><ol>${behind.map(node).join("")}</ol></div>` : ""}</div></section>`; }
 function drawJourneys(){
   const card = (b, g) => { const mine = read().filter(c => touches(c, g)), n = CAT.filter(r => r.group === g).length;
     return `<a class="jc" href="${hash("journey", g)}"><div class="jc-t">${gbadge(g)}${esc(b.title)}</div><div class="jc-m"><span><b>${plural(n, "request")}</b></span><span><b>${plural(mine.length, "change")}</b></span><span>${mine[0] ? esc(when(mine[0].date)) : "No recent change"}</span></div>${spark(weeks(mine.map(c => c.date), 16), tint(g))}</a>`; };
   const loose = CAT.filter(r => r.group == null);
   page(`<div class="ex-cards on"><div class="page-h"><h2>Journeys</h2><span class="ghl-n">${BOOK.length ? readNote() : plural(CAT.length, "request")}</span></div>
-    ${BOOK.length ? `<div class="jgrid">${BOOK.map(card).join("")}</div>` : `<div class="pn">${NOBOOK}</div>`}
-    ${loose.length ? `<div class="pn" style="margin-top:12px"><div class="pn-h"><b>${BOOK.length ? "Not in a journey yet" : "Requests"}</b><small>${plural(loose.length, "request")}</small></div>${reqList(loose)}</div>` : ""}</div>`);
+    ${mapView()}${BOOK.length ? `<div class="jgrid">${BOOK.map(card).join("")}</div>` : `<div class="pn">${NOBOOK()}</div>`}
+    ${loose.length ? `<div class="pn" style="margin-top:12px"><div class="pn-h"><b>${BOOK.length ? "Not in a journey yet" : "Requests"}</b><small>${plural(loose.length, "request")}</small></div>${BOOK.length ? runSlot("journeys", "Place these in journeys.") : ""}${reqList(loose)}</div>` : ""}</div>`);
 }
 async function journey(g){
-  JPICK = null; nav("journeys"); page(skPage()); await loadAll(); await loadCat(); if (!BOOK[g]) throw new Error("This project has no such journey."); REDRAW = () => drawJourney(g); drawJourney(g); fill();
+  JPICK = null; nav("journeys"); loading(); await loadAll(); await loadCat(); if (!BOOK[g]) throw new Error("This project has no such journey."); REDRAW = () => drawJourney(g); drawJourney(g); fill();
 }
 // The journey runs left to right. Pick a change and it lights up the steps it reached.
 function walkView(g){
@@ -1091,7 +1285,7 @@ function placed(g, parts){ const route = BOOK[g].stops || [], notes = route.map(
 /* one change, in plain words */
 let CUR = null;
 async function change(id){
-  nav("changes"); page(skPage()); await loadAll();
+  nav("changes"); loading(); await loadAll();
   const c = LIST.find(x => x.id.startsWith(id));
   if (!c) { location.replace(hash("explore", id)); return; }
   CUR = c.id; nav("changes", c.title);
@@ -1120,13 +1314,13 @@ function drawChange(c){
   page(`<div class="ex-cards on" id="cv"><div class="cv-top"><a class="bar-c" href="${hash("changes")}">Changes</a><span class="bar-pos">${i + 1} of ${TOTAL}</span>${step(i - 1, "Newer")}${step(i + 1, "Older")}<a class="bar-s" href="${hash("explore", c.id)}">Advanced view</a></div>
     <header class="cv-h"><h2>${esc(c.title)}</h2><p>${esc(c.author)}, ${esc(when(c.date))}</p></header>
     <div class="cols"><div><section class="pn"><div class="pn-h">What changes for people</div><p class="cv-say">${story}</p></section>${lead.length ? `<div class="cv-subr"><h3 class="cv-sub">${lead.length === 1 ? "The journey this changes" : "The journeys this changes"}</h3><div class="seg" role="group" aria-label="How much of the journey to show"><button data-view="" aria-pressed="${!COMPACT}">Full journey</button><button data-view="1" aria-pressed="${COMPACT}">Compact</button></div></div>${lead.map(card).join("")}` : ""}</div>
-      <div>${BOOK.length ? `<section class="pn"><div class="pn-h"><b>Journeys</b></div><ul class="cv-list">${lead.map(g => line(g, "Changed")).join("")}${also.map(g => line(g, "Shared code")).join("")}${still.map(g => line(g, "No change").replace("<li>", '<li class="off">')).join("")}</ul>${also.length ? `<p class="cv-note">Shared code means the journey runs something that changed, but what people see there stays the same.</p>` : ""}</section>` : s.journeys.length ? `<section class="pn"><div class="pn-h"><b>Reaches</b><small>${plural(s.journeys.length, "request")}</small></div><div class="pn-e">Run <code>flow journeys</code> to see this as journeys.</div></section>` : ""}${loose.length && BOOK.length ? `<section class="pn"><div class="pn-e">${plural(loose.length, "request")} not in a journey yet.</div></section>` : ""}</div></div></div>`);
+      <div>${BOOK.length ? `<section class="pn"><div class="pn-h"><b>Journeys</b></div><ul class="cv-list">${lead.map(g => line(g, "Changed")).join("")}${also.map(g => line(g, "Shared code")).join("")}${still.map(g => line(g, "No change").replace("<li>", '<li class="off">')).join("")}</ul>${also.length ? `<p class="cv-note">Shared code means the journey runs something that changed, but what people see there stays the same.</p>` : ""}</section>` : s.journeys.length ? `<section class="pn"><div class="pn-h"><b>Reaches</b><small>${plural(s.journeys.length, "request")}</small></div>${runSlot("journeys", "See this as journeys.")}</section>` : ""}${loose.length && BOOK.length ? `<section class="pn"><div class="pn-e">${plural(loose.length, "request")} not in a journey yet.</div></section>` : ""}</div></div></div>`);
   document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => setCompact(!!b.dataset.view));
 }
 
 /* one request */
 async function request(uid){
-  nav("journeys"); page(skPage()); await ensureList(); const r = await get(api("request/" + encodeURIComponent(uid)));
+  nav("journeys"); loading(); await ensureList(); const r = await get(api("request/" + encodeURIComponent(uid)));
   REDRAW = () => drawRequest(r); drawRequest(r); fill();
 }
 function drawRequest(r){
@@ -1146,7 +1340,7 @@ const PR_STATE = { open:"Open", draft:"Draft", merged:"Merged", closed:"Closed" 
 const prTag = s => `<span class="pr-tag ${s}">${PR_STATE[s]}</span>`;
 let PR_SHOW = null;
 async function pulls(){
-  nav("pulls"); page(skPage()); const mine = wants, d = await get(api("pulls")); if (mine !== wants) return;
+  nav("pulls"); loading(); const mine = wants, d = await get(api("pulls")); if (mine !== wants) return;
   REDRAW = () => drawPulls(d); drawPulls(d);
 }
 function drawPulls(d){
@@ -1159,7 +1353,7 @@ function drawPulls(d){
   document.querySelectorAll("[data-pr]").forEach(b => b.onclick = () => { PR_SHOW = b.dataset.pr; drawPulls(d); });
 }
 async function pull(n){
-  nav("pulls", `#${n}`); page(skPage()); await ensureList(); const mine = wants, d = await get(api(`pull/${n}`)); if (mine !== wants) return;
+  nav("pulls", `#${n}`); loading(); await ensureList(); const mine = wants, d = await get(api(`pull/${n}`)); if (mine !== wants) return;
   nav("pulls", d.pull.title); REDRAW = () => drawPull(d); drawPull(d);
   const ids = d.commits.map(c => c.id).filter(id => !SUMM[id]);
   for (let i = 0; i < ids.length && mine === wants; i += 4) {
@@ -1177,13 +1371,13 @@ function drawPull(d){
     const row = (say, ps) => `<li class="${ps.length ? "hit" : ""}"><b>${esc(say)}</b>${ps.length ? `<span class="cv-tag">Changed</span>${ps.map(fromTo).join("")}` : ""}</li>`;
     const body = route.length ? route.map((t, i) => COMPACT && !notes[i].length ? "" : row(t.say, notes[i])).join("") : stops(g).map(x => `<li class="hit">${fromTo(x)}</li>`).join("");
     return `<section class="pn cv-j"><a class="cv-jh" href="${hash("journey", g)}">${gbadge(g)}<b>${esc(BOOK[g].title)}</b>${route.length && n ? `<small>${n} of ${plural(route.length, "step")} changed</small>` : ""}<i class="chev"></i></a><ol class="cv-stops" style="--c:${tint(g)}">${body}</ol>${rest.length ? `<div class="cv-rest">${rest.map(fromTo).join("")}</div>` : ""}</section>`; };
-  const none = waiting ? `Reading ${done.length} of ${plural(d.commits.length, "change")}.` : !d.commits.length ? "None of this pull request's changes are on this machine yet." : loud.length ? "No journey has a written change here yet. Run <code>flow titles</code> to write them." : "Nobody using the product will notice this.";
+  const none = waiting ? `Reading ${done.length} of ${plural(d.commits.length, "change")}.` : !d.commits.length ? "None of this pull request's changes are on this machine yet." : loud.length ? "" : "Nobody using the product will notice this.";
   const short = d.missing ? `<p class="pr-note">${plural(d.missing, "change")} of ${d.total} ${d.missing === 1 ? "is" : "are"} not on this machine, so ${d.missing === 1 ? "it is" : "they are"} left out. Run <code>git fetch</code> in the project to read ${d.missing === 1 ? "it" : "them"}.</p>` : d.cut ? `<p class="pr-note">Showing the newest ${d.commits.length} of ${d.total} changes.</p>` : "";
   const line = (g, note) => `<li><a href="${hash("journey", g)}">${gbadge(g)}<span>${esc(BOOK[g].title)}</span><small>${note}</small></a></li>`;
   page(`<div class="ex-cards on" id="pr"><div class="cv-top"><a class="bar-c" href="${hash("pulls")}">Pull requests</a><a class="bar-s" style="margin-left:auto" href="${esc(p.url)}" target="_blank" rel="noreferrer">View on GitHub</a></div>
     <header class="cv-h"><h2>${esc(p.title)}</h2><p>${prTag(p.state)} #${p.number} by ${esc(p.author || "someone")}, ${esc(when(p.opened))}. ${esc(p.head)} into ${esc(p.base)}</p></header>${short}
     <div class="cols"><div>
-      ${lead.length ? `<div class="cv-subr"><h3 class="cv-sub">${lead.length === 1 ? "The journey this changes" : "The journeys this changes"}</h3><div class="seg" role="group" aria-label="How much of the journey to show"><button data-view="" aria-pressed="${!COMPACT}" class="${COMPACT ? "" : "on"}">Full journey</button><button data-view="1" aria-pressed="${COMPACT}" class="${COMPACT ? "on" : ""}">Compact</button></div></div>${lead.map(card).join("")}` : `<section class="pn"><div class="pn-h">What changes for people</div><p class="cv-say">${none}</p></section>`}${prose(p.body) ? `<section class="pn"><div class="pn-h">What the author says</div><p class="cv-say pr-body">${esc(prose(p.body))}</p></section>` : ""}</div>
+      ${lead.length ? `<div class="cv-subr"><h3 class="cv-sub">${lead.length === 1 ? "The journey this changes" : "The journeys this changes"}</h3><div class="seg" role="group" aria-label="How much of the journey to show"><button data-view="" aria-pressed="${!COMPACT}" class="${COMPACT ? "" : "on"}">Full journey</button><button data-view="1" aria-pressed="${COMPACT}" class="${COMPACT ? "on" : ""}">Compact</button></div></div>${lead.map(card).join("")}` : `<section class="pn"><div class="pn-h">What changes for people</div>${none ? `<p class="cv-say">${none}</p>` : runSlot("titles", "No journey has a written change here yet.")}</section>`}${prose(p.body) ? `<section class="pn"><div class="pn-h">What the author says</div><p class="cv-say pr-body">${esc(prose(p.body))}</p></section>` : ""}</div>
       <div>${BOOK.length && (lead.length || touched.length) ? `<section class="pn"><div class="pn-h"><b>Journeys</b></div><ul class="cv-list">${lead.map(g => line(g, "Changed")).join("")}${touched.map(g => line(g, "Shared code")).join("")}</ul></section>` : ""}
         <section class="pn"><div class="pn-h"><b>Changes</b><small>${plural(d.commits.length, "change")}</small></div>${d.commits.length ? `<ul class="fd">${d.commits.map(c => `<li><a href="${hash("change", c.id)}"><b class="${c.quiet ? "q" : ""}">${esc(c.title)}</b><small>${esc(when(c.date))}</small></a></li>`).join("")}</ul>` : `<div class="pn-e">Nothing to read here yet.</div>`}</section></div></div></div>`);
   document.querySelectorAll("[data-view]").forEach(b => b.onclick = () => setCompact(!!b.dataset.view));
@@ -1191,7 +1385,7 @@ function drawPull(d){
 
 /* people */
 async function people(){
-  nav("people"); page(skPage()); await loadAll(); await loadAct(); REDRAW = drawPeople; drawPeople(); fill();
+  nav("people"); loading(); await loadAll(); await loadAct(); REDRAW = drawPeople; drawPeople(); fill();
 }
 function drawPeople(){
   const by = {}; for (const [d, a] of ACT) { const p = by[a] ||= { name:a, n:0, last:d }; p.n++; if (d > p.last) p.last = d; }
@@ -1207,7 +1401,7 @@ const skPane = ws => `<div class="sheet sk-pane">${ws.map(w => `<span class="sk"
 const skDetail = () => `<p class="sk-note">Reading the code before and after this change. A large repo takes a few seconds.</p><div class="ex3">${skPane([80, 60, 70, 50, 66, 58])}${skPane([34, 90, 76, 84, 60, 92, 70, 88, 54, 80, 66])}${skPane([46, 90, 84, 70, 40, 76, 62])}</div>`;
 let toastTimer;
 function toast(text){ $("toast").innerHTML = `<div class="toast" role="status">${esc(text)}</div>`; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $("toast").innerHTML = ""; }, 1800); }
-document.addEventListener("mouseover", e => { const t = e.target.closest("[data-tip]"), tip = $("tip"); tip.hidden = !t; if (t) { const r = t.getBoundingClientRect(); tip.textContent = t.dataset.tip; tip.style.left = `${r.left + r.width / 2}px`; tip.style.top = `${r.bottom - t.firstElementChild.getBoundingClientRect().height - 6}px`; } });
+document.addEventListener("mouseover", e => { const t = e.target.closest("[data-tip]"), tip = $("tip"); tip.hidden = !t; if (t) { const r = t.getBoundingClientRect(); tip.textContent = t.dataset.tip; tip.style.left = `${r.left + r.width / 2}px`; tip.style.top = `${r.top + r.height * parseFloat(t.style.getPropertyValue("--y") || 0) / 100 - 10}px`; } });
 document.addEventListener("click", () => { if (SWITCH) { SWITCH = false; nav(TAB); } });
 
 /* search */
@@ -1288,11 +1482,14 @@ setInterval(watch, 20000);
 
 addEventListener("hashchange", () => { const v = $("view"); route(); scrollTo(0, 0); v.classList.add("enter"); setTimeout(() => v.classList.remove("enter"), 240); });
 (async () => {
-  const me = await get("/api/me");
+  const me = await get("/api/me"); SOBA = !!me.soba; if ($("soba-go")) $("soba-go").hidden = !SOBA;
   if (me.required && !me.user) return signedOut();
-  if (me.user) signedIn(me.user);
+  if (me.user) { ME = me.user; signedIn(me.user); }
   if (location.search.includes("signin=")) history.replaceState(null, "", "/" + location.hash);
-  try { PROJ = await get("/api/projects"); } catch {} route();
+  // What this tab last knew draws at once. The home page then checks it against the server.
+  const last = kept("flow-home"); if (last) { PROJ = last.list; HOME = last.home; }
+  if (!PROJ.length) try { PROJ = await get("/api/projects"); } catch {}
+  route();
 })();
 </script>
 </body>

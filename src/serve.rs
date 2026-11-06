@@ -1,6 +1,7 @@
 //! `flow serve`: the projects on this machine in a browser, on localhost. Each project opens to
 //! its changes, and each change to its files and the journeys it reaches. Everything comes from
-//! git and from lifts in memory, so serving a repo never writes to it.
+//! git and from lifts in memory. The one thing that writes to a repo is a run someone starts from
+//! the page, and it takes a request only this page can send, for a task on a fixed list.
 
 use crate::change::{journey_title, FnChange, JState, Report};
 use crate::ids::Ids;
@@ -8,6 +9,8 @@ use crate::journeys::{self, Journeys, Places};
 use crate::titles::{self, Titles};
 use crate::names::Names;
 use crate::repo::SRef;
+use crate::runs::{self, Runs};
+use crate::soba;
 use crate::auth::{self, Auth};
 use crate::source::{all_paths, git, Source};
 use crate::vcs::{Commit, Vcs};
@@ -132,21 +135,8 @@ impl Project {
         t.parts.iter().map(|p| json!({ "say": p.say, "line": p.line, "at": p.at, "before": p.before, "after": p.after, "step": p.step, "groups": hit(p), "requests": runs(p) })).collect()
     }
 
-    fn pulls(&mut self) -> Value {
-        if let Some((at, v)) = &self.pulled {
-            if at.elapsed() < PULLS_KEPT_FOR {
-                return v.clone();
-            }
-        }
-        let v = crate::pulls::list(&self.root);
-        self.pulled = Some((Instant::now(), v.clone()));
-        v
-    }
-
     /// A branch nobody fetched is not on this machine, and this never fetches it: the page says so instead.
-    fn pull(&mut self, number: &str) -> Result<Value> {
-        let number: u64 = number.parse().context("no such pull request")?;
-        let (pull, ids) = crate::pulls::one(&self.root, number)?;
+    fn pull(&self, pull: Value, ids: Vec<String>) -> Result<Value> {
         let total = ids.len();
         let here = |id: &&String| git(&self.root, &["cat-file", "-e", &format!("{id}^{{commit}}")]).is_ok();
         let found: Vec<&String> = ids.iter().filter(here).collect();
@@ -227,7 +217,13 @@ impl Project {
         self.refresh()?;
         let list = if self.v.head().is_some() { self.v.commits_from(skip, PAGE_OF_COMMITS, "HEAD")? } else { vec![] };
         Ok(json!({ "project": self.card(), "skip": skip, "size": PAGE_OF_COMMITS, "commits": list.iter().map(|c| self.shown(c)).collect::<Vec<_>>(),
-            "journeys": self.legend() }))
+            "journeys": self.legend(), "map": self.book.map, "stamp": self.stamp() }))
+    }
+
+    /// Changes when the files behind what a page shows do, so a browser knows what it kept is out of date.
+    fn stamp(&self) -> u64 {
+        let at = |f: &str| std::fs::metadata(self.root.join(f)).and_then(|m| m.modified()).ok().and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok()).map_or(0, |d| d.as_secs());
+        at(journeys::FILE) ^ at(titles::FILE).rotate_left(21)
     }
 
     fn trim(&mut self) {
@@ -573,13 +569,34 @@ fn api(projects: &Shared, path: &str, q: &HashMap<String, String>) -> Result<Val
     let mut parts = rest.splitn(3, '/');
     let (name, what, arg) = (unescape(parts.next().unwrap_or("")), parts.next().unwrap_or(""), parts.next());
     let cell = projects.iter().find(|p| p.lock().unwrap_or_else(|e| e.into_inner()).name == name).context("no such project")?;
-    let mut p = cell.lock().unwrap_or_else(|e| e.into_inner());
+    // GitHub can take seconds. Nothing else about this project waits for it.
+    let lock = || cell.lock().unwrap_or_else(|e| e.into_inner());
+    match (what, arg) {
+        ("pulls", None) => {
+            let (kept, root) = {
+                let p = lock();
+                (p.pulled.as_ref().filter(|(at, _)| at.elapsed() < PULLS_KEPT_FOR).map(|(_, v)| v.clone()), p.root.clone())
+            };
+            if let Some(v) = kept {
+                return Ok(v);
+            }
+            let v = crate::pulls::list(&root);
+            lock().pulled = Some((Instant::now(), v.clone()));
+            return Ok(v);
+        }
+        ("pull", Some(n)) => {
+            let number: u64 = n.parse().context("no such pull request")?;
+            let root = lock().root.clone();
+            let (pull, ids) = crate::pulls::one(&root, number)?;
+            return lock().pull(pull, ids);
+        }
+        _ => {}
+    }
+    let mut p = lock();
     let need = |k: &str| q.get(k).cloned().with_context(|| format!("missing {k}"));
     match (what, arg) {
         ("commits", None) => p.commits(q.get("skip").and_then(|s| s.parse().ok()).unwrap_or(0)),
         ("summaries", None) => p.summaries(&need("ids")?.split(',').map(str::to_string).collect::<Vec<_>>()),
-        ("pulls", None) => Ok(p.pulls()),
-        ("pull", Some(n)) => p.pull(n),
         ("activity", None) => p.activity(),
         ("requests", None) => p.requests(),
         ("request", Some(id)) => p.request(id),
@@ -590,7 +607,29 @@ fn api(projects: &Shared, path: &str, q: &HashMap<String, String>) -> Result<Val
     }
 }
 
-fn handle(mut s: TcpStream, projects: Shared, hosts: Arc<Vec<String>>, a: Arc<Auth>) {
+/// `/api/p/<name>/run` and `/api/p/<name>/run/<task>`. These never wait on a project's lock, so a
+/// page keeps hearing how a run is going while something slow reads that project.
+fn run_path(path: &str) -> Option<(String, Option<&str>)> {
+    let (name, rest) = path.strip_prefix("/api/p/")?.split_once('/')?;
+    match rest.strip_prefix("run")? {
+        "" => Some((unescape(name), None)),
+        task => Some((unescape(name), Some(task.strip_prefix('/')?))),
+    }
+}
+
+fn said(s: &mut TcpStream, got: Result<Value>) {
+    match got {
+        Ok(v) => reply(s, "200 OK", "application/json; charset=utf-8", &v.to_string()),
+        Err(e) => reply(s, "400 Bad Request", "application/json; charset=utf-8", &json!({ "error": e.to_string() }).to_string()),
+    }
+}
+
+/// Whether a request came from this app's own page, wherever that page is served from.
+fn from_page(origin: &str, hosts: &[String]) -> bool {
+    origin.strip_prefix("http://").is_some_and(|o| hosts.iter().any(|h| h == o))
+}
+
+fn handle(mut s: TcpStream, projects: Shared, runs: Arc<Runs>, hosts: Arc<Vec<String>>, a: Arc<Auth>) {
     let Ok(clone) = s.try_clone() else { return };
     let mut r = BufReader::new(clone);
     let mut first = String::new();
@@ -625,11 +664,38 @@ fn handle(mut s: TcpStream, projects: Shared, hosts: Arc<Vec<String>>, a: Arc<Au
     let session = auth::cookie(&cookies, auth::SESSION);
     if method == "POST" && path == "/auth/logout" {
         // Signing someone out is a change, so another site must not be able to ask for it.
-        if origin != format!("http://{host}") {
+        if !from_page(&origin, &hosts) {
             return reply(&mut s, "403 Forbidden", "text/plain", "Not from this page.");
         }
         a.end(session);
         return answer(&mut s, "200 OK", "application/json", &format!("Set-Cookie: {}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0\r\n", auth::SESSION), "{}");
+    }
+    if let (true, Some((name, Some(task)))) = (method == "POST", run_path(path)) {
+        // This starts work on the machine, on someone's own plan, so it is the page's to ask for.
+        if !from_page(&origin, &hosts) {
+            return reply(&mut s, "403 Forbidden", "application/json; charset=utf-8", &json!({ "error": "Not from this page" }).to_string());
+        }
+        if !a.allows(session) {
+            return reply(&mut s, "401 Unauthorized", "application/json; charset=utf-8", &json!({ "error": "Sign in first" }).to_string());
+        }
+        // Whose compute this spends comes from the sign-in, and from nowhere the browser can touch.
+        let user = a.login(session).filter(|_| soba::ready());
+        return said(&mut s, runs.start(&name, task, user));
+    }
+    if method == "POST" && path == "/api/soba/session" {
+        if !from_page(&origin, &hosts) {
+            return reply(&mut s, "403 Forbidden", "application/json; charset=utf-8", &json!({ "error": "Not from this page" }).to_string());
+        }
+        let Some(login) = a.login(session) else {
+            return reply(&mut s, "401 Unauthorized", "application/json; charset=utf-8", &json!({ "error": "Sign in first" }).to_string());
+        };
+        if !soba::ready() {
+            return reply(&mut s, "400 Bad Request", "application/json; charset=utf-8", &json!({ "error": "Soba is not set up here" }).to_string());
+        }
+        return match soba::session(&login) {
+            Ok((status, body)) => reply(&mut s, &format!("{status} Soba"), "application/json; charset=utf-8", &body),
+            Err(e) => reply(&mut s, "502 Bad Gateway", "application/json; charset=utf-8", &json!({ "error": e.to_string() }).to_string()),
+        };
     }
     if method != "GET" {
         return reply(&mut s, "405 Method Not Allowed", "text/plain", "Read only.");
@@ -639,7 +705,7 @@ fn handle(mut s: TcpStream, projects: Shared, hosts: Arc<Vec<String>>, a: Arc<Au
     }
     if path == "/auth/github" {
         // GitHub sends people back to one address, and the cookies must be on that one.
-        if host != hosts[0] {
+        if host == hosts[1] {
             return go_to(&mut s, &format!("http://{}/auth/github", hosts[0]), &[]);
         }
         return signing_in(&mut s, &a);
@@ -651,7 +717,9 @@ fn handle(mut s: TcpStream, projects: Shared, hosts: Arc<Vec<String>>, a: Arc<Au
         return go_to(&mut s, done.to, &set);
     }
     if path == "/api/me" {
-        return reply(&mut s, "200 OK", "application/json; charset=utf-8", &a.me(session).to_string());
+        let mut me = a.me(session);
+        me["soba"] = json!(soba::ready() && a.login(session).is_some());
+        return reply(&mut s, "200 OK", "application/json; charset=utf-8", &me.to_string());
     }
     if !a.allows(session) {
         return reply(&mut s, "401 Unauthorized", "application/json; charset=utf-8", &json!({ "error": "Sign in first" }).to_string());
@@ -659,25 +727,35 @@ fn handle(mut s: TcpStream, projects: Shared, hosts: Arc<Vec<String>>, a: Arc<Au
     if !path.starts_with("/api/") {
         return reply(&mut s, "404 Not Found", "text/plain", "Not here.");
     }
-    match api(&projects, path, &query(q)) {
-        Ok(v) => reply(&mut s, "200 OK", "application/json; charset=utf-8", &v.to_string()),
-        Err(e) => reply(&mut s, "400 Bad Request", "application/json; charset=utf-8", &json!({ "error": e.to_string() }).to_string()),
+    if let Some((name, None)) = run_path(path) {
+        return said(&mut s, runs.show(&name));
     }
+    said(&mut s, api(&projects, path, &query(q)));
 }
 
 /// Serve until stopped. Only this machine can reach it.
-pub fn run(roots: &[PathBuf], out: &str, port: u16) -> Result<()> {
+///
+/// `public` is the port of the web app in front of this, when there is one. People sign in there,
+/// so GitHub sends them back there, and this keeps answering only on this machine.
+pub fn run(roots: &[PathBuf], out: &str, port: u16, public: Option<u16>) -> Result<()> {
     let mut taken = HashMap::new();
     let projects: Vec<Mutex<Project>> = roots.iter().map(|r| Project::open(r, out, &mut taken).map(Mutex::new)).collect::<Result<_>>()?;
     let listener = TcpListener::bind(("127.0.0.1", port)).with_context(|| format!("port {port} is in use. Try --port with another number"))?;
     let port = listener.local_addr()?.port();
-    let a = Arc::new(Auth::from_env(port)?);
+    let a = Arc::new(Auth::from_env(public.unwrap_or(port))?);
     println!("Flow control on http://localhost:{port}  ({} project{}{}). Ctrl-C stops it.", projects.len(), if projects.len() == 1 { "" } else { "s" }, if a.required() { ", sign-in required" } else { "" });
-    let hosts = Arc::new(vec![format!("localhost:{port}"), format!("127.0.0.1:{port}")]);
+    let front = public.unwrap_or(port);
+    let mut hosts = vec![format!("localhost:{front}"), format!("127.0.0.1:{front}")];
+    if public.is_some() {
+        hosts.extend([format!("localhost:{port}"), format!("127.0.0.1:{port}")]);
+    }
+    let hosts = Arc::new(hosts);
+    let roots = projects.iter().map(|p| { let p = p.lock().unwrap_or_else(|e| e.into_inner()); (p.name.clone(), p.root.clone()) }).collect();
+    let runs = Arc::new(Runs::new(roots, Arc::new(runs::Here { out: out.to_string() })));
     let projects: Shared = Arc::new(projects);
     for s in listener.incoming().flatten() {
-        let (p, h, a) = (projects.clone(), hosts.clone(), a.clone());
-        std::thread::spawn(move || handle(s, p, h, a));
+        let (p, r, h, a) = (projects.clone(), runs.clone(), hosts.clone(), a.clone());
+        std::thread::spawn(move || handle(s, p, r, h, a));
     }
     Ok(())
 }
@@ -702,6 +780,24 @@ mod tests {
         let v = parse_diff(text, &HashMap::new(), &HashMap::new());
         assert_eq!((v[0].path.as_str(), v[0].from.as_deref(), v[0].status), ("y.ts", Some("x.ts"), "R"));
         assert!(v[1].binary && v[1].status == "A");
+    }
+
+    #[test]
+    fn a_page_is_only_ours_if_it_is_served_from_our_own_addresses() {
+        let hosts = ["localhost:4000".to_string(), "127.0.0.1:4000".to_string(), "localhost:4001".to_string()];
+        assert!(from_page("http://localhost:4000", &hosts));
+        for not in ["", "null", "http://evil.example", "https://localhost:4000", "http://localhost:4000.evil.example"] {
+            assert!(!from_page(not, &hosts), "{not}");
+        }
+    }
+
+    #[test]
+    fn only_the_run_addresses_are_run_addresses() {
+        assert_eq!(run_path("/api/p/my%20shop/run"), Some(("my shop".to_string(), None)));
+        assert_eq!(run_path("/api/p/shop/run/journeys"), Some(("shop".to_string(), Some("journeys"))));
+        for not in ["/api/p/shop/runner", "/api/p/shop/commits", "/api/projects", "/api/p/run"] {
+            assert_eq!(run_path(not), None, "{not}");
+        }
     }
 
     #[test]

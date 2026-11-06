@@ -123,6 +123,9 @@ fn code_of(l: &Lift, r: (usize, usize), max: usize) -> String {
 pub const STYLE: &str = "Write for a product person who does not read code. Plain words about what the person using the product does or gets, never function names, file names or technical terms like query, slug, payload, handler or render. Sentence case. No em dashes. English, even when the code or routes are in another language.";
 
 pub fn run_claude(model: &str, prompt: &str, schema: &Value) -> Result<Value> {
+    if let Some(who) = crate::soba::person() {
+        return crate::soba::ask(&who, prompt, schema);
+    }
     let mut child = Command::new("claude")
         .args(["-p", "--model", model, "--output-format", "json", "--tools", "", "--no-session-persistence", "--strict-mcp-config", "--setting-sources", "", "--effort", "low", "--json-schema"])
         .arg(schema.to_string())

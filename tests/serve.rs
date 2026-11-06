@@ -126,6 +126,17 @@ fn the_page_script_parses() {
     assert!(o.status.success(), "{}", String::from_utf8_lossy(&o.stderr));
 }
 
+#[test]
+fn no_page_function_is_quietly_replaced_by_another() {
+    let page = include_str!("../src/serve.html");
+    let mut seen = std::collections::BTreeSet::new();
+    for l in page.lines() {
+        let Some(rest) = l.strip_prefix("async function ").or(l.strip_prefix("function ")) else { continue };
+        let name = rest.split('(').next().unwrap();
+        assert!(seen.insert(name), "two functions are called {name}, and only the last one runs");
+    }
+}
+
 /// Runs the server with a stand-in for the GitHub command line.
 fn serve_with_gh(d: &Path, script: &str) -> Server {
     let bin = d.join(".fake-bin");
@@ -276,6 +287,9 @@ fn signing_in_locks_the_code_until_github_says_who_you_are() {
         assert!(req(s.1, "GET", path, "").0.contains("401"), "{path}");
         assert!(req(s.1, "GET", path, "Cookie: flow_session=guessed\r\n").0.contains("401"), "{path}");
     }
+    let origin = format!("Origin: http://localhost:{}\r\n", s.1);
+    assert!(req(s.1, "POST", &format!("/api/p/{name}/run/journeys"), &origin).0.contains("401"), "a run starts work, so it needs a signed-in person");
+    assert!(req(s.1, "GET", &format!("/api/p/{name}/run"), "").0.contains("401"));
     let (_, _, me) = req(s.1, "GET", "/api/me", "");
     assert!(me.contains(r#""required":true"#) && me.contains(r#""user":null"#), "{me}");
 
@@ -351,4 +365,261 @@ fn half_a_sign_in_setup_refuses_to_start_open() {
     assert!(!o.status.success() && String::from_utf8_lossy(&o.stderr).contains("FLOW_GITHUB_CLIENT_SECRET"));
     let o = run(&[("FLOW_GITHUB_CLIENT_ID", "x"), ("FLOW_GITHUB_CLIENT_SECRET", "y")]);
     assert!(!o.status.success() && String::from_utf8_lossy(&o.stderr).contains("FLOW_ALLOWED_USERS"));
+}
+
+/// Stands in for Claude on the PATH, answering the two questions `flow journeys` asks.
+fn fake_claude(dir: &Path, script: &str) -> String {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::create_dir_all(dir).unwrap();
+    let f = dir.join("claude");
+    std::fs::write(&f, format!("#!/bin/sh\ncat >/dev/null\n{script}\n")).unwrap();
+    std::fs::set_permissions(&f, std::fs::Permissions::from_mode(0o755)).unwrap();
+    format!("{}:{}", dir.display(), std::env::var("PATH").unwrap())
+}
+
+fn serve_on(d: &Path, path: &str) -> Server {
+    let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0"]).current_dir(d).env("PATH", path).stdout(Stdio::piped()).spawn().unwrap();
+    let mut line = String::new();
+    BufReader::new(c.stdout.as_mut().unwrap()).read_line(&mut line).unwrap();
+    let port = line.split("localhost:").nth(1).unwrap().split_whitespace().next().unwrap().parse().unwrap();
+    Server(c, port)
+}
+
+fn settled(port: u16, at: &str) -> String {
+    for _ in 0..1500 {
+        let (_, _, body) = req(port, "GET", at, "");
+        if body.contains(r#""running":false"#) {
+            return body;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(20));
+    }
+    panic!("the run never ended");
+}
+
+#[test]
+fn the_page_can_find_journeys_and_nothing_else_can_ask() {
+    let d = repo("run");
+    let name = d.file_name().unwrap().to_string_lossy().to_string();
+    let path = fake_claude(&d.with_extension("bin"), r#"case "$*" in
+  *'"paths"'*) echo '{"structured_output":{"say":"People pay for stays.","paths":[{"who":"Guests","journeys":["Pay for a stay"]}]}}' ;;
+  *'"stops"'*) echo '{"structured_output":{"stops":[{"say":"Enter your card.","requests":["POST /api/pay"]},{"say":"Get a receipt.","requests":["POST /api/pay"]}]}}' ;;
+  *) echo '{"structured_output":{"journeys":[{"title":"Pay for a stay","icon":"card","requests":["POST /api/pay"]}]}}' ;;
+esac"#);
+    let s = serve_on(&d, &path);
+    let (start, watch) = (format!("/api/p/{name}/run/journeys"), format!("/api/p/{name}/run"));
+    let ours = format!("Origin: http://localhost:{}\r\n", s.1);
+
+    for refused in ["", "Origin: http://evil.example\r\n", "Origin: null\r\n"] {
+        assert!(req(s.1, "POST", &start, refused).0.contains("403"), "{refused:?}");
+    }
+    assert!(req(s.1, "POST", &format!("/api/p/{name}/run/lift"), &ours).0.contains("400"), "not on the list");
+    assert!(req(s.1, "POST", "/api/p/nobody/run/journeys", &ours).0.contains("400"));
+    assert!(req(s.1, "GET", &start, "").0.contains("400"), "reading the address starts nothing");
+    assert_eq!(req(s.1, "GET", &watch, "").2, r#"{"run":null}"#, "nothing refused may have started");
+
+    let (status, _, body) = req(s.1, "POST", &start, &ours);
+    assert!(status.contains("200") && body.contains(r#""task":"journeys""#), "{body}");
+    let done = settled(s.1, &watch);
+    assert!(done.contains(r#""failed":null"#), "{done}");
+    let (_, _, list) = req(s.1, "GET", &format!("/api/p/{name}/commits"), "");
+    assert!(list.contains("Pay for a stay") && list.contains("Enter your card."), "the running page sees it: {list}");
+}
+
+#[test]
+fn a_run_that_cannot_work_says_why() {
+    let d = repo("run-fails");
+    let name = d.file_name().unwrap().to_string_lossy().to_string();
+    let path = fake_claude(&d.with_extension("bin"), r#"echo '{"is_error":true,"result":"Not logged in"}'"#);
+    let s = serve_on(&d, &path);
+    let ours = format!("Origin: http://localhost:{}\r\n", s.1);
+    assert!(req(s.1, "POST", &format!("/api/p/{name}/run/journeys"), &ours).0.contains("200"));
+    let done = settled(s.1, &format!("/api/p/{name}/run"));
+    assert!(done.contains("Not logged in"), "{done}");
+    assert!(!done.contains("flow:"), "{done}");
+}
+
+/// Stands in for Soba: `runs` is what a run gets back, and every request is kept.
+fn fake_soba(status: &'static str, runs: &'static str) -> (String, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
+    use std::sync::{Arc, Mutex};
+    let l = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+    let port = l.local_addr().unwrap().port();
+    let seen = Arc::new(Mutex::new(vec![]));
+    let log = seen.clone();
+    std::thread::spawn(move || {
+        for s in l.incoming().flatten() {
+            let mut r = BufReader::new(s);
+            let (mut first, mut auth, mut len) = (String::new(), String::new(), 0usize);
+            r.read_line(&mut first).unwrap();
+            loop {
+                let mut h = String::new();
+                r.read_line(&mut h).unwrap();
+                if h.trim().is_empty() {
+                    break;
+                }
+                let low = h.to_lowercase();
+                if let Some(v) = low.strip_prefix("content-length:") {
+                    len = v.trim().parse().unwrap();
+                }
+                if low.starts_with("authorization:") {
+                    auth = h.trim().to_string();
+                }
+            }
+            let mut body = vec![0; len];
+            r.read_exact(&mut body).unwrap();
+            log.lock().unwrap().push(format!("{} {auth} {}", first.trim(), String::from_utf8_lossy(&body)));
+            let (st, kind, out) = if first.contains("/runs") { (status, if status.starts_with("200") { "text/event-stream" } else { "application/json" }, runs) } else if first.contains("/keys") { ("200 OK", "application/json", r#"{"keys":[]}"#) } else { ("200 OK", "application/json", r#"{"session":"est_1","expires_in":600,"url":"https://soba.so/link#est_1"}"#) };
+            write!(r.get_mut(), "HTTP/1.1 {st}\r\nContent-Type: {kind}\r\nSoba-Run-Id: run_1\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{out}", out.len()).unwrap();
+        }
+    });
+    (format!("http://127.0.0.1:{port}/v1"), seen)
+}
+
+/// Where the tests share one install of Soba's SDK, made once. None without Node, like the page test.
+fn soba_home() -> Option<String> {
+    static HOME: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
+    HOME.get_or_init(|| {
+        Command::new("node").arg("--version").output().ok()?;
+        let home = format!("{}/soba-helper", env!("CARGO_TARGET_TMPDIR"));
+        let d = repo("soba-install");
+        let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0"]).current_dir(&d).env("SOBA_KEY", "sk_soba_test.x").env("FLOW_SOBA_HOME", &home).stdout(Stdio::piped()).spawn().unwrap();
+        let mut line = String::new();
+        BufReader::new(c.stdout.as_mut().unwrap()).read_line(&mut line).unwrap();
+        let _ = c.kill();
+        assert!(line.contains("localhost:"), "the install failed");
+        Some(home)
+    }).clone()
+}
+
+fn locked_with_soba(d: &Path, github: &str, soba: &str, claude: &str, encrypted: bool) -> Server {
+    let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0"]).current_dir(d)
+        .env("PATH", claude).env("FLOW_GITHUB_CLIENT_ID", "the-id").env("FLOW_GITHUB_CLIENT_SECRET", "the-secret").env("FLOW_ALLOWED_USERS", "Sam")
+        .env("FLOW_GITHUB_URL", github)
+        .env("SOBA_KEY", "sk_soba_test.secret").env("SOBA_BASE_URL", soba).env("SOBA_WEB_URL", soba).env("FLOW_SOBA_HOME", soba_home().unwrap())
+        .env("FLOW_SOBA_ENCRYPT", if encrypted { "on" } else { "off" })
+        .stdout(Stdio::piped()).spawn().unwrap();
+    let mut line = String::new();
+    BufReader::new(c.stdout.as_mut().unwrap()).read_line(&mut line).unwrap();
+    let port = line.split("localhost:").nth(1).unwrap().split_whitespace().next().unwrap().parse().unwrap();
+    Server(c, port)
+}
+
+/// A claude that must never be asked, because the person is signed in and Soba is set up.
+fn no_claude(d: &Path) -> String {
+    fake_claude(&d.with_extension("bin"), r#"echo '{"structured_output":{"journeys":[{"title":"The local agent answered","icon":"card","requests":["POST /api/pay"]}]}}'"#)
+}
+
+#[test]
+fn a_run_goes_through_soba_as_the_signed_in_person() {
+    if soba_home().is_none() {
+        return;
+    }
+    let d = repo("soba");
+    let name = d.file_name().unwrap().to_string_lossy().to_string();
+    let (github, _) = fake_github("sam");
+    let (soba, seen) = fake_soba("200 OK", "data: {\"type\":\"delta\",\"text\":\"{\\\"journeys\\\":[{\\\"title\\\":\\\"Pay through Soba\\\",\\\"icon\\\":\\\"card\\\",\\\"requests\\\":[\\\"POST /api/pay\\\"]}],\\\"stops\\\":[]}\"}\n\ndata: {\"type\":\"done\"}\n\n");
+    let s = locked_with_soba(&d, &github, &soba, &no_claude(&d), false);
+    let ours = format!("Origin: http://localhost:{}\r\n", s.1);
+
+    // Before sign-in there is nobody to act for.
+    assert!(req(s.1, "POST", "/api/soba/session", &ours).0.contains("401"));
+    let token = header(&sign_in(s.1), "Set-Cookie", "flow_session=").unwrap().split(';').next().unwrap().to_string();
+    let sent = format!("Cookie: {token}\r\n");
+    assert!(req(s.1, "POST", "/api/soba/session", &sent).0.contains("403"), "no Origin, so not this page");
+    assert!(req(s.1, "GET", "/api/me", &sent).2.contains(r#""soba":true"#));
+
+    let (status, _, body) = req(s.1, "POST", "/api/soba/session", &format!("{sent}{ours}"));
+    assert!(status.contains("200") && body.contains("soba.so/link"), "{body}");
+    assert!(!body.contains("sk_soba"), "{body}");
+
+    // The request names nobody: the id comes from the sign-in.
+    assert!(req(s.1, "POST", &format!("/api/p/{name}/run/journeys"), &format!("{sent}{ours}")).0.contains("200"));
+    let watch = format!("/api/p/{name}/run");
+    let done = (0..1500).find_map(|_| { let (_, _, b) = req(s.1, "GET", &watch, &sent); std::thread::sleep(std::time::Duration::from_millis(20)); b.contains(r#""running":false"#).then_some(b) }).expect("it ended");
+    let (_, _, list) = req(s.1, "GET", &format!("/api/p/{name}/commits"), &sent);
+    assert!(list.contains("Pay through Soba") && !list.contains("local agent"), "{done} {list}");
+
+    let told = seen.lock().unwrap().join("\n");
+    // sobaUserId("sam"), from Soba's own SDK.
+    let sam = "usr_e96e02d8e47f";
+    assert!(told.contains(&format!(r#""user":"{sam}""#)) && told.contains("/end_users/session") && told.contains("/runs"), "{told}");
+    assert!(told.contains("Bearer sk_soba_test.secret"), "{told}");
+}
+
+#[test]
+fn a_run_nobody_can_open_never_leaves_this_server() {
+    if soba_home().is_none() {
+        return;
+    }
+    let d = repo("soba-sealed");
+    let name = d.file_name().unwrap().to_string_lossy().to_string();
+    let (github, _) = fake_github("sam");
+    let (soba, seen) = fake_soba("200 OK", "");
+    let s = locked_with_soba(&d, &github, &soba, &no_claude(&d), true);
+    let token = header(&sign_in(s.1), "Set-Cookie", "flow_session=").unwrap().split(';').next().unwrap().to_string();
+    let sent = format!("Cookie: {token}\r\nOrigin: http://localhost:{}\r\n", s.1);
+    assert!(req(s.1, "POST", &format!("/api/p/{name}/run/journeys"), &sent).0.contains("200"));
+    let watch = format!("/api/p/{name}/run");
+    let done = (0..1500).find_map(|_| { let (_, _, b) = req(s.1, "GET", &watch, &sent); std::thread::sleep(std::time::Duration::from_millis(20)); b.contains(r#""running":false"#).then_some(b) }).expect("it ended");
+    assert!(done.contains(r#""code":"no_compute""#), "{done}");
+    let told = seen.lock().unwrap().join("\n");
+    assert!(told.contains("/keys") && !told.contains("/runs"), "no key to seal to, so nothing is sent: {told}");
+    assert!(!d.join("flow.journeys.json").exists(), "{done}");
+}
+
+#[test]
+fn a_refusal_reaches_the_page_with_its_code() {
+    if soba_home().is_none() {
+        return;
+    }
+    let d = repo("soba-refused");
+    let name = d.file_name().unwrap().to_string_lossy().to_string();
+    let (github, _) = fake_github("sam");
+    let (soba, _) = fake_soba("409 Conflict", r#"{"error":{"type":"no_compute","message":"No compute reachable for usr_1.","code":"no_compute"}}"#);
+    let s = locked_with_soba(&d, &github, &soba, &no_claude(&d), false);
+    let token = header(&sign_in(s.1), "Set-Cookie", "flow_session=").unwrap().split(';').next().unwrap().to_string();
+    let sent = format!("Cookie: {token}\r\nOrigin: http://localhost:{}\r\n", s.1);
+    assert!(req(s.1, "POST", &format!("/api/p/{name}/run/journeys"), &sent).0.contains("200"));
+    let watch = format!("/api/p/{name}/run");
+    let done = (0..1500).find_map(|_| { let (_, _, b) = req(s.1, "GET", &watch, &sent); std::thread::sleep(std::time::Duration::from_millis(20)); b.contains(r#""running":false"#).then_some(b) }).expect("it ended");
+    assert!(done.contains(r#""code":"no_compute""#), "{done}");
+    assert!(!d.join("flow.journeys.json").exists(), "a refused run must not fall back to the local agent: {done}");
+}
+
+#[test]
+fn the_key_comes_from_the_file_soba_wrote_and_never_from_a_project() {
+    let Some(home) = soba_home() else { return };
+    let (start, other) = (repo("soba-file"), repo("soba-other"));
+    std::fs::write(other.join(".env.local"), "SOBA_KEY=sk_soba_other_app.x\n").unwrap();
+    let (github, _) = fake_github("sam");
+    let (soba, seen) = fake_soba("200 OK", "");
+    let run = |dir: &Path, more: &[&str]| {
+        let mut c = Command::new(env!("CARGO_BIN_EXE_flow"));
+        c.args(["serve", "--port", "0"]).args(more).current_dir(dir).env_remove("SOBA_KEY").env("FLOW_GITHUB_CLIENT_ID", "the-id").env("FLOW_GITHUB_CLIENT_SECRET", "the-secret").env("FLOW_ALLOWED_USERS", "sam").env("FLOW_GITHUB_URL", &github).env("SOBA_WEB_URL", &soba).env("FLOW_SOBA_HOME", &home).stdout(Stdio::piped());
+        let mut c = c.spawn().unwrap();
+        let mut line = String::new();
+        BufReader::new(c.stdout.as_mut().unwrap()).read_line(&mut line).unwrap();
+        let port = line.split("localhost:").nth(1).unwrap().split_whitespace().next().unwrap().parse().unwrap();
+        Server(c, port)
+    };
+    let connects = |s: &Server| {
+        let token = header(&sign_in(s.1), "Set-Cookie", "flow_session=").unwrap().split(';').next().unwrap().to_string();
+        req(s.1, "GET", "/api/me", &format!("Cookie: {token}\r\n")).2.contains(r#""soba":true"#)
+    };
+
+    // Another project's key is not this server's, even with that project on the page.
+    let s = run(&start, &[other.to_str().unwrap()]);
+    assert!(!connects(&s), "a project's .env.local must not be read");
+    drop(s);
+
+    std::fs::write(start.join(".env.local"), "SOBA_PROD_KEY=sk_soba_prod.x\nSOBA_KEY=sk_soba_dev.y\n").unwrap();
+    let s = run(&start, &[]);
+    assert!(connects(&s));
+    let token = header(&sign_in(s.1), "Set-Cookie", "flow_session=").unwrap().split(';').next().unwrap().to_string();
+    assert!(req(s.1, "POST", "/api/soba/session", &format!("Cookie: {token}\r\nOrigin: http://localhost:{}\r\n", s.1)).0.contains("200"));
+    let told = seen.lock().unwrap().join("\n");
+    assert!(told.contains("Bearer sk_soba_dev.y") && !told.contains("prod"), "{told}");
+    drop(s);
+
+    let o = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0", "--env-file", "nowhere.env"]).current_dir(&start).env_remove("SOBA_KEY").output().unwrap();
+    assert!(!o.status.success() && String::from_utf8_lossy(&o.stderr).contains("@soba-so/cli link"), "a named file that is missing must say so");
 }

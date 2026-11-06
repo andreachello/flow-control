@@ -31,6 +31,12 @@ enum Cmd {
         projects: Vec<PathBuf>,
         #[arg(long, default_value_t = 4000)]
         port: u16,
+        /// The file `npx @soba-so/cli link` wrote. Default: .env.local in the folder this starts in.
+        #[arg(long)]
+        env_file: Option<PathBuf>,
+        /// The port of the web app in `web/` when it sits in front of this one.
+        #[arg(long)]
+        public_port: Option<u16>,
     },
     /// Say that one journey or step continues another, when the code cannot prove it.
     Rename { old: String, new: String },
@@ -212,7 +218,7 @@ enum Cmd {
         #[arg(long)]
         all: bool,
     },
-    /// Ask Claude to group requests into what people come to do, and write out each journey stop by stop, saved to flow.journeys.json for review.
+    /// Ask Claude to group requests into what people come to do, write out each journey stop by stop and map how they fit together, saved to flow.journeys.json for review.
     Journeys {
         #[arg(long, default_value = "claude-opus-5-5")]
         model: String,
@@ -336,10 +342,11 @@ fn run() -> Result<ExitCode> {
             println!("Wrote {} ({} changed).", out_dir.display(), plural(n, "file", "files"));
             Ok(ExitCode::SUCCESS)
         }
-        Cmd::Serve { projects, port } => {
+        Cmd::Serve { projects, port, env_file, public_port } => {
+            flowcontrol::soba::load_key(env_file.as_deref(), &cli.repo)?;
             let mut roots = vec![cli.repo.clone()];
             roots.extend(projects);
-            flowcontrol::serve::run(&roots, &cli.out, port)?;
+            flowcontrol::serve::run(&roots, &cli.out, port, public_port)?;
             Ok(ExitCode::SUCCESS)
         }
         Cmd::Rename { old, new } => {
@@ -834,8 +841,16 @@ fn run() -> Result<ExitCode> {
             let rep = journeys::group(&l, &mut book, &l.ids, &model)?;
             // Saved now, so a failure while writing the stops loses none of this.
             book.save(&path)?;
-            let (written, failed) = journeys::walk(&l, &mut book, &model, 4);
+            let (written, mut failed) = journeys::walk(&l, &mut book, &model, 4);
             book.save(&path)?;
+            match journeys::draw(&mut book, &model) {
+                Ok(true) => {
+                    book.save(&path)?;
+                    println!("Drew how the journeys fit together.");
+                }
+                Ok(false) => {}
+                Err(e) => failed.push(format!("the map: {e:#}")),
+            }
             println!("Placed {} requests in {} journeys and wrote out {written} of them, stop by stop. Saved to {}.", rep.placed, book.journeys.len(), path.display());
             println!("This is a proposal: rename a journey, move a request or reword a stop by editing that file. Running this again only fills in what is missing.");
             for r in &rep.left {

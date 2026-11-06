@@ -117,6 +117,11 @@ impl Auth {
         }
     }
 
+    /// The GitHub login behind a session, which outlives everything this server keeps.
+    pub fn login(&self, cookie: Option<&str>) -> Option<String> {
+        self.user(cookie).map(|u| u.login)
+    }
+
     pub fn allows(&self, cookie: Option<&str>) -> bool {
         !self.required() || self.user(cookie).is_some()
     }

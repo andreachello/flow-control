@@ -254,7 +254,19 @@ It also writes each journey out as its stops, what a person does from start to f
 
 `flow titles` does the same for the list of changes: one short sentence per commit in `flow.titles.json`, or "Nothing changes for people." It reads each diff, so every point can say how things were and how they are now, at the step of the journey where a person meets it. Edit any of them by hand. A commit without a title shows its message.
 
+`flow journeys` also draws how the journeys fit together: who uses the product and which journeys each kind of person goes through, in order. It is saved as `map` in the same file, shown at the top of the Journeys page, and yours to edit. Delete `map` and run it again to redraw it.
+
 ## In the browser
+
+The hosted product is the Next.js app in `web/`, in front of `flow serve` as its engine. Next answers on port 4000, with Soba's own components, and `flow serve` answers only on this machine:
+
+```bash
+cd web && npm install && npm run build
+flow serve --port 4001 --public-port 4000 &
+npm start
+```
+
+The screens are moving into React one at a time. Until they have, `web/scripts/split-page.mjs` reads them from `src/serve.html`, so plain `flow serve` keeps working on its own.
 
 `flow serve` shows your projects on `http://localhost:4000`: every project with recent activity across them, then for each one an overview, its pull requests, its journeys, its changes and the people behind them. A journey opens to its history and the requests it runs, and a request to the steps it runs and the data it touches. A change opens in plain words: what is different for people and which journeys it reaches. Its advanced view has the files and diff, step by step. `⌘K` searches everything, and `?` lists the keyboard shortcuts.
 
@@ -264,9 +276,27 @@ flow serve ~/Coding/shop ~/Coding/blog  # and these, as a list of projects
 flow serve --port 4100
 ```
 
-It only reads: everything comes from git and from lifts in memory, nothing is written to a repo, and it answers only on this machine. A change is shown as `git diff` shows it, so renames are detected the way git detects them, while journeys come from the lifts. The list comes from git at once, and what each change reached follows a moment later, because working that out takes two lifts. Next.js routes are only found at the top of a repo, so a monorepo's `apps/web/app/` shows server actions but not its pages and routes.
+It reads: everything comes from git and from lifts in memory, and it answers only on this machine. A change is shown as `git diff` shows it, so renames are detected the way git detects them, while journeys come from the lifts. The list comes from git at once, and what each change reached follows a moment later, because working that out takes two lifts. Next.js routes are only found at the top of a repo, so a monorepo's `apps/web/app/` shows server actions but not its pages and routes.
 
 Pull requests come from the `gh` command, so your own GitHub sign-in decides what you can see, and a project off GitHub just says so. One opens to the journeys it changes, step by step, from the changes it holds. `flow serve` never fetches: a change that is not on this machine is counted and left out until you run `git fetch`.
+
+Where the page would otherwise send you to a terminal, it has a button instead. **Find journeys** runs `flow journeys` for that project, and **Write the changes** runs `flow titles`. They use the agent signed in on the machine running `flow serve`, one run per project at a time, and write the same files the commands do, for you to review and commit. The rest of `flow serve` only reads. A run keeps going if you leave the page, and with sign-in on, anyone allowed in can start one.
+
+### Runs through Soba
+
+With sign-in on, a run from the page can use the computer or plan the signed-in person connected through [Soba](https://soba.so), instead of the agent on the machine running `flow serve`. Link an app with Soba's CLI, in the folder you start the server from:
+
+```bash
+npx @soba-so/cli login --no-link
+npx @soba-so/cli link --workspace "<workspace>" --app "<app>"
+flow serve
+```
+
+`flow serve` reads `SOBA_KEY` from that folder's `.env.local`, or from the file you name with `--env-file`. It never reads a project's `.env.local`, because that key belongs to that project's own app. On a host that keeps its own secrets, `SOBA_KEY` in the environment wins.
+
+Each person connects their own computer with **Connect compute** at the top of the page, and runs use what they connected. Runs go through Soba's SDK, so they are encrypted on this server for that person's own machines: Soba routes them and cannot read the code in them. That also means a connected plan on its own is not enough, because a run needs a machine holding a key. Commands typed in a terminal keep using the local agent, and so does the page with sign-in off, because nobody is named.
+
+The SDK needs Node 22 or newer. With a key set, `flow serve` installs a pinned copy into `~/.flow` the first time it starts, and refuses to start without Node.
 
 ### Sign in with GitHub
 

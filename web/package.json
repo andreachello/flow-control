@@ -1,0 +1,22 @@
+{
+  "name": "flow-control-web",
+  "private": true,
+  "scripts": {
+    "split": "node scripts/split-page.mjs",
+    "dev": "npm run split && next dev -H localhost -p 4000",
+    "build": "npm run split && next build",
+    "start": "next start -H localhost -p 4000"
+  },
+  "dependencies": {
+    "@soba-so/react": "0.0.33",
+    "next": "16.4.5",
+    "react": "19.2.0",
+    "react-dom": "19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.0.0",
+    "@types/react": "19.2.0",
+    "@types/react-dom": "19.2.0",
+    "typescript": "5.9.3"
+  }
+}

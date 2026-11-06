@@ -1,0 +1,8 @@
+{
+  "name": "flow-soba-helper",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@soba-so/sdk": "0.0.19"
+  }
+}

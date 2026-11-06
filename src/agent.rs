@@ -75,6 +75,9 @@ fn run_codex(model: Option<&str>, prompt: &str, schema: &Value) -> Result<Value>
 }
 
 pub fn ask(agent: Agent, model: Option<&str>, prompt: &str, schema: &Value) -> Result<Value> {
+    if let Some(who) = crate::soba::person() {
+        return crate::soba::ask(&who, prompt, schema);
+    }
     match agent {
         Agent::Claude => crate::names::run_claude(model.unwrap_or("claude-opus-5-5"), prompt, schema),
         Agent::Codex => run_codex(model, prompt, schema),

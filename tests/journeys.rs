@@ -27,7 +27,7 @@ fn an_answer_cannot_invent_a_request_or_move_one_twice() {
 
 #[test]
 fn a_second_run_adds_to_the_journeys_people_already_know() {
-    let mut have = Journeys { journeys: vec![journey("Log in", &["page /login"]), journey("Pay", &["action pay"])] };
+    let mut have = Journeys { journeys: vec![journey("Log in", &["page /login"]), journey("Pay", &["action pay"])], map: None };
     let answer = json!({"journeys": [
         {"title": "log in", "icon": "plus", "requests": ["action forgot"]},
         {"title": "Get help", "icon": "chat", "requests": ["page /help"]},
@@ -42,7 +42,7 @@ fn a_second_run_adds_to_the_journeys_people_already_know() {
 
 #[test]
 fn a_journey_keeps_a_request_through_a_rename() {
-    let have = Journeys { journeys: vec![journey("Pay", &["POST /api/pay"])] };
+    let have = Journeys { journeys: vec![journey("Pay", &["POST /api/pay"])], map: None };
     let (ids, bad) = Ids::parse("{\"id\":\"j_1\",\"key\":\"POST /api/checkout\"}\n{\"id\":\"j_1\",\"was\":\"POST /api/pay\"}\n");
     assert!(bad.is_empty());
     let places = have.places(&ids);
@@ -59,7 +59,7 @@ fn only_requests_without_a_journey_go_to_claude() {
         std::fs::write(d.join(format!("app/api/{r}/route.ts")), "export async function POST() {\n  return new Response('1');\n}\n").unwrap();
     }
     let l = flowcontrol::lift(&d, "flows").unwrap();
-    let have = Journeys { journeys: vec![journey("Do a", &["POST /api/a"])] };
+    let have = Journeys { journeys: vec![journey("Do a", &["POST /api/a"])], map: None };
     assert_eq!(unplaced(&l, &have, &l.ids), ["POST /api/b"]);
     let p = flowcontrol::journeys::prompt(&l, &have, &["POST /api/b"]);
     assert!(p.contains("## POST /api/b") && !p.contains("## POST /api/a"), "{p}");
