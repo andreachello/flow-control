@@ -122,13 +122,15 @@ fn a_repo_of_several_products_reads_by_product() {
     let d = repo("products");
     let s = serve(&d);
     let name = d.file_name().unwrap().to_string_lossy().to_string();
-    let file = r#"{"products":[{"name":"Shop","path":"app"},{"name":"Empty","path":"nowhere"}],"journeys":[{"product":"Shop","title":"Pay","icon":"card","requests":["POST /api/pay"]}],"maps":{"Shop":{"say":"People pay.","paths":[{"who":"Guests","journeys":["Pay"]}]}}}"#;
+    let file = r#"{"products":[{"name":"Shop","path":"app"},{"name":"Empty","path":"nowhere"}],"journeys":[{"product":"Shop","title":"Pay","icon":"card","requests":[]}],"maps":{"Shop":{"say":"People pay.","paths":[{"who":"Guests","journeys":["Pay"]}]}}}"#;
     std::fs::write(d.join("flow.journeys.json"), file).unwrap();
     let (_, body) = ask(s.1, "GET", &format!("/api/p/{name}/commits"), None);
     assert!(body.contains(r#""product":"Shop""#) && body.contains("People pay."), "{body}");
     assert!(body.contains(r#""products":["Shop"]"#), "a folder with no journeys is nothing to pick: {body}");
     let (_, requests) = ask(s.1, "GET", &format!("/api/p/{name}/requests"), None);
     assert!(requests.contains(r#""product":"Shop""#), "{requests}");
+    assert!(!requests.contains(r#""group":null"#), "no request is ever without a journey: {requests}");
+    assert_eq!(sh(&d, &["git", "status", "--porcelain"]), "?? flow.journeys.json", "and placing them writes nothing");
 
     std::fs::write(d.join("flow.journeys.json"), file.replace(r#""journeys":[{"#, r#""ignore":["app"],"journeys":[{"#)).unwrap();
     let (_, requests) = ask(s.1, "GET", &format!("/api/p/{name}/requests"), None);

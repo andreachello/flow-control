@@ -198,6 +198,39 @@ pub fn unplaced<'a>(l: &'a Lift, have: &Journeys, ids: &Ids) -> Vec<&'a str> {
     l.flows.iter().filter(|f| places.of(&f.uid, &f.id).is_none() && !have.ignored(&l.repo.files[f.entry.0].path)).map(|f| f.id.as_str()).collect()
 }
 
+/// Give every request with no journey the journey the code puts it nearest to, so none is ever
+/// left out, whatever a model missed and whatever was committed since. Asks nothing and costs
+/// nothing. A request no person starts, or that shares no code with any journey, goes behind the
+/// scenes of its product. Only a project with journeys has anywhere to put them. Returns how many.
+pub fn place(l: &Lift, have: &mut Journeys, ids: &Ids) -> usize {
+    let todo: Vec<String> = unplaced(l, have, ids).into_iter().map(str::to_string).collect();
+    if todo.is_empty() || have.journeys.is_empty() {
+        return 0;
+    }
+    let steps_of = |id: &str| -> BTreeSet<(usize, usize)> { l.flows.iter().filter(|f| f.id == id).flat_map(|f| f.steps.iter().map(|s| s.at)).collect() };
+    let mut near: Vec<BTreeSet<(usize, usize)>> = have.journeys.iter().map(|j| j.requests.iter().flat_map(|r| steps_of(r)).collect()).collect();
+    for id in &todo {
+        let Some(f) = l.flows.iter().find(|f| f.id == *id) else { continue };
+        let product = have.product_of(&l.repo.files[f.entry.0].path).map(str::to_string);
+        let mine = steps_of(id);
+        let somebody = matches!(f.kind, "page" | "action" | "route" | "api") && !["cron", "webhook"].iter().any(|w| id.contains(w));
+        let best = (0..have.journeys.len())
+            .filter(|&i| somebody && have.journeys[i].product == product && have.journeys[i].icon != BEHIND)
+            .map(|i| (near[i].intersection(&mine).count(), i))
+            .filter(|(shared, _)| *shared > 0)
+            .max_by_key(|&(shared, i)| (shared, std::cmp::Reverse(i)))
+            .map(|(_, i)| i);
+        let at = best.or_else(|| have.journeys.iter().position(|j| j.product == product && j.icon == BEHIND)).unwrap_or_else(|| {
+            have.journeys.push(Journey { product: product.clone(), title: "Behind the scenes".into(), icon: BEHIND.into(), requests: vec![], stops: vec![] });
+            near.push(BTreeSet::new());
+            have.journeys.len() - 1
+        });
+        have.journeys[at].requests.push(id.clone());
+        near[at].extend(mine);
+    }
+    todo.len()
+}
+
 /// What each request is, and where it leads, which is most of what says what belongs together.
 fn described(l: &Lift, which: &[&str]) -> String {
     let entries: BTreeMap<_, &str> = l.flows.iter().map(|f| (f.entry, f.id.as_str())).collect();
@@ -459,7 +492,7 @@ pub fn group(l: &Lift, have: &mut Journeys, ids: &Ids, model: &str) -> Result<Re
     if have.products.is_empty() {
         step(format!("Grouping {}", plural(todo.len(), "request")));
         let answer = run_claude(model, &prompt(l, have, &todo), &schema())?;
-        let placed = apply(have, &answer, &todo);
+        let placed = apply(have, &answer, &todo) + place(l, have, ids);
         return Ok(Report { placed, left: unplaced(l, have, ids).into_iter().map(str::to_string).collect(), failed: vec![] });
     }
     let (mut mine, mut shared): (BTreeMap<String, Vec<&str>>, Vec<String>) = Default::default();
@@ -493,6 +526,10 @@ pub fn group(l: &Lift, have: &mut Journeys, ids: &Ids, model: &str) -> Result<Re
             Some(j) => j.requests.extend(shared),
             None => have.journeys.push(Journey { product: None, title: "Behind the scenes".into(), icon: BEHIND.into(), requests: shared, stops: vec![] }),
         }
+    }
+    // What a model missed. A product that failed is left to its retry, not guessed at.
+    if failed.is_empty() {
+        placed += place(l, have, ids);
     }
     Ok(Report { placed, left: unplaced(l, have, ids).into_iter().map(str::to_string).collect(), failed })
 }

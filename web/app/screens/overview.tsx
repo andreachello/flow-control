@@ -12,6 +12,8 @@ import { RunControl } from "./run-control"
 const LOAD_MOST = 120
 /** How long what the tab knows counts as current. */
 const FRESH_FOR = 30000
+/** How many rows each list here shows. The rest are a link away. */
+const SHOWN = 6
 
 function Skeleton() {
   return (
@@ -138,7 +140,7 @@ export function Overview({ project, soba, signedOut }: { project: string; soba: 
           </div>
           <div className="pn">
             <div className="pn-h"><b>Latest changes</b><a href={link(project, "changes")}>All changes</a></div>
-            <ul className="fd">{latest.slice(0, 6).map(c => <Latest key={c.id} c={c} project={project} book={book} notes={noted(c)} />)}</ul>
+            <ul className="fd">{latest.slice(0, SHOWN).map(c => <Latest key={c.id} c={c} project={project} book={book} notes={noted(c)} />)}</ul>
           </div>
         </div>
         <div className="pn">
@@ -148,8 +150,8 @@ export function Overview({ project, soba, signedOut }: { project: string; soba: 
               <div className="pn-b">
                 <ul className="rank">
                   {!done.length
-                    ? mine.map(i => <li className="rank-sk" key={i}><a><i className="sk" /><span className="sk" /><small /><u /></a></li>)
-                    : counts.map(({ g, n }) => (
+                    ? mine.slice(0, SHOWN).map(i => <li className="rank-sk" key={i}><a><i className="sk" /><span className="sk" /><small /><u /></a></li>)
+                    : counts.slice(0, SHOWN).map(({ g, n }) => (
                         <li key={g}>
                           <a href={link(project, "journey", String(g))}>
                             <Badge g={g} book={book} /><span>{book[g].title}</span><small>{n}</small>
@@ -159,7 +161,10 @@ export function Overview({ project, soba, signedOut }: { project: string; soba: 
                       ))}
                 </ul>
               </div>
-              <div className="pn-e" style={{ paddingTop: 0 }}>{reading ? `Reading ${done.length} of ${list.length} changes` : `From the latest ${plural(done.length, "change")}`}</div>
+              <div className="pn-e pn-f">
+                <span>{reading ? `Reading ${done.length} of ${list.length} changes` : `From the latest ${plural(done.length, "change")}`}</span>
+                <a href={link(project, "journeys")}>View all journeys</a>
+              </div>
             </>
           ) : (
             <RunControl task="journeys" lead="Group this project by what people come to do." run={run} start={start} soba={soba} />

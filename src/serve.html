@@ -160,6 +160,8 @@ nav .tabs a.on{color:var(--ink);background:var(--sheet);box-shadow:0 1px 2px rgb
 .ghc-js{flex:none;display:flex;gap:4px}
 .ghc-js .bdg,.ghl-key .bdg{width:20px;height:20px;box-shadow:none}
 .ghc-js .bdg + .bdg{margin-left:0}
+.ghc-js .bdg{flex:none}
+.bdg-more{flex:none;padding-left:2px;font-size:12px;font-variant-numeric:tabular-nums;color:var(--ink-3)}
 .ghc-js .bdg.off{background:none!important;color:var(--ink-3);box-shadow:inset 0 0 0 1px var(--rule);opacity:.55}
 .ghl-key{display:flex;flex-wrap:wrap;gap:6px 14px;padding:0 0 18px;font-size:12.5px;color:var(--ink-2)}
 .ghl-key > span{display:inline-flex;align-items:center;gap:6px}
@@ -389,6 +391,9 @@ kbd{font:500 11px var(--f-ui);letter-spacing:0;padding:1px 5px;border-radius:5px
 .pn-b{padding:10px 16px 14px}
 .pn-e{padding:14px 16px 16px;font-size:13.5px;color:var(--ink-3)}
 .pn-e code{font:12.5px var(--f-code);color:var(--ink-2)}
+.pn-f{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 12px;padding-top:0}
+.pn-f a{color:var(--ink);font-weight:500;text-decoration:none}
+.pn-f a:hover{text-decoration:underline}
 .chart{display:flex;align-items:flex-end;gap:2px;height:132px;padding-top:4px;border-bottom:1px solid var(--rule)}
 .chart button{flex:1;display:flex;align-items:flex-end;height:100%;min-width:0;padding:0;border:0;background:none;cursor:default}
 .chart i{display:block;width:100%;min-height:0;border-radius:4px 4px 0 0;background:var(--l-su);transition:opacity .1s}
@@ -562,25 +567,34 @@ kbd{font:500 11px var(--f-ui);letter-spacing:0;padding:1px 5px;border-radius:5px
 .side .sec{display:flex;flex-direction:column;gap:2px;margin:0;padding:0;max-width:none;overflow:visible}
 .side .sec a{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;font-size:14px;color:var(--ink-2)}
 .side .sec a svg{flex:none}
-.sec-p{display:flex;flex-direction:column;gap:4px;padding:4px 8px 10px;font-size:12px;color:var(--ink-3)}
-.sec-p select{font:inherit;font-size:13px;color:var(--ink);background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:6px 8px}
-.jg-h{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:20px 0 8px;font-size:14px;font-weight:600;color:var(--ink)}
-.jg-h small{font-size:12.5px;font-weight:400;color:var(--ink-3)}
-.pts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
-.pt{display:flex;flex-direction:column;gap:4px;min-width:0;padding:14px 16px;border:1px solid var(--rule);border-radius:10px;background:var(--sheet);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .12s}
-.pt:hover{border-color:color-mix(in srgb,var(--ink) 24%,var(--rule))}
-.pt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.pt b{font-size:15px;font-weight:600}
-.pt small{font-size:12.5px;color:var(--ink-3)}
-.pt .spark{margin-top:8px;height:28px}
-.pt.off{background:var(--sheet-2)}
-.jrs{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px}
-.jr{display:flex;align-items:center;gap:8px;min-width:0;padding:7px 10px;border:1px solid var(--rule);border-radius:8px;background:var(--sheet);color:var(--ink);font-size:13.5px;text-decoration:none;transition:border-color .12s}
-.jr:hover{border-color:color-mix(in srgb,var(--ink) 24%,var(--rule))}
-.jr .bdg{flex:none;width:20px;height:20px;box-shadow:none}
-.jr b{min-width:0;overflow:hidden;font-weight:500;text-overflow:ellipsis;white-space:nowrap}
-.jr small{flex:none;margin-left:auto;font-size:12px;color:var(--ink-3)}
-.pg.off .jr small{display:none}
+.sec-p{position:relative;display:flex;flex-direction:column;gap:4px;padding:4px 0 10px;font-size:12px;color:var(--ink-3)}
+.sec-p>span{padding:0 8px}
+.side .sec-p .sw{width:100%;padding:6px 8px;border:1px solid var(--rule);background:var(--sheet);font-size:13.5px;text-align:left}
+.side .sec-p .sw:hover{background:var(--sheet-2)}
+.sec-p .sw-menu{top:calc(100% - 6px)}
+.sec-p .cp-menu button{cursor:pointer}
+.pcs{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;align-items:start}
+.pc{display:flex;flex-direction:column;min-width:0;padding:16px;border:1px solid var(--rule);border-radius:10px;background:var(--sheet)}
+.pc-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:0;border:0;background:none;color:var(--ink);font:inherit;text-align:left;cursor:pointer}
+.pc-h b{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.pc-h span{font-size:12.5px;color:var(--ink-3)}
+.pc-h:hover span{color:var(--ink)}
+.pc-h:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+.pc p{min-height:40px;margin:6px 0 14px;font-size:13.5px;line-height:1.5;color:var(--ink-2)}
+.pc-k{display:flex;justify-content:space-between;padding-bottom:6px;border-bottom:1px solid var(--rule);font-size:12px;color:var(--ink-3)}
+.pc ol{margin:0;padding:0;list-style:none}
+.pc li a{display:flex;align-items:center;gap:10px;min-width:0;margin:0 -8px;padding:7px 8px;border-radius:7px;color:var(--ink);font-size:14px;text-decoration:none}
+.pc li a:hover{background:var(--sheet-2)}
+.pc li .bdg{flex:none;width:22px;height:22px;box-shadow:none}
+.pc li b{min-width:0;overflow:hidden;font-weight:500;text-overflow:ellipsis;white-space:nowrap}
+.pc small,.pc-s small{flex:none;margin-left:auto;font-size:13px;font-variant-numeric:tabular-nums;color:var(--ink-2)}
+.pc-b{display:flex;align-items:center;margin-top:8px;padding-top:10px;border-top:1px solid var(--rule);font-size:13px;color:var(--ink-3);text-decoration:none}
+.pc-b:hover{color:var(--ink)}
+.pc.off{background:var(--sheet-2)}
+.pc.off li a{color:var(--ink-2)}
+.pc-s{display:flex;align-items:center;margin-top:12px;padding:0 16px;font-size:13px;color:var(--ink-3);text-decoration:none}
+.pc-s:hover{color:var(--ink)}
+.pc-t{margin-top:16px}
 .side .sec a:hover{background:var(--sheet-2);color:var(--ink)}
 .side .sec a.on{background:var(--sheet-2);color:var(--ink);font-weight:500}
 .side .sec a.on::after{content:none}
@@ -858,6 +872,10 @@ const SHAPE = { enter:"M7 3h6v10H7M3 8h7M8 5l3 3-3 3", plus:"M8 3v10M3 8h10", cr
 const TINT = ["li","su","ca","up","ag","te","or","in","ol"];
 let BOOK = [], JPICK = null, READ = false, PROJ = [], ACT = null, CAT = null, REDRAW = null, TAB = "", SWITCH = false, KB = null, PAL = null, back = null;
 const tint = (g, book = BOOK) => book[g].icon === "gear" ? "var(--l-pl)" : `var(--l-${TINT[g % TINT.length]})`;
+// A row holds this many badges. Past that it shows a few and how many more, so a repo with many
+// journeys cannot run over what sits beside them.
+const MOST_BADGES = 6;
+const capped = (gs, badge) => { const show = gs.length > MOST_BADGES ? gs.slice(0, MOST_BADGES - 1) : gs; return show.map(badge).join("") + (gs.length > show.length ? `<small class="bdg-more">+${gs.length - show.length}</small>` : ""); };
 const gbadge = (g, off, book = BOOK) => `<span class="bdg ${off?"off":""}" style="background:${tint(g, book)}" title="${esc(book[g].title)}${off===undefined?"":off?": no change":": changes"}"><svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${SHAPE[book[g].icon] || SHAPE.star}"/></svg></span>`;
 const groupsOf = js => [...new Set(js.map(j => j.group).filter(g => g != null))].sort((a, b) => a - b);
 const words = ts => ts.length < 2 ? ts.join("") : ts.length > 3 ? `${ts.slice(0, 3).join(", ")} and ${ts.length - 3} more` : `${ts.slice(0, -1).join(", ")} and ${ts.at(-1)}`;
@@ -899,14 +917,28 @@ const PRODUCT = () => { const p = kept(`flow-product:${P}`); return productsOf()
 const inProduct = g => !PRODUCT() || (BOOK[g] && BOOK[g].product === PRODUCT());
 const scoped = () => BOOK.map((b, g) => g).filter(inProduct);
 const inPicked = c => !PRODUCT() || !SUMM[c.id] || groupsOf(SUMM[c.id].journeys).some(inProduct);
+// Drawn here rather than left to the browser, whose own menu ignores the page's theme.
+let PICKING = false;
+function paintPick(){
+  const slot = $("prod-slot"); if (!slot) return;
+  const now = PRODUCT(), opts = ["", ...productsOf()];
+  slot.innerHTML = `<span id="prod-l">Product</span><button class="sw" id="prod" aria-haspopup="listbox" aria-expanded="${PICKING}" aria-labelledby="prod-l prod"><span>${esc(now || "All products")}</span><i class="chev"></i></button>${PICKING ? `<div class="cp-menu sw-menu" role="listbox" aria-labelledby="prod-l">${opts.map(p => `<button role="option" aria-selected="${p === now}" class="${p === now ? "on" : ""}" data-pick="${esc(p)}"><b>${esc(p || "All products")}</b></button>`).join("")}</div>` : ""}`;
+  $("prod").onclick = e => { e.stopPropagation(); PICKING = !PICKING; paintPick(); if (PICKING) slot.querySelector(".on").focus(); };
+  const items = [...slot.querySelectorAll("[data-pick]")];
+  items.forEach((b, i) => {
+    b.onclick = e => { e.stopPropagation(); PICKING = false; keep(`flow-product:${P}`, b.dataset.pick); route(); };
+    b.onkeydown = e => { const to = { ArrowDown:i + 1, ArrowUp:i - 1, Home:0, End:items.length - 1 }[e.key]; if (to == null) return; e.preventDefault(); items[(to + items.length) % items.length].focus(); };
+  });
+}
+function closePick(){ if (!PICKING) return false; PICKING = false; paintPick(); return true; }
 function nav(tab, here){
   const me = PROJ.find(p => p.name === P);
   $("crumb").innerHTML = !P ? "" : `<span class="bar-sl">/</span><button class="sw" id="sw" aria-expanded="${SWITCH}"><i class="tile" style="--c:${colour(P)}">${esc(P.charAt(0).toUpperCase())}</i><span>${esc(P)}</span><i class="chev"></i></button>${SWITCH ? `<div class="cp-menu sw-menu">${PROJ.map(p => `<a class="${p.name === P ? "on" : ""}" href="#/p/${encodeURIComponent(p.name)}"><b>${esc(p.name)}</b><span>${plural(p.changes, "change")}</span></a>`).join("")}<a href="#/"><b>All projects</b></a></div>` : ""}`;
   if ($("sw")) $("sw").onclick = e => { e.stopPropagation(); SWITCH = !SWITCH; nav(tab, here); };
-  const pick = P && productsOf().length ? `<label class="sec-p"><span>Product</span><select id="prod"><option value="">All products</option>${productsOf().map(p => `<option${p === PRODUCT() ? " selected" : ""}>${esc(p)}</option>`).join("")}</select></label>` : "";
+  const pick = P && productsOf().length ? `<div class="sec-p" id="prod-slot"></div>` : "";
   $("sec").innerHTML = P ? pick + SECTIONS.map(([k, label, path, d]) => `<a href="${hash(...(path ? [path] : []))}" class="${k === tab ? "on" : ""}" ${k === tab ? 'aria-current="page"' : ""}>${secIcon(d)}${label}</a>`).join("")
     : `<a href="#/" class="on" aria-current="page">${secIcon(SECTIONS[0][3])}Overview</a><p class="sec-l">Projects</p>${PROJ.map(p => `<a href="#/p/${encodeURIComponent(p.name)}"><i class="tile">${esc(p.name.charAt(0).toUpperCase())}</i>${esc(p.name)}</a>`).join("")}`;
-  if ($("prod")) $("prod").onchange = e => { keep(`flow-product:${P}`, e.target.value); route(); };
+  paintPick();
   const label = (SECTIONS.find(x => x[0] === tab) || [])[1];
   $("trail").innerHTML = !P ? "<span>Overview</span>" : `<a href="${hash()}">${esc(P)}</a><i>/</i>${here ? `<a href="${hash(...(tab === "overview" ? [] : [tab]))}">${label}</a><i>/</i><span>${esc(here)}</span>` : `<span>${label || ""}</span>`}`;
   document.title = !P ? "Flow control" : `${here || (SECTIONS.find(x => x[0] === tab) || [0, "Change"])[1]}, ${P}`;
@@ -946,7 +978,7 @@ function drawHome(){
   const go = p => `#/p/${encodeURIComponent(p.name)}`, wait = `<span class="sk sk-n"></span>`, soon = `<span class="sk sk-t"></span>`;
   const row = p => { const w = weeks(of(p).act.map(x => x[0]), 8), known = H[p.name] && H[p.name].act;
     return `<a class="ptb-r" href="${go(p)}" title="${esc(p.path)}"><div class="ptb-n"><i class="tile big">${esc(p.name.charAt(0).toUpperCase())}</i><div class="pj-m"><b>${esc(p.name)}</b><span>${esc(p.says || "Nothing saved yet")}</span></div></div>
-      <div>${p.journeys.length ? `<div class="ghc-js" role="img" aria-label="${esc(words(p.journeys.map(j => j.title)))}">${p.journeys.map((j, g) => gbadge(g, undefined, p.journeys)).join("")}</div>` : `<small>None yet</small>`}</div>
+      <div>${p.journeys.length ? `<div class="ghc-js" role="img" aria-label="${esc(words(p.journeys.map(j => j.title)))}">${capped(p.journeys.map((j, g) => g).sort((a, b) => (p.journeys[a].icon === "gear") - (p.journeys[b].icon === "gear") || a - b), g => gbadge(g, undefined, p.journeys))}</div>` : `<small>None yet</small>`}</div>
       <div>${known ? spark(w, "var(--accent)") : ""}</div><small class="num">${known ? w[w.length - 1].n : wait}</small><small class="num">${p.changes.toLocaleString("en-US")}</small><small class="num">${p.last ? esc(ago(p.last.date)) : wait}</small><i class="chev"></i></a>`; };
   page(`<div class="ex-cards on"><div class="home-h"><h2>${ME ? greet() : "Overview"}</h2><p>${acts ? (now ? `${plural(now, "change")} across ${plural(busy, "project")} this week.` : "Nothing has changed this week.") : `<span class="sk" style="width:240px;height:10px;margin:7px 0"></span>`}</p></div>
     <div class="stats">${kpi("Changes this week", acts ? now : wait, acts ? trend : soon, acts ? spark(recent, "var(--accent)") : "")}${kpi("Open pull requests", prs ? open : wait, prs ? `${merged} merged this week` : soon)}${kpi("All changes", total.toLocaleString("en-US"), `Across ${plural(list.length, "project")}`)}${kpi("Journeys", journeys, `In ${mapped} of ${plural(list.length, "project")}`)}</div>
@@ -977,6 +1009,8 @@ function adopt(s){ let moved = false;
   if (s.list && (!HAVE.list || s.list[0]?.id !== LIST[0]?.id || s.total !== TOTAL || s.stamp !== STAMP)) {
     LIST = [...s.list]; MORE = s.more; TOTAL = s.total; BOOK = s.book; MAP = s.map; MAPS = s.maps; if (s.stamp !== STAMP) SUMM = {}; STAMP = s.stamp;
     Object.assign(SUMM, kept(`flow-summ:${P}:${STAMP}`) || {}); HAVE.list = true; moved = true; }
+  // Placing every request can start a journey the list did not have yet.
+  if (s.book && JSON.stringify(s.book) !== JSON.stringify(BOOK)) { BOOK = s.book; moved = true; }
   if (s.act && JSON.stringify(s.act) !== JSON.stringify(ACT)) { ACT = s.act; HAVE.act = true; moved = true; }
   if (s.cat && JSON.stringify(s.cat) !== JSON.stringify(CAT)) { CAT = s.cat; HAVE.cat = true; moved = true; }
   if (s.pulls && JSON.stringify(s.pulls) !== JSON.stringify(PULLS)) { PULLS = s.pulls; HAVE.pulls = true; moved = true; }
@@ -991,7 +1025,7 @@ function readProject(name, again){
     do { d = await get(at("commits", `?skip=${list.length}`)); first = first || d; list.push(...d.commits); } while (d.commits.length === d.size && list.length < LOAD_MOST);
     put({ list, more:d.commits.length === d.size, total:first.project.changes, book:first.journeys, map:first.map || null, maps:first.maps || {}, stamp:first.stamp });
     // Each arrives on its own: a slow one holds up no page that does not need it.
-    await Promise.all([get(at("activity")).then(act => put({ act })), get(at("requests")).then(cat => put({ cat })), get(at("pulls")).then(pulls => put({ pulls }), () => put({ pulls:{ linked:false, pulls:[] } }))]);
+    await Promise.all([get(at("activity")).then(act => put({ act })), get(at("requests")).then(async cat => { put({ cat }); if (cat.some(r => r.group >= first.journeys.length)) put({ book:(await get(at("commits"))).journeys }); }), get(at("pulls")).then(pulls => put({ pulls }), () => put({ pulls:{ linked:false, pulls:[] } }))]);
   })().catch(failed).finally(() => { if (READING[name] === run) delete READING[name]; });
   return READING[name] = run;
 }
@@ -1003,12 +1037,10 @@ let LOOKED = false;
 async function lookAhead(){ if (LOOKED) return; LOOKED = true; await new Promise(r => setTimeout(r, 1500)); for (const p of PROJ) if (p.name !== P && !known(p.name)) await readProject(p.name).catch(() => {}); }
 const ensureList = () => arrive("list");
 const calm = c => c.quiet ?? (SUMM[c.id] && !SUMM[c.id].journeys.length);
-const MOST_BESIDE = 12;
 function commitRow(c, i){
   const s = SUMM[c.id], open = OPEN.has(c.id), js = s ? s.journeys.map(j => j.title) : [], gs = s ? groupsOf(s.journeys) : [], loose = s ? s.journeys.filter(j => j.group == null).length : 0;
   const about = s && !c.quiet ? s.focus : [], also = gs.filter(g => !about.includes(g)), name = g => BOOK[g].title;
-  // Every journey beside every row reads well for a few. For many it is thousands of icons to draw.
-  const lit = BOOK.length ? (BOOK.length > MOST_BESIDE ? about.map(g => gbadge(g)) : BOOK.map((b, g) => gbadge(g, !about.includes(g)))).join("") : badges(js);
+  const lit = !BOOK.length ? badges(js) : scoped().length <= MOST_BADGES ? scoped().map(g => gbadge(g, !about.includes(g))).join("") : capped(about.filter(inProduct), g => gbadge(g, false));
   const says = BOOK.length && c.quiet && gs.length ? `People won't notice this. The code it changed runs in ${words(also.map(name))}` : BOOK.length && gs.length ? `Changes ${words(about.map(name))}${also.length ? `. Shared code also reaches ${words(also.map(name))}` : ""}` : BOOK.length && loose ? `Changes ${plural(loose, "request")} not in a journey yet` : s && s.line;
   const who = !s ? "" : BOOK.length ? about.concat(also).map(g => `<span><i style="background:${tint(g)}"></i>${esc(BOOK[g].title)}</span>`).join("") : s.journeys.map(j => `<span><i style="background:${colour(j.title)}"></i>${esc(j.title)}${j.was ? ` (was ${esc(j.was)})` : ""}${j.state==="changed"?"":`, ${j.state}`}</span>`).join("");
   return `<li class="ghc ${calm(c) ? "quiet" : ""}" data-row="${esc(c.id)}"><div class="ghc-line"><div class="ghc-main"><div class="ghc-t"><button class="ghc-title" title="${esc(c.subject)}" aria-expanded="${open}">${esc(c.title)}</button></div></div>
@@ -1331,19 +1363,25 @@ function drawJourneys(){
   const loose = CAT.filter(r => r.group == null && (!PRODUCT() || r.product === PRODUCT()));
   const own = name => BOOK.map((b, g) => g).filter(g => (BOOK[g].product || "") === name);
   const facts = name => { const gs = own(name), mine = read().filter(c => gs.some(g => touches(c, g))); return { name, gs, mine, n:CAT.filter(r => gs.includes(r.group)).length }; };
-  // Together, the page has to show every product at a glance: a tile for each, busiest first, then
-  // their journeys as one line each. Two products can both have a "Log in", so each keeps a heading.
-  const row = g => { const b = BOOK[g], ch = read().filter(c => touches(c, g)).length;
-    return `<a class="jr" href="${hash("journey", g)}">${gbadge(g)}<b>${esc(b.title)}</b><small>${plural(ch, "change")}</small></a>`; };
-  const says = p => `${plural(p.gs.length, "journey")} · ${plural(p.n, "request")} · ${plural(p.mine.length, "change")}`;
-  const line = p => p.n ? esc(says(p)) : `${plural(p.gs.length, "journey")} · not committed yet`;
-  const list = !PRODUCT() && productsOf().length ? [...productsOf(), ""].map(facts).filter(p => p.gs.length).sort((a, b) => !a.name - !b.name || b.mine.length - a.mine.length || b.n - a.n) : [];
-  const tile = p => `<button class="pt${p.n ? "" : " off"}" data-prod="${esc(p.name)}"><b>${esc(p.name)}</b><small>${line(p)}</small>${p.n ? spark(weeks(p.mine.map(c => c.date), 16), "var(--accent)") : ""}</button>`;
-  const all = list.length ? `<div class="pts">${list.filter(p => p.name).map(tile).join("")}</div>${list.map(p => `<section class="pg${p.n ? "" : " off"}"><h3 class="jg-h"><span>${esc(p.name || "Shared")}</span><small>${p.n ? esc(says(p)) : "Its code isn't committed yet, so its requests and changes can't be shown."}</small></h3><div class="jrs">${p.gs.map(row).join("")}</div></section>`).join("")}` : grid(scoped());
+  // Together, one column for each product and nothing twice: what it is for, what people do in it
+  // in the order they do it, and how much of that changed. Two products can both have a "Log in".
+  const count = g => read().filter(c => touches(c, g)).length;
+  const column = p => { const people = p.gs.filter(g => BOOK[g].icon !== "gear"), behind = p.gs.filter(g => BOOK[g].icon === "gear");
+    return `<section class="pc${p.n ? "" : " off"}"><button class="pc-h" data-prod="${esc(p.name)}"><b>${esc(p.name)}</b><span>Open</span></button>
+      <p>${esc(p.n ? (MAPS[p.name] || {}).say || "" : "Not committed yet, so there is nothing to count.")}</p>
+      ${p.n ? `<div class="pc-k"><span>What people do</span><span>Changes</span></div>` : ""}
+      <ol>${people.map(g => `<li><a href="${hash("journey", g)}">${gbadge(g)}<b>${esc(BOOK[g].title)}</b>${p.n ? `<small>${count(g)}</small>` : ""}</a></li>`).join("")}</ol>
+      ${p.n && behind.length ? `<a class="pc-b" href="${hash("journey", behind[0])}">Behind the scenes<small>${count(behind[0])}</small></a>` : ""}</section>`; };
+  const list = !PRODUCT() && productsOf().length ? [...productsOf(), ""].map(facts).filter(p => p.gs.length).sort((a, b) => !a.name - !b.name || !a.n - !b.n || b.mine.length - a.mine.length || b.n - a.n) : [];
+  const shared = list.find(p => !p.name);
+  const all = list.length ? `<div class="pcs">${list.filter(p => p.name).map(column).join("")}</div>${shared ? `<a class="pc-s" href="${hash("journey", shared.gs[0])}">Code no single product owns<small>${plural(shared.mine.length, "change")}</small></a>` : ""}` : grid(scoped());
   const unwritten = scoped().filter(g => !(BOOK[g].stops || []).length && BOOK[g].icon !== "gear").length;
+  const todo = unwritten ? `${plural(unwritten, "journey")} still ${unwritten === 1 ? "needs" : "need"} writing out` : "";
+  // Only a project that has never been grouped has requests with no journey.
+  const looseList = !BOOK.length && loose.length ? `<div class="pn" style="margin-top:12px"><div class="pn-h"><b>Requests</b><small>${plural(loose.length, "request")}</small></div>${reqList(loose)}</div>` : "";
   page(`<div class="ex-cards on"><div class="page-h"><h2>${esc(PRODUCT() || "Journeys")}</h2><span class="ghl-n">${BOOK.length ? readNote() : plural(CAT.length, "request")}</span></div>
-    ${mapView()}${!loose.length && unwritten ? `<div class="pn">${runSlot("journeys", `${plural(unwritten, "journey")} still ${unwritten === 1 ? "has" : "have"} no stops written out.`)}</div>` : ""}${BOOK.length ? all : `<div class="pn">${NOBOOK()}</div>`}
-    ${loose.length ? `<div class="pn" style="margin-top:12px"><div class="pn-h"><b>${BOOK.length ? "Not in a journey yet" : "Requests"}</b><small>${plural(loose.length, "request")}</small></div>${BOOK.length ? runSlot("journeys", "Place these in journeys.") : ""}${reqList(loose)}</div>` : ""}</div>`);
+    ${list.length ? `${all}${todo ? `<div class="pn pc-t">${runSlot("journeys", `${todo}.`)}</div>` : ""}`
+      : `${mapView()}${unwritten ? `<div class="pn">${runSlot("journeys", `${plural(unwritten, "journey")} still ${unwritten === 1 ? "has" : "have"} no stops written out.`)}</div>` : ""}${BOOK.length ? all : `<div class="pn">${NOBOOK()}</div>`}${looseList}`}</div>`);
   document.querySelectorAll("[data-prod]").forEach(b => b.onclick = () => { keep(`flow-product:${P}`, b.dataset.prod); route(); });
 }
 async function journey(g){
@@ -1496,7 +1534,8 @@ const skDetail = () => `<p class="sk-note">Reading the code before and after thi
 let toastTimer;
 function toast(text){ $("toast").innerHTML = `<div class="toast" role="status">${esc(text)}</div>`; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $("toast").innerHTML = ""; }, 1800); }
 document.addEventListener("mouseover", e => { const t = e.target.closest("[data-tip]"), tip = $("tip"); tip.hidden = !t; if (t) { const r = t.getBoundingClientRect(); tip.textContent = t.dataset.tip; tip.style.left = `${r.left + r.width / 2}px`; tip.style.top = `${r.top + r.height * parseFloat(t.style.getPropertyValue("--y") || 0) / 100 - 10}px`; } });
-document.addEventListener("click", () => { if (SWITCH) { SWITCH = false; nav(TAB); } });
+document.addEventListener("click", () => { closePick(); if (SWITCH) { SWITCH = false; nav(TAB); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && closePick()) $("prod").focus(); });
 
 /* search */
 const over = html => { $("over").innerHTML = html; const w = $("over").firstElementChild; if (w) w.onclick = e => { if (e.target === w) closeOver(); }; };

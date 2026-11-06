@@ -4,8 +4,9 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-/// The server and its pages. Everything else in src/ can change what a commit reads as.
-const AROUND_THE_READER: &[&str] = &["auth.rs", "main.rs", "pulls.rs", "reports.rs", "runs.rs", "serve.html", "serve.rs", "soba.rs"];
+/// The server, its pages, and how journeys group what was read, which is applied afterwards.
+/// Everything else in src/ can change what a commit reads as.
+const AROUND_THE_READER: &[&str] = &["auth.rs", "journeys.rs", "main.rs", "pulls.rs", "reports.rs", "runs.rs", "serve.html", "serve.rs", "soba.rs"];
 
 fn main() {
     println!("cargo:rerun-if-changed=src");

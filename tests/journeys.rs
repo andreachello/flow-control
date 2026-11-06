@@ -130,7 +130,7 @@ fn the_page_can_draw_every_icon() {
 }
 
 mod products {
-    use flowcontrol::journeys::{group, seed, unplaced, Journey, Journeys, Product, BEHIND};
+    use flowcontrol::journeys::{group, place, seed, unplaced, Journey, Journeys, Product, BEHIND};
     use flowcontrol::source::Source;
     use std::collections::BTreeMap;
 
@@ -211,6 +211,37 @@ mod products {
         assert_eq!(rep.placed, 1);
         assert_eq!((b.journeys[0].product.as_deref(), b.journeys[0].icon.as_str()), (None, BEHIND));
         assert_eq!(b.journeys[0].requests, ["action save"]);
+    }
+
+    #[test]
+    fn every_request_finds_a_journey_from_the_code_alone() {
+        let mut files = monorepo();
+        files.push(("apps/web/app/plans/page.tsx", "import { bill } from \"@/lib/bill\";\nexport default function Page() { return bill(); }\n"));
+        files.push(("apps/web/app/api/cron/tidy/route.ts", "export async function GET() { return new Response('1'); }\n"));
+        files.push(("apps/web/app/alone/page.tsx", "export default function Page() { return 9; }\n"));
+        let l = lift(&files);
+        let j = |p: &str, t: &str, r: &[&str]| Journey { product: Some(p.into()), title: t.into(), icon: "card".into(), requests: r.iter().map(|x| x.to_string()).collect(), stops: vec![] };
+        let mut b = Journeys {
+            products: vec![Product { name: "Web".into(), path: "apps/web".into() }, Product { name: "Internal".into(), path: "apps/internal".into() }],
+            ignore: vec!["examples/".into()],
+            journeys: vec![j("Internal", "Audit", &["internal: page /settings"]), j("Web", "Pay", &["web: page /settings"])],
+            ..Journeys::default()
+        };
+        assert_eq!(place(&l, &mut b, &l.ids), 3);
+        assert!(unplaced(&l, &b, &l.ids).is_empty(), "nothing is left out");
+        assert!(b.journeys[1].requests.iter().any(|r| r == "web: page /plans"), "it shares code with Pay: {:?}", b.journeys);
+        let behind = b.journeys.iter().find(|j| j.icon == BEHIND).unwrap();
+        assert_eq!(behind.product.as_deref(), Some("Web"), "in its own product");
+        assert_eq!(behind.requests, ["web: GET /api/cron/tidy", "web: page /alone"], "nobody starts a cron job, and nothing else is near the other");
+        assert_eq!(place(&l, &mut b, &l.ids), 0, "and it stays done");
+    }
+
+    #[test]
+    fn a_project_never_grouped_is_left_for_the_first_run() {
+        let l = lift(&monorepo());
+        let mut b = Journeys::default();
+        assert_eq!(place(&l, &mut b, &l.ids), 0);
+        assert!(b.journeys.is_empty());
     }
 
     #[test]

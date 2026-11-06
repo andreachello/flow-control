@@ -170,6 +170,13 @@ impl Project {
         }
         let names = self.v.names.clone();
         let l = self.v.lift_rev(&head)?;
+        // Every request has a journey, even one committed since the file was written. Held here
+        // and not saved, because serving writes nothing to a repo.
+        if journeys::place(l, &mut self.book, &self.ids) > 0 {
+            self.places = self.book.places(&self.ids);
+            self.summaries.clear();
+            self.details.clear();
+        }
         let list = l.flows.iter().filter(|f| !self.book.ignored(&l.repo.files[f.entry.0].path)).map(|f| json!({ "uid": f.uid, "id": f.id, "title": journey_title(&names, &f.id), "kind": f.kind, "steps": f.steps.len(), "group": self.places.of(&f.uid, &f.id), "product": self.book.product_of(&l.repo.files[f.entry.0].path) })).collect();
         let v = Value::Array(list);
         self.catalog = Some((head, v.clone()));
