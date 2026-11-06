@@ -8,6 +8,7 @@ use crate::ids::Ids;
 use crate::journeys::{self, Journeys, Places};
 use crate::titles::{self, Titles};
 use crate::names::Names;
+use crate::reports::{self, Store};
 use crate::repo::SRef;
 use crate::runs::{self, Runs};
 use crate::soba;
@@ -42,6 +43,8 @@ struct Project {
     /// A commit never changes, so what was worked out about one stands.
     details: HashMap<String, Value>,
     summaries: HashMap<String, Value>,
+    /// What each change did, kept across restarts and journey runs.
+    store: Store,
     book: Journeys,
     places: Places,
     ids: Ids,
@@ -75,7 +78,8 @@ impl Project {
         let n = taken.entry(base.clone()).or_insert(0);
         *n += 1;
         let name = if *n == 1 { base } else { format!("{base}-{n}") };
-        let mut p = Project { name, root, v, details: HashMap::new(), summaries: HashMap::new(), book: Journeys::default(), places: Places::default(), ids: Ids::default(), read: None, catalog: None, titles: Titles::new(), pulled: None };
+        let store = Store::open(&root);
+        let mut p = Project { name, root, v, store, details: HashMap::new(), summaries: HashMap::new(), book: Journeys::default(), places: Places::default(), ids: Ids::default(), read: None, catalog: None, titles: Titles::new(), pulled: None };
         p.refresh()?;
         Ok(p)
     }
@@ -97,6 +101,8 @@ impl Project {
             self.read = Some(now);
             self.details.clear();
             self.summaries.clear();
+            // Which journey a request is in lives in those files, not in the commit.
+            self.catalog = None;
         }
         Ok(())
     }
@@ -162,7 +168,7 @@ impl Project {
         }
         let names = self.v.names.clone();
         let l = self.v.lift_rev(&head)?;
-        let list = l.flows.iter().map(|f| json!({ "uid": f.uid, "id": f.id, "title": journey_title(&names, &f.id), "kind": f.kind, "steps": f.steps.len(), "group": self.places.of(&f.uid, &f.id) })).collect();
+        let list = l.flows.iter().filter(|f| !self.book.ignored(&l.repo.files[f.entry.0].path)).map(|f| json!({ "uid": f.uid, "id": f.id, "title": journey_title(&names, &f.id), "kind": f.kind, "steps": f.steps.len(), "group": self.places.of(&f.uid, &f.id), "product": self.book.product_of(&l.repo.files[f.entry.0].path) })).collect();
         let v = Value::Array(list);
         self.catalog = Some((head, v.clone()));
         self.trim();
@@ -190,8 +196,13 @@ impl Project {
     fn legend(&self) -> Vec<Value> {
         self.book.journeys.iter().map(|j| {
             let stops: Vec<Value> = j.stops.iter().map(|s| json!({ "say": s.say, "requests": s.requests.iter().map(|r| self.ids.journey(r)).collect::<Vec<_>>() })).collect();
-            json!({ "title": j.title, "icon": j.icon, "stops": stops })
+            json!({ "title": j.title, "icon": j.icon, "stops": stops, "product": j.product })
         }).collect()
+    }
+
+    /// The products that have journeys. A folder nobody has walked yet is nothing to pick.
+    fn products(&self) -> Vec<&str> {
+        self.book.products.iter().map(|p| p.name.as_str()).filter(|p| self.book.journeys.iter().any(|j| j.product.as_deref() == Some(p))).collect()
     }
 
     fn card(&self) -> Value {
@@ -199,12 +210,16 @@ impl Project {
         let shown: Vec<Value> = recent.iter().map(|c| self.shown(c)).collect();
         // The latest change anyone would notice is what a project is up to.
         let says = shown.iter().find(|c| c["quiet"] != json!(true)).or(shown.first()).map(|c| c["title"].clone());
-        json!({ "name": self.name, "path": self.root.display().to_string(), "changes": self.total(), "last": shown.first(), "says": says, "journeys": self.legend(), "recent": shown.iter().take(6).collect::<Vec<_>>() })
+        json!({ "name": self.name, "path": self.root.display().to_string(), "changes": self.total(), "last": shown.first(), "says": says, "journeys": self.legend(), "products": self.products(), "recent": shown.iter().take(6).collect::<Vec<_>>() })
     }
 
     fn sha(&self, s: &str) -> Result<String> {
         if s.len() < 7 || !s.chars().all(|c| c.is_ascii_hexdigit()) {
             bail!("not a commit id");
+        }
+        // A whole id already names its commit, and asking git for each adds up across a page.
+        if s.len() == 40 {
+            return Ok(s.to_string());
         }
         self.v.resolve(s)
     }
@@ -217,7 +232,7 @@ impl Project {
         self.refresh()?;
         let list = if self.v.head().is_some() { self.v.commits_from(skip, PAGE_OF_COMMITS, "HEAD")? } else { vec![] };
         Ok(json!({ "project": self.card(), "skip": skip, "size": PAGE_OF_COMMITS, "commits": list.iter().map(|c| self.shown(c)).collect::<Vec<_>>(),
-            "journeys": self.legend(), "map": self.book.map, "stamp": self.stamp() }))
+            "journeys": self.legend(), "map": self.book.map, "maps": self.book.maps, "products": self.products(), "stamp": self.stamp() }))
     }
 
     /// Changes when the files behind what a page shows do, so a browser knows what it kept is out of date.
@@ -234,29 +249,55 @@ impl Project {
 
     /// What a change reaches, for the list. Lifted together across the machine's cores.
     fn summaries(&mut self, ids: &[String]) -> Result<Value> {
-        let mut todo = vec![];
+        let mut shas = vec![];
+        let mut unread = vec![];
         for id in ids {
             let sha = self.sha(id)?;
-            if !self.summaries.contains_key(&sha) {
-                todo.push(self.commit(&sha)?);
+            if !self.summaries.contains_key(&sha) && !self.store.has(&sha) {
+                unread.push(self.commit(&sha)?);
             }
+            shas.push(sha);
         }
-        let mut revs: Vec<String> = todo.iter().map(|c| c.id.clone()).collect();
-        revs.extend(todo.iter().filter_map(|c| c.parents.first().cloned()));
-        self.v.prefetch(&revs)?;
-        for c in todo {
-            let r = self.v.change_of(&c)?;
-            let names = self.v.names.clone();
-            let journeys: Vec<Value> = r.journeys.iter().map(|j| json!({ "uid": j.uid, "title": journey_title(&names, &j.id), "state": word(&j.state), "was": j.was, "group": self.places.of(&j.uid, &j.id) })).collect();
-            self.summaries.insert(c.id.clone(), json!({ "journeys": journeys, "untouched": r.untouched, "line": crate::change::one_line(&r), "focus": self.focus(&r), "parts": self.parts(&c.id, &r) }));
+        reports::read_batch(&mut self.v, &self.store, &unread)?;
+        let mut out = Map::new();
+        for (id, sha) in ids.iter().zip(&shas) {
+            out.insert(id.clone(), self.summary(sha)?);
         }
         self.trim();
+        Ok(Value::Object(out))
+    }
+
+    /// Every change here that is already worked out, all at once, and never a wait for the rest.
+    /// A page asks this first, so what is known arrives together instead of a few at a time.
+    fn saved(&mut self, ids: &[String]) -> Result<Value> {
         let mut out = Map::new();
         for id in ids {
             let sha = self.sha(id)?;
-            out.insert(id.clone(), self.summaries[&sha].clone());
+            if self.summaries.contains_key(&sha) || self.store.has(&sha) {
+                out.insert(id.clone(), self.summary(&sha)?);
+            }
         }
         Ok(Value::Object(out))
+    }
+
+    /// One change as the list shows it: what was kept, with today's journeys applied.
+    fn summary(&mut self, sha: &str) -> Result<Value> {
+        if let Some(s) = self.summaries.get(sha) {
+            return Ok(s.clone());
+        }
+        let r = match self.store.get(sha) {
+            Some(r) => r,
+            // With nowhere to keep it, or a file that went bad.
+            None => {
+                let c = self.commit(sha)?;
+                self.v.change_of(&c)?
+            }
+        };
+        let names = &self.v.names;
+        let journeys: Vec<Value> = r.journeys.iter().map(|j| json!({ "uid": j.uid, "title": journey_title(names, &j.id), "state": word(&j.state), "was": j.was, "group": self.places.of(&j.uid, &j.id) })).collect();
+        let s = json!({ "journeys": journeys, "untouched": r.untouched, "line": crate::change::one_line(&r), "focus": self.focus(&r), "parts": self.parts(sha, &r) });
+        self.summaries.insert(sha.to_string(), s.clone());
+        Ok(s)
     }
 
     fn generated(&self, p: &str) -> bool {
@@ -596,7 +637,10 @@ fn api(projects: &Shared, path: &str, q: &HashMap<String, String>) -> Result<Val
     let need = |k: &str| q.get(k).cloned().with_context(|| format!("missing {k}"));
     match (what, arg) {
         ("commits", None) => p.commits(q.get("skip").and_then(|s| s.parse().ok()).unwrap_or(0)),
-        ("summaries", None) => p.summaries(&need("ids")?.split(',').map(str::to_string).collect::<Vec<_>>()),
+        ("summaries", None) => {
+            let ids: Vec<String> = need("ids")?.split(',').map(str::to_string).collect();
+            if q.contains_key("saved") { p.saved(&ids) } else { p.summaries(&ids) }
+        }
         ("activity", None) => p.activity(),
         ("requests", None) => p.requests(),
         ("request", Some(id)) => p.request(id),
@@ -752,6 +796,13 @@ pub fn run(roots: &[PathBuf], out: &str, port: u16, public: Option<u16>) -> Resu
     let hosts = Arc::new(hosts);
     let roots = projects.iter().map(|p| { let p = p.lock().unwrap_or_else(|e| e.into_inner()); (p.name.clone(), p.root.clone()) }).collect();
     let runs = Arc::new(Runs::new(roots, Arc::new(runs::Here { out: out.to_string() })));
+    for p in &projects {
+        let p = p.lock().unwrap_or_else(|e| e.into_inner());
+        if let Ok(v) = Vcs::open(&p.root, out, p.v.names.clone()) {
+            let store = p.store.clone();
+            std::thread::spawn(move || reports::read_ahead(v, store));
+        }
+    }
     let projects: Shared = Arc::new(projects);
     for s in listener.incoming().flatten() {
         let (p, r, h, a) = (projects.clone(), runs.clone(), hosts.clone(), a.clone());

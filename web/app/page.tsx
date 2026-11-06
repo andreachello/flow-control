@@ -1,12 +1,12 @@
 import Script from "next/script"
 import { BODY } from "./body.generated"
-import { SobaDock } from "./soba-dock"
+import { FlowApp } from "./flow-app"
 
 export default function Page() {
   return (
     <>
       <div style={{ display: "contents" }} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: BODY }} />
-      <SobaDock />
+      <FlowApp />
       <Script src="/flow-page.js" strategy="afterInteractive" />
     </>
   )

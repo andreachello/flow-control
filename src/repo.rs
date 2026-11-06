@@ -24,6 +24,8 @@ pub enum Res {
 }
 
 pub struct TsPaths {
+    /// The folder the tsconfig sits in. A monorepo has one for each app.
+    dir: String,
     base: String,
     paths: Vec<(String, Vec<String>)>,
 }
@@ -34,7 +36,12 @@ pub struct Repo {
     pub cfg: Config,
     pub files: Vec<ParsedFile>,
     index: HashMap<String, usize>,
-    ts: TsPaths,
+    /// Deepest folder first, with the repo's own last, so a file finds the one nearest to it.
+    ts: Vec<TsPaths>,
+    /// Packages of this repo's workspace, by the name they are imported with.
+    workspace: BTreeMap<String, Workspace>,
+    /// Folders holding a Next.js app, deepest first. "" is the repo itself.
+    pub apps: Vec<String>,
     /// (language, name) -> top-level definitions, for files read without a grammar.
     names: HashMap<(String, String), Vec<SRef>>,
     /// (language, file stem or folder name) -> files: `billing.charge()` in Python or Go.
@@ -77,8 +84,29 @@ pub fn is_source(rel: &str) -> bool {
     EXTS.iter().any(|e| rel.ends_with(e)) && !rel.ends_with(".d.ts") && !rel.ends_with(".min.js")
 }
 
-fn read_tsconfig(text: Option<String>) -> TsPaths {
-    let mut t = TsPaths { base: String::new(), paths: vec![] };
+/// A package of this repo, imported by name instead of by path.
+#[derive(Debug, Clone)]
+struct Workspace {
+    dir: String,
+    exports: serde_json::Value,
+    main: Option<String>,
+}
+
+fn read_workspace(path: &str, text: &str) -> Option<(String, Workspace)> {
+    let v: serde_json::Value = serde_json::from_str(text).ok()?;
+    let name = v["name"].as_str()?.to_string();
+    Some((name, Workspace { dir: dirname(path).to_string(), exports: v["exports"].clone(), main: v["main"].as_str().map(str::to_string) }))
+}
+
+/// What a package's `exports` says a subpath is, when it says so plainly.
+fn exported(exports: &serde_json::Value, sub: &str) -> Option<String> {
+    let key = if sub.is_empty() { ".".to_string() } else { format!("./{sub}") };
+    let at = if sub.is_empty() && exports.is_string() { exports } else { &exports[&key] };
+    at.as_str().or_else(|| ["source", "import", "default"].iter().find_map(|k| at[*k].as_str())).map(str::to_string)
+}
+
+fn read_tsconfig(text: Option<String>, dir: &str) -> TsPaths {
+    let mut t = TsPaths { dir: dir.to_string(), base: String::new(), paths: vec![] };
     let Some(s) = text else { return t };
     let Ok(v) = serde_json::from_str::<serde_json::Value>(&strip_jsonc(&s)) else { return t };
     let co = &v["compilerOptions"];
@@ -139,9 +167,18 @@ impl Repo {
             Some(t) => config::parse(&t)?,
             None => Config::default(),
         };
-        let ts = read_tsconfig(src.read("tsconfig.json"));
         let out_norm = normalize(out);
         let all_paths = src.paths()?;
+        let installed = |p: &String| p.contains("node_modules/");
+        let tsconfigs: Vec<String> = all_paths.iter().filter(|p| p.ends_with("/tsconfig.json") && !installed(p)).cloned().collect();
+        let mut ts: Vec<TsPaths> = src.read_many(&tsconfigs)?.into_iter().map(|(p, text)| read_tsconfig(text, dirname(&p))).filter(|t| !t.paths.is_empty() || !t.base.is_empty()).collect();
+        ts.sort_by_key(|t| std::cmp::Reverse(t.dir.len()));
+        ts.push(read_tsconfig(src.read("tsconfig.json"), ""));
+        let manifests: Vec<String> = all_paths.iter().filter(|p| p.ends_with("/package.json") && !installed(p)).cloned().collect();
+        let workspace: BTreeMap<String, Workspace> = src.read_many(&manifests)?.into_iter().filter_map(|(p, text)| read_workspace(&p, &text?)).collect();
+        let mut apps: Vec<String> = all_paths.iter().filter(|p| !installed(p) && p.rsplit('/').next().unwrap_or("").starts_with("next.config.")).map(|p| dirname(p).to_string()).collect();
+        apps.sort_by_key(|a| (std::cmp::Reverse(a.len()), a.clone()));
+        apps.dedup();
         let paths: Vec<String> = all_paths
             .iter()
             .cloned()
@@ -205,7 +242,7 @@ impl Repo {
                 modules.entry((f.lang.clone(), dir.to_string())).or_default().push(fi);
             }
         }
-        Ok(Repo { root: src.root().to_path_buf(), out: out_norm, cfg, files, index, ts, names, modules, by_stem, packages })
+        Ok(Repo { root: src.root().to_path_buf(), out: out_norm, cfg, files, index, ts, workspace, apps, names, modules, by_stem, packages })
     }
 
     /// Method names defined by any class in the repo.
@@ -243,26 +280,52 @@ impl Repo {
         cands.iter().find_map(|c| self.index.get(c).copied())
     }
 
+    fn tsconfig_of(&self, file: usize) -> &TsPaths {
+        let path = &self.files[file].path;
+        self.ts.iter().find(|t| t.dir.is_empty() || path.starts_with(&format!("{}/", t.dir))).expect("the repo's own is always last")
+    }
+
+    /// The file behind `@acme/core/thing`, when `@acme/core` is a package of this repo. A package
+    /// usually publishes a build that is not in git, so its source is tried as well.
+    fn workspace_file(&self, spec: &str) -> Option<usize> {
+        let (name, w) = self.workspace.iter().filter(|(n, _)| spec == n.as_str() || spec.starts_with(&format!("{n}/"))).max_by_key(|(n, _)| n.len())?;
+        let sub = spec[name.len()..].trim_start_matches('/');
+        let plain = if sub.is_empty() { "index" } else { sub };
+        let mut cands: Vec<String> = exported(&w.exports, sub).into_iter().collect();
+        cands.extend([format!("src/{plain}"), plain.to_string()]);
+        cands.extend(w.main.iter().filter(|_| sub.is_empty()).cloned());
+        cands.iter().find_map(|c| self.try_file(&format!("{}/{c}", w.dir)))
+    }
+
+    /// The nested Next.js app a file belongs to, and the file's path inside it.
+    pub fn app_of<'a>(&self, path: &'a str) -> Option<(&str, &'a str)> {
+        self.apps.iter().filter(|a| !a.is_empty()).find_map(|a| path.strip_prefix(a.as_str()).and_then(|r| r.strip_prefix('/')).map(|r| (a.as_str(), r)))
+    }
+
     pub fn resolve_module(&self, from: usize, spec: &str) -> Module {
         if spec.starts_with('.') {
             let base = format!("{}/{}", dirname(&self.files[from].path), spec);
             return self.try_file(&base).map(Module::Repo).unwrap_or(Module::Missing);
         }
-        for (pat, targets) in &self.ts.paths {
+        let ts = self.tsconfig_of(from);
+        for (pat, targets) in &ts.paths {
             let rest = match pat.strip_suffix('*') {
                 Some(prefix) => spec.strip_prefix(prefix),
                 None => (spec == pat).then_some(""),
             };
             let Some(rest) = rest else { continue };
             for t in targets {
-                let cand = format!("{}/{}", self.ts.base, t.replace('*', rest));
+                let cand = format!("{}/{}/{}", ts.dir, ts.base, t.replace('*', rest));
                 if let Some(i) = self.try_file(&cand) {
                     return Module::Repo(i);
                 }
             }
         }
-        if !self.ts.base.is_empty() || self.ts.paths.is_empty() {
-            if let Some(i) = self.try_file(&format!("{}/{}", self.ts.base, spec)) {
+        if let Some(i) = self.workspace_file(spec) {
+            return Module::Repo(i);
+        }
+        if !ts.base.is_empty() || ts.paths.is_empty() {
+            if let Some(i) = self.try_file(&format!("{}/{}/{}", ts.dir, ts.base, spec)) {
                 if !spec.contains(':') {
                     return Module::Repo(i);
                 }

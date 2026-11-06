@@ -10,6 +10,7 @@ pub mod config;
 pub mod flows;
 pub mod output;
 pub mod parse;
+pub mod reports;
 pub mod repo;
 pub mod util;
 pub mod view;

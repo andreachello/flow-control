@@ -1,11 +1,12 @@
 //! What changed between two snapshots, said in journeys and functions. No lines, no diffs.
 
+use serde::{Deserialize, Serialize};
 use crate::names::Names;
 use crate::output::hash_of;
 use crate::parse::SUPPORT;
 use crate::util::{fnv64 as fnv, human};
 use crate::Lift;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 pub fn journey_title(names: &Names, id: &str) -> String {
     names.journeys.get(id).map(|n| n.title.clone()).unwrap_or_else(|| id.to_string())
@@ -19,14 +20,14 @@ fn key_label(k: &str) -> String {
     human(k.rsplit('#').next().unwrap_or(k).trim_start_matches("S.")).to_lowercase()
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum JState {
     New,
     Gone,
     Changed,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct JourneyChange {
     pub id: String,
     /// The permanent id, the same before and after a rename.
@@ -42,7 +43,7 @@ pub struct JourneyChange {
     pub no_longer_changes: Vec<String>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FnChange {
     pub sid: String,
     pub label: String,
@@ -54,7 +55,7 @@ pub struct FnChange {
     pub before: Option<String>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Report {
     pub journeys: Vec<JourneyChange>,
     pub untouched: usize,
@@ -67,7 +68,7 @@ pub struct Report {
     pub data_facts: Vec<(String, Vec<String>)>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PackageChange {
     pub name: String,
     pub from: Option<String>,
@@ -126,6 +127,13 @@ fn journeys_using(l: &Lift, names: &Names, r: (usize, usize)) -> Vec<String> {
 /// changing one changes what every journey reading it does. Found by name through the same
 /// imports calls resolve through, and followed through constants that read other constants.
 pub fn constants(l: &Lift, fi: usize) -> Vec<(usize, usize)> {
+    constants_shared(l, fi, &mut HashMap::new())
+}
+
+/// The same, with what each function reads remembered in `read`. Most journeys share most of
+/// their functions, so asking about every journey would otherwise rescan the same code thousands
+/// of times.
+fn constants_shared(l: &Lift, fi: usize, read: &mut HashMap<(usize, usize), Vec<(usize, usize)>>) -> Vec<(usize, usize)> {
     use crate::repo::Res;
     static WORD: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
     let word = WORD.get_or_init(|| regex::Regex::new(r"[A-Za-z_$][\w$]*").unwrap());
@@ -133,15 +141,20 @@ pub fn constants(l: &Lift, fi: usize) -> Vec<(usize, usize)> {
     let mut todo: Vec<(usize, usize)> = steps.iter().copied().collect();
     let (mut seen, mut out) = (steps.clone(), BTreeSet::new());
     while let Some(r) = todo.pop() {
-        let (f, sl) = (&l.repo.files[r.0], l.repo.slice(r));
-        let text = sl.text(f);
-        let names: BTreeSet<&str> = word.find_iter(&text).map(|m| m.as_str()).collect();
-        for n in names {
-            if let Res::Slice(hit) = l.repo.resolve_ident(r.0, n, &sl.locals) {
-                if l.repo.slice(hit).role == crate::parse::Role::Data && seen.insert(hit) {
-                    out.insert(hit);
-                    todo.push(hit);
-                }
+        let data = read.entry(r).or_insert_with(|| {
+            let (f, sl) = (&l.repo.files[r.0], l.repo.slice(r));
+            let text = sl.text(f);
+            let names: BTreeSet<&str> = word.find_iter(&text).map(|m| m.as_str()).collect();
+            let hits = names.into_iter().filter_map(|n| match l.repo.resolve_ident(r.0, n, &sl.locals) {
+                Res::Slice(hit) if l.repo.slice(hit).role == crate::parse::Role::Data => Some(hit),
+                _ => None,
+            });
+            hits.collect()
+        });
+        for &hit in data.iter() {
+            if seen.insert(hit) {
+                out.insert(hit);
+                todo.push(hit);
             }
         }
     }
@@ -191,8 +204,9 @@ pub fn compare(a: &Lift, b: &Lift, names: &Names, other_files: Vec<String>) -> R
         .collect();
     let mut read_by: BTreeMap<&str, Vec<(usize, usize)>> = BTreeMap::new();
     if !edited_constants.is_empty() {
+        let mut read = HashMap::new();
         for (fi, f) in b.flows.iter().enumerate() {
-            let hit: Vec<(usize, usize)> = constants(b, fi).into_iter().filter(|r| edited_constants.contains(r)).collect();
+            let hit: Vec<(usize, usize)> = constants_shared(b, fi, &mut read).into_iter().filter(|r| edited_constants.contains(r)).collect();
             if !hit.is_empty() {
                 read_by.insert(&f.id, hit);
             }

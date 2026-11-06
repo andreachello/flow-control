@@ -18,8 +18,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub const FILE: &str = "flow.journeys.json";
+/// Marks a line of output as where a long task has got to, for a page showing it.
+pub const STEP: &str = "step: ";
+
+fn step(say: String) {
+    println!("{STEP}{say}");
+}
 pub const ICONS: &[&str] = &[
     "enter", "plus", "cross", "up", "spark", "plug", "home", "calendar", "chat", "card", "search", "key", "star", "photo", "mail", "chart", "globe", "people", "doc", "pin", "gear",
 ];
@@ -28,6 +35,9 @@ pub const BEHIND: &str = "gear";
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub struct Journey {
+    /// The product this journey is part of, when the repo holds several.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub product: Option<String>,
     pub title: String,
     pub icon: String,
     pub requests: Vec<String>,
@@ -44,11 +54,29 @@ pub struct Stop {
 
 #[derive(Serialize, Deserialize, Default, Clone, Debug, PartialEq, Eq)]
 pub struct Journeys {
+    /// What a repo with several products holds. A request belongs to the one whose folder its
+    /// file is in, and one in no product's folder goes behind the scenes, so shared code never
+    /// has to be listed here. Lives in this file because it groups what a lift found, like the
+    /// journeys do: changing it must not change how any old commit reads.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub products: Vec<Product>,
+    /// Folders nobody takes a journey through, like examples.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub ignore: Vec<String>,
     #[serde(default)]
     pub journeys: Vec<Journey>,
     /// How the journeys fit together, for the people who take them.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub map: Option<Map>,
+    /// The same, one for each product.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub maps: BTreeMap<String, Map>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub struct Product {
+    pub name: String,
+    pub path: String,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
@@ -102,9 +130,58 @@ impl Journeys {
         out
     }
 
+    pub fn product_of(&self, path: &str) -> Option<&str> {
+        self.products.iter().find(|p| inside(path, &p.path)).map(|p| p.name.as_str())
+    }
+
+    pub fn ignored(&self, path: &str) -> bool {
+        self.ignore.iter().any(|d| inside(path, d))
+    }
+
+    /// One product's journeys, as if it were the only one.
+    fn only(&self, product: &str) -> Journeys {
+        let journeys = self.journeys.iter().filter(|j| j.product.as_deref() == Some(product)).cloned().collect();
+        Journeys { journeys, map: self.maps.get(product).cloned(), ..Journeys::default() }
+    }
+
     pub fn placed(&self) -> BTreeSet<&str> {
         self.journeys.iter().flat_map(|j| j.requests.iter().map(String::as_str)).collect()
     }
+}
+
+fn inside(path: &str, dir: &str) -> bool {
+    let dir = dir.trim_end_matches('/');
+    path.strip_prefix(dir).is_some_and(|r| r.is_empty() || r.starts_with('/'))
+}
+
+/// Folders that hold an app without being a product.
+const NOT_PRODUCTS: &[&str] = &["example", "examples", "template", "templates", "fixture", "fixtures", "test", "tests", "demo", "demos"];
+
+/// Propose products for a repo that holds several apps: one for each, and the rest left out. Only
+/// before the first journey, so a project grouped as one is never pulled apart. A person corrects
+/// the file like they do the journeys.
+pub fn seed(l: &Lift, have: &mut Journeys) -> bool {
+    if !have.products.is_empty() || !have.journeys.is_empty() {
+        return false;
+    }
+    let mut apps: Vec<&String> = l.repo.apps.iter().filter(|a| !a.is_empty()).collect();
+    apps.sort();
+    let (spare, real): (Vec<&String>, Vec<&String>) = apps.into_iter().partition(|a| a.split('/').any(|s| NOT_PRODUCTS.contains(&s)));
+    let real: Vec<&String> = real.into_iter().filter(|a| l.flows.iter().any(|f| inside(&l.repo.files[f.entry.0].path, a))).collect();
+    if real.len() < 2 {
+        return false;
+    }
+    have.products = real.iter().map(|a| {
+        let last = a.rsplit('/').next().unwrap_or(a);
+        let mut name = last.chars();
+        Product { name: name.next().map(|c| c.to_uppercase().chain(name).collect()).unwrap_or_default(), path: a.to_string() }
+    }).collect();
+    have.ignore = spare.into_iter().cloned().collect();
+    true
+}
+
+fn plural(n: usize, one: &str) -> String {
+    format!("{n} {one}{}", if n == 1 { "" } else { "s" })
 }
 
 /// Which journeys a change is about, given the journeys each changed function reaches: those of
@@ -118,7 +195,7 @@ pub fn focus(reach: &[BTreeSet<usize>]) -> BTreeSet<usize> {
 /// The requests that have no journey yet.
 pub fn unplaced<'a>(l: &'a Lift, have: &Journeys, ids: &Ids) -> Vec<&'a str> {
     let places = have.places(ids);
-    l.flows.iter().filter(|f| places.of(&f.uid, &f.id).is_none()).map(|f| f.id.as_str()).collect()
+    l.flows.iter().filter(|f| places.of(&f.uid, &f.id).is_none() && !have.ignored(&l.repo.files[f.entry.0].path)).map(|f| f.id.as_str()).collect()
 }
 
 /// What each request is, and where it leads, which is most of what says what belongs together.
@@ -181,6 +258,10 @@ pub fn schema() -> Value {
 /// only requests that have no journey are added, and only requests that exist are believed.
 /// Returns how many were placed.
 pub fn apply(have: &mut Journeys, answer: &Value, todo: &[&str]) -> usize {
+    apply_to(have, None, answer, todo)
+}
+
+fn apply_to(have: &mut Journeys, product: Option<&str>, answer: &Value, todo: &[&str]) -> usize {
     let mut open: BTreeSet<&str> = todo.iter().copied().collect();
     let mut placed = 0;
     for a in answer["journeys"].as_array().into_iter().flatten() {
@@ -190,11 +271,11 @@ pub fn apply(have: &mut Journeys, answer: &Value, todo: &[&str]) -> usize {
             continue;
         }
         placed += mine.len();
-        match have.journeys.iter_mut().find(|j| j.title.eq_ignore_ascii_case(title)) {
+        match have.journeys.iter_mut().find(|j| j.product.as_deref() == product && j.title.eq_ignore_ascii_case(title)) {
             Some(j) => j.requests.extend(mine),
             None => {
                 let icon = a["icon"].as_str().filter(|i| ICONS.contains(i)).unwrap_or("star").to_string();
-                have.journeys.push(Journey { title: title.to_string(), icon, requests: mine, stops: vec![] });
+                have.journeys.push(Journey { product: product.map(str::to_string), title: title.to_string(), icon, requests: mine, stops: vec![] });
             }
         }
     }
@@ -207,7 +288,7 @@ pub fn stops_prompt(l: &Lift, j: &Journey) -> String {
         "\"{}\" is one journey people take through a product. Below are the requests it is made of, read from the code. Write out the journey as its stops: what a person does, from start to finish, in the order they do it.\n\n{STYLE}\n\n\
          say: one short sentence at most 60 characters, starting with what the person does, ending in a full stop, like \"Pick a plan.\", \"Enter your card details.\" or \"Get a confirmation email.\"\n\
          requests: the requests behind this stop, exactly as written below. A request can sit under more than one stop only when a person really meets it twice.\n\
-         Use 3 to 7 stops, and cover the whole journey as a person lives it, not every request. Group small steps into one stop. A journey with several separate tasks takes its stops in the order a person usually meets them.\n\n{}",
+         Use 3 to 7 stops, or fewer when the journey is that small, and cover the whole journey as a person lives it, not every request. Group small steps into one stop. A journey with several separate tasks takes its stops in the order a person usually meets them.\n\n{}",
         j.title,
         described(l, &which)
     )
@@ -224,7 +305,8 @@ pub fn stops_schema() -> Value {
 }
 
 /// Take in a written journey. A stop has to rest on requests of this journey, and one stop is no
-/// journey at all, so anything less leaves the journey unwritten. Returns the stops kept.
+/// journey at all unless it only takes one request, so anything less leaves the journey unwritten.
+/// Returns the stops kept.
 pub fn take_stops(j: &mut Journey, answer: &Value) -> usize {
     let mut stops = vec![];
     for a in answer["stops"].as_array().into_iter().flatten() {
@@ -234,11 +316,20 @@ pub fn take_stops(j: &mut Journey, answer: &Value) -> usize {
             stops.push(Stop { say: say.to_string(), requests: mine });
         }
     }
-    if stops.len() < 2 {
+    if stops.len() < 2.min(j.requests.len()) || stops.is_empty() {
         return 0;
     }
     j.stops = stops;
     j.stops.len()
+}
+
+/// Why an answer gave a journey no stops, in numbers, so a failure can be understood.
+pub fn stops_problem(j: &Journey, answer: &Value) -> String {
+    let stops = answer["stops"].as_array().map_or(&[][..], Vec::as_slice);
+    let long = stops.iter().filter(|a| a["say"].as_str().unwrap_or("").trim().chars().count() > 80).count();
+    let empty = stops.iter().filter(|a| a["say"].as_str().unwrap_or("").trim().is_empty()).count();
+    let lost = stops.iter().filter(|a| !a["requests"].as_array().into_iter().flatten().filter_map(Value::as_str).any(|r| j.requests.iter().any(|x| x == r))).count();
+    format!("{} stops came back: {long} too long, {empty} with no words, {lost} naming no request of this journey, and it takes {} good ones", stops.len(), 2.min(j.requests.len()).max(1))
 }
 
 /// Write out every journey people take that has no stops yet. Returns the journeys written, and
@@ -247,11 +338,24 @@ pub fn walk(l: &Lift, have: &mut Journeys, model: &str, jobs: usize) -> (usize, 
     let todo: Vec<usize> = (0..have.journeys.len()).filter(|&i| have.journeys[i].stops.is_empty() && have.journeys[i].icon != BEHIND).collect();
     let asks: Vec<(usize, String)> = todo.into_iter().map(|i| (i, stops_prompt(l, &have.journeys[i]))).collect();
     let (mut written, mut failed) = (0, vec![]);
-    for (i, answer) in parallel(jobs, asks, |_, (i, p)| (i, run_claude(model, &p, &stops_schema()))) {
+    let (total, done) = (asks.len(), AtomicUsize::new(0));
+    if total > 0 {
+        step(format!("Writing out {}", plural(total, "journey")));
+    }
+    for (i, answer) in parallel(jobs, asks, |_, (i, p)| {
+        let answer = run_claude(model, &p, &stops_schema());
+        step(format!("Writing out journeys, {} of {total} done", done.fetch_add(1, Ordering::Relaxed) + 1));
+        (i, answer)
+    }) {
         let title = have.journeys[i].title.clone();
         match answer {
             Ok(a) if take_stops(&mut have.journeys[i], &a) > 0 => written += 1,
-            Ok(_) => failed.push(format!("{title}: the stops did not match its requests")),
+            // Answers vary, so one that does not fit gets a second try.
+            Ok(_) => match run_claude(model, &stops_prompt(l, &have.journeys[i]), &stops_schema()) {
+                Ok(a) if take_stops(&mut have.journeys[i], &a) > 0 => written += 1,
+                Ok(a) => failed.push(format!("{title}: {}", stops_problem(&have.journeys[i], &a))),
+                Err(e) => failed.push(format!("{title}: {e:#}")),
+            },
             Err(e) => failed.push(format!("{title}: {e:#}")),
         }
     }
@@ -261,6 +365,8 @@ pub fn walk(l: &Lift, have: &mut Journeys, model: &str, jobs: usize) -> (usize, 
 pub struct Report {
     pub placed: usize,
     pub left: Vec<String>,
+    /// Products that could not be grouped this time, and why.
+    pub failed: Vec<String>,
 }
 
 /// Group the requests that have no journey yet. Asks nothing when there are none.
@@ -310,6 +416,30 @@ pub fn take_map(have: &mut Journeys, answer: &Value) -> bool {
 
 /// Drawn once, like everything here: delete `map` from the file to ask again.
 pub fn draw(have: &mut Journeys, model: &str) -> Result<bool> {
+    if have.products.is_empty() {
+        return draw_one(have, model);
+    }
+    let names: Vec<String> = have.products.iter().map(|p| p.name.clone()).collect();
+    let (mut drew, mut failed) = (false, vec![]);
+    for name in names {
+        let mut one = have.only(&name);
+        step(format!("Drawing how {name} fits together"));
+        match draw_one(&mut one, model) {
+            Ok(true) => {
+                have.maps.extend(one.map.map(|m| (name, m)));
+                drew = true;
+            }
+            Ok(false) => {}
+            Err(e) => failed.push(format!("{name}: {e:#}")),
+        }
+    }
+    if failed.is_empty() {
+        return Ok(drew);
+    }
+    anyhow::bail!("{}", failed.join("; "))
+}
+
+fn draw_one(have: &mut Journeys, model: &str) -> Result<bool> {
     if have.map.is_some() || have.journeys.iter().all(|j| j.icon == BEHIND) {
         return Ok(false);
     }
@@ -321,22 +451,77 @@ pub fn draw(have: &mut Journeys, model: &str) -> Result<bool> {
 }
 
 pub fn group(l: &Lift, have: &mut Journeys, ids: &Ids, model: &str) -> Result<Report> {
+    seed(l, have);
     let todo = unplaced(l, have, ids);
     if todo.is_empty() {
-        return Ok(Report { placed: 0, left: vec![] });
+        return Ok(Report { placed: 0, left: vec![], failed: vec![] });
     }
-    let answer = run_claude(model, &prompt(l, have, &todo), &schema())?;
-    let placed = apply(have, &answer, &todo);
-    Ok(Report { placed, left: unplaced(l, have, ids).into_iter().map(str::to_string).collect() })
+    if have.products.is_empty() {
+        step(format!("Grouping {}", plural(todo.len(), "request")));
+        let answer = run_claude(model, &prompt(l, have, &todo), &schema())?;
+        let placed = apply(have, &answer, &todo);
+        return Ok(Report { placed, left: unplaced(l, have, ids).into_iter().map(str::to_string).collect(), failed: vec![] });
+    }
+    let (mut mine, mut shared): (BTreeMap<String, Vec<&str>>, Vec<String>) = Default::default();
+    for f in l.flows.iter().filter(|f| todo.contains(&f.id.as_str())) {
+        match have.product_of(&l.repo.files[f.entry.0].path) {
+            Some(p) => mine.entry(p.to_string()).or_default().push(f.id.as_str()),
+            None => shared.push(f.id.clone()),
+        }
+    }
+    let asks: Vec<(String, Vec<&str>, String)> = mine.into_iter().map(|(p, t)| {
+        let ask = prompt(l, &have.only(&p), &t);
+        (p, t, ask)
+    }).collect();
+    let (mut placed, mut failed) = (0, vec![]);
+    let (total, done) = (asks.len(), AtomicUsize::new(0));
+    step(format!("Grouping {} across {}", plural(todo.len(), "request"), plural(total, "product")));
+    for (p, t, answer) in parallel(4, asks, |_, (p, t, ask)| {
+        let answer = run_claude(model, &ask, &schema());
+        step(format!("Grouped {p}, {} of {total} products done", done.fetch_add(1, Ordering::Relaxed) + 1));
+        (p, t, answer)
+    }) {
+        match answer {
+            Ok(a) => placed += apply_to(have, Some(&p), &a, &t),
+            Err(e) => failed.push(format!("{p}: {e:#}")),
+        }
+    }
+    // Code no product owns is not something a person sets out to do.
+    if !shared.is_empty() {
+        placed += shared.len();
+        match have.journeys.iter_mut().find(|j| j.product.is_none() && j.icon == BEHIND) {
+            Some(j) => j.requests.extend(shared),
+            None => have.journeys.push(Journey { product: None, title: "Behind the scenes".into(), icon: BEHIND.into(), requests: shared, stops: vec![] }),
+        }
+    }
+    Ok(Report { placed, left: unplaced(l, have, ids).into_iter().map(str::to_string).collect(), failed })
 }
 
 #[cfg(test)]
 mod map_tests {
     use super::*;
 
+    #[test]
+    fn a_rejected_answer_says_what_was_wrong_with_it() {
+        let j = Journey { product: None, title: "Pay".into(), icon: "card".into(), requests: vec!["POST /api/pay".into()], stops: vec![] };
+        let a = json!({ "stops": [{ "say": "x".repeat(81), "requests": ["POST /api/pay"] }, { "say": "Pay.", "requests": ["pay"] }] });
+        let said = stops_problem(&j, &a);
+        assert!(said.starts_with("2 stops came back: 1 too long, 0 with no words, 1 naming no request"), "{said}");
+        assert!(stops_problem(&j, &json!({})).starts_with("0 stops"));
+    }
+
+    #[test]
+    fn a_journey_of_one_request_can_be_one_stop() {
+        let mut j = Journey { product: None, title: "See results".into(), icon: "chart".into(), requests: vec!["page /results".into()], stops: vec![] };
+        assert_eq!(take_stops(&mut j, &json!({ "stops": [{ "say": "See your results.", "requests": ["page /results"] }] })), 1);
+        j.requests.push("page /more".into());
+        j.stops.clear();
+        assert_eq!(take_stops(&mut j, &json!({ "stops": [{ "say": "See your results.", "requests": ["page /results"] }] })), 0, "two requests still take two stops");
+    }
+
     fn book() -> Journeys {
-        let j = |t: &str, i: &str| Journey { title: t.into(), icon: i.into(), requests: vec![], stops: vec![] };
-        Journeys { journeys: vec![j("Book a stay", "calendar"), j("List a home", "plus"), j("Behind the scenes", BEHIND)], map: None }
+        let j = |t: &str, i: &str| Journey { product: None, title: t.into(), icon: i.into(), requests: vec![], stops: vec![] };
+        Journeys { journeys: vec![j("Book a stay", "calendar"), j("List a home", "plus"), j("Behind the scenes", BEHIND)], ..Journeys::default() }
     }
 
     #[test]

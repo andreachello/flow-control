@@ -6,7 +6,7 @@ use std::path::Path;
 use std::process::{Child, Command, Stdio};
 
 fn sh(dir: &Path, args: &[&str]) -> String {
-    let o = Command::new(args[0]).args(&args[1..]).current_dir(dir).output().unwrap();
+    let o = Command::new(args[0]).args(&args[1..]).current_dir(dir).env("FLOW_CACHE", dir.join(".git/flow-cache")).output().unwrap();
     assert!(o.status.success(), "{args:?}");
     String::from_utf8_lossy(&o.stdout).trim().to_string()
 }
@@ -19,7 +19,7 @@ impl Drop for Server {
 }
 
 fn serve(d: &Path) -> Server {
-    let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0"]).current_dir(d).stdout(Stdio::piped()).spawn().unwrap();
+    let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0"]).current_dir(d).env("FLOW_CACHE", d.join(".git/flow-cache")).stdout(Stdio::piped()).spawn().unwrap();
     let mut line = String::new();
     BufReader::new(c.stdout.as_mut().unwrap()).read_line(&mut line).unwrap();
     let port = line.split("localhost:").nth(1).unwrap().split_whitespace().next().unwrap().parse().unwrap();
@@ -78,6 +78,64 @@ fn it_shows_a_change_and_refuses_the_rest() {
 }
 
 #[test]
+fn a_change_once_read_is_kept_through_a_restart_and_a_regrouping() {
+    let d = repo("kept");
+    let name = d.file_name().unwrap().to_string_lossy().to_string();
+    let head = sh(&d, &["git", "rev-parse", "HEAD"]);
+    let at = format!("/api/p/{name}/summaries?ids={head}");
+    let first = serve(&d);
+    ask(first.1, "GET", &at, None);
+    drop(first);
+    // Marked by hand, so an answer with this in it can only have come from the file.
+    let mut dirs = vec![d.join(".git/flow-cache")];
+    let mut kept = None;
+    while let Some(dir) = dirs.pop() {
+        for e in std::fs::read_dir(dir).unwrap().flatten() {
+            if e.path().is_dir() {
+                dirs.push(e.path());
+            } else if e.file_name().to_string_lossy() == format!("{head}.json") {
+                kept = Some(e.path());
+            }
+        }
+    }
+    let kept = kept.expect("a change that was read is on disk");
+    let text = std::fs::read_to_string(&kept).unwrap();
+    let mut v: serde_json::Value = serde_json::from_str(&text).unwrap();
+    v["untouched"] = 777.into();
+    std::fs::write(&kept, v.to_string()).unwrap();
+
+    let again = serve(&d);
+    let (_, body) = ask(again.1, "GET", &at, None);
+    assert!(body.contains(r#""untouched":777"#), "{body}");
+    assert!(body.contains(r#""group":null"#), "{body}");
+    std::fs::write(d.join("flow.journeys.json"), r#"{"journeys":[{"title":"Pay","icon":"card","requests":["POST /api/pay"]}]}"#).unwrap();
+    ask(again.1, "GET", &format!("/api/p/{name}/commits"), None);
+    let (_, body) = ask(again.1, "GET", &at, None);
+    assert!(body.contains(r#""untouched":777"#) && body.contains(r#""group":0"#), "journeys are applied to what was kept: {body}");
+    let nobody = "0".repeat(40);
+    let (_, body) = ask(again.1, "GET", &format!("/api/p/{name}/summaries?saved=1&ids={head},{nobody}"), None);
+    assert!(body.contains(r#""untouched":777"#) && !body.contains(&nobody), "only what is known comes back, and nothing is worked out: {body}");
+}
+
+#[test]
+fn a_repo_of_several_products_reads_by_product() {
+    let d = repo("products");
+    let s = serve(&d);
+    let name = d.file_name().unwrap().to_string_lossy().to_string();
+    let file = r#"{"products":[{"name":"Shop","path":"app"},{"name":"Empty","path":"nowhere"}],"journeys":[{"product":"Shop","title":"Pay","icon":"card","requests":["POST /api/pay"]}],"maps":{"Shop":{"say":"People pay.","paths":[{"who":"Guests","journeys":["Pay"]}]}}}"#;
+    std::fs::write(d.join("flow.journeys.json"), file).unwrap();
+    let (_, body) = ask(s.1, "GET", &format!("/api/p/{name}/commits"), None);
+    assert!(body.contains(r#""product":"Shop""#) && body.contains("People pay."), "{body}");
+    assert!(body.contains(r#""products":["Shop"]"#), "a folder with no journeys is nothing to pick: {body}");
+    let (_, requests) = ask(s.1, "GET", &format!("/api/p/{name}/requests"), None);
+    assert!(requests.contains(r#""product":"Shop""#), "{requests}");
+
+    std::fs::write(d.join("flow.journeys.json"), file.replace(r#""journeys":[{"#, r#""ignore":["app"],"journeys":[{"#)).unwrap();
+    let (_, requests) = ask(s.1, "GET", &format!("/api/p/{name}/requests"), None);
+    assert_eq!(requests, "[]", "an ignored folder is left out of the list");
+}
+
+#[test]
 fn a_journey_groups_its_requests_and_a_running_server_notices() {
     let d = repo("journeys");
     let s = serve(&d);
@@ -85,6 +143,8 @@ fn a_journey_groups_its_requests_and_a_running_server_notices() {
     let commits = format!("/api/p/{name}/commits");
     let (_, body) = ask(s.1, "GET", &commits, None);
     assert!(body.contains(r#""journeys":[]"#), "no file, no journeys: {body}");
+    let (_, requests) = ask(s.1, "GET", &format!("/api/p/{name}/requests"), None);
+    assert!(requests.contains(r#""group":null"#), "read once before there are journeys, as a run does: {requests}");
 
     std::fs::write(d.join("flow.journeys.json"), r#"{"journeys":[{"title":"Pay for a stay","icon":"card","requests":["POST /api/pay"],"stops":[{"say":"Enter your card.","requests":["POST /api/pay"]},{"say":"Get a receipt.","requests":["POST /api/pay"]}]}]}"#).unwrap();
     let (_, body) = ask(s.1, "GET", &commits, None);
@@ -146,7 +206,7 @@ fn serve_with_gh(d: &Path, script: &str) -> Server {
     sh(d, &["chmod", "+x", gh.to_str().unwrap()]);
     let path = format!("{}:{}", bin.display(), std::env::var("PATH").unwrap());
     let port = std::net::TcpListener::bind("127.0.0.1:0").unwrap().local_addr().unwrap().port();
-    let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", &port.to_string()]).current_dir(d).env("PATH", path).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().unwrap();
+    let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", &port.to_string()]).current_dir(d).env("FLOW_CACHE", d.join(".git/flow-cache")).env("PATH", path).stdout(Stdio::piped()).stderr(Stdio::null()).spawn().unwrap();
     let mut line = String::new();
     BufReader::new(c.stdout.as_mut().unwrap()).read_line(&mut line).unwrap();
     Server(c, port)
@@ -240,7 +300,7 @@ fn fake_github(login: &'static str) -> (String, std::sync::Arc<std::sync::Mutex<
 }
 
 fn locked(d: &Path, github: &str, allowed: &str) -> Server {
-    let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0"]).current_dir(d).env("FLOW_GITHUB_CLIENT_ID", "the-id").env("FLOW_GITHUB_CLIENT_SECRET", "the-secret").env("FLOW_ALLOWED_USERS", allowed).env("FLOW_GITHUB_URL", github).stdout(Stdio::piped()).spawn().unwrap();
+    let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0"]).current_dir(d).env("FLOW_CACHE", d.join(".git/flow-cache")).env("FLOW_GITHUB_CLIENT_ID", "the-id").env("FLOW_GITHUB_CLIENT_SECRET", "the-secret").env("FLOW_ALLOWED_USERS", allowed).env("FLOW_GITHUB_URL", github).stdout(Stdio::piped()).spawn().unwrap();
     let mut line = String::new();
     BufReader::new(c.stdout.as_mut().unwrap()).read_line(&mut line).unwrap();
     assert!(line.contains("sign-in required"), "{line}");
@@ -355,7 +415,7 @@ fn half_a_sign_in_setup_refuses_to_start_open() {
     let d = repo("half");
     let run = |vars: &[(&str, &str)]| {
         let mut c = Command::new(env!("CARGO_BIN_EXE_flow"));
-        c.args(["serve", "--port", "0"]).current_dir(&d).stdout(Stdio::null()).stderr(Stdio::piped());
+        c.args(["serve", "--port", "0"]).current_dir(&d).env("FLOW_CACHE", d.join(".git/flow-cache")).stdout(Stdio::null()).stderr(Stdio::piped());
         for (k, v) in vars {
             c.env(k, v);
         }
@@ -378,7 +438,7 @@ fn fake_claude(dir: &Path, script: &str) -> String {
 }
 
 fn serve_on(d: &Path, path: &str) -> Server {
-    let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0"]).current_dir(d).env("PATH", path).stdout(Stdio::piped()).spawn().unwrap();
+    let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0"]).current_dir(d).env("FLOW_CACHE", d.join(".git/flow-cache")).env("PATH", path).stdout(Stdio::piped()).spawn().unwrap();
     let mut line = String::new();
     BufReader::new(c.stdout.as_mut().unwrap()).read_line(&mut line).unwrap();
     let port = line.split("localhost:").nth(1).unwrap().split_whitespace().next().unwrap().parse().unwrap();
@@ -421,6 +481,7 @@ esac"#);
     assert!(status.contains("200") && body.contains(r#""task":"journeys""#), "{body}");
     let done = settled(s.1, &watch);
     assert!(done.contains(r#""failed":null"#), "{done}");
+    assert!(done.contains(r#""step":"Writing out journeys, 1 of 1 done""#), "where it got to reaches the page: {done}");
     let (_, _, list) = req(s.1, "GET", &format!("/api/p/{name}/commits"), "");
     assert!(list.contains("Pay for a stay") && list.contains("Enter your card."), "the running page sees it: {list}");
 }
@@ -481,7 +542,7 @@ fn soba_home() -> Option<String> {
         Command::new("node").arg("--version").output().ok()?;
         let home = format!("{}/soba-helper", env!("CARGO_TARGET_TMPDIR"));
         let d = repo("soba-install");
-        let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0"]).current_dir(&d).env("SOBA_KEY", "sk_soba_test.x").env("FLOW_SOBA_HOME", &home).stdout(Stdio::piped()).spawn().unwrap();
+        let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0"]).current_dir(&d).env("FLOW_CACHE", d.join(".git/flow-cache")).env("SOBA_KEY", "sk_soba_test.x").env("FLOW_SOBA_HOME", &home).stdout(Stdio::piped()).spawn().unwrap();
         let mut line = String::new();
         BufReader::new(c.stdout.as_mut().unwrap()).read_line(&mut line).unwrap();
         let _ = c.kill();
@@ -491,7 +552,7 @@ fn soba_home() -> Option<String> {
 }
 
 fn locked_with_soba(d: &Path, github: &str, soba: &str, claude: &str, encrypted: bool) -> Server {
-    let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0"]).current_dir(d)
+    let mut c = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0"]).current_dir(d).env("FLOW_CACHE", d.join(".git/flow-cache"))
         .env("PATH", claude).env("FLOW_GITHUB_CLIENT_ID", "the-id").env("FLOW_GITHUB_CLIENT_SECRET", "the-secret").env("FLOW_ALLOWED_USERS", "Sam")
         .env("FLOW_GITHUB_URL", github)
         .env("SOBA_KEY", "sk_soba_test.secret").env("SOBA_BASE_URL", soba).env("SOBA_WEB_URL", soba).env("FLOW_SOBA_HOME", soba_home().unwrap())
@@ -594,7 +655,7 @@ fn the_key_comes_from_the_file_soba_wrote_and_never_from_a_project() {
     let (soba, seen) = fake_soba("200 OK", "");
     let run = |dir: &Path, more: &[&str]| {
         let mut c = Command::new(env!("CARGO_BIN_EXE_flow"));
-        c.args(["serve", "--port", "0"]).args(more).current_dir(dir).env_remove("SOBA_KEY").env("FLOW_GITHUB_CLIENT_ID", "the-id").env("FLOW_GITHUB_CLIENT_SECRET", "the-secret").env("FLOW_ALLOWED_USERS", "sam").env("FLOW_GITHUB_URL", &github).env("SOBA_WEB_URL", &soba).env("FLOW_SOBA_HOME", &home).stdout(Stdio::piped());
+        c.args(["serve", "--port", "0"]).args(more).current_dir(dir).env("FLOW_CACHE", dir.join(".git/flow-cache")).env_remove("SOBA_KEY").env("FLOW_GITHUB_CLIENT_ID", "the-id").env("FLOW_GITHUB_CLIENT_SECRET", "the-secret").env("FLOW_ALLOWED_USERS", "sam").env("FLOW_GITHUB_URL", &github).env("SOBA_WEB_URL", &soba).env("FLOW_SOBA_HOME", &home).stdout(Stdio::piped());
         let mut c = c.spawn().unwrap();
         let mut line = String::new();
         BufReader::new(c.stdout.as_mut().unwrap()).read_line(&mut line).unwrap();

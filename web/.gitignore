@@ -2,3 +2,4 @@ app/flow.generated.css
 app/body.generated.ts
 public/flow-page.js
 next-env.d.ts
+.next-test/

@@ -853,7 +853,8 @@ fn run() -> Result<ExitCode> {
             }
             println!("Placed {} requests in {} journeys and wrote out {written} of them, stop by stop. Saved to {}.", rep.placed, book.journeys.len(), path.display());
             println!("This is a proposal: rename a journey, move a request or reword a stop by editing that file. Running this again only fills in what is missing.");
-            for r in &rep.left {
+            failed.extend(rep.failed.iter().map(|f| format!("grouping {f}")));
+            for r in rep.left.iter().filter(|_| rep.failed.is_empty()) {
                 println!("  no journey: {r}");
             }
             for f in &failed {

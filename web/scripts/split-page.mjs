@@ -13,7 +13,9 @@ const css = between("<style>", "</style>")
 const script = between("<script>", "</script>")
 const button = /<button class="bar-s" id="soba-go" hidden>Connect compute<\/button>/
 const whole = between("<body>", "</body>")
-const body = whole.slice(0, whole.indexOf("<script>"))
+const view = '<div class="wrap" id="view"></div>'
+const body = whole.slice(0, whole.indexOf("<script>")).replace(view, `${view}<div class="wrap" id="react-view" hidden></div>`)
+if (!body.includes("react-view")) throw new Error("serve.html has no view to sit beside")
 if (!button.test(body)) throw new Error("serve.html has no Connect compute button to replace")
 
 await writeFile(new URL("../app/flow.generated.css", import.meta.url), css)

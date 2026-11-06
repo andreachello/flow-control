@@ -562,6 +562,25 @@ kbd{font:500 11px var(--f-ui);letter-spacing:0;padding:1px 5px;border-radius:5px
 .side .sec{display:flex;flex-direction:column;gap:2px;margin:0;padding:0;max-width:none;overflow:visible}
 .side .sec a{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:8px;font-size:14px;color:var(--ink-2)}
 .side .sec a svg{flex:none}
+.sec-p{display:flex;flex-direction:column;gap:4px;padding:4px 8px 10px;font-size:12px;color:var(--ink-3)}
+.sec-p select{font:inherit;font-size:13px;color:var(--ink);background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:6px 8px}
+.jg-h{display:flex;align-items:baseline;flex-wrap:wrap;gap:4px 10px;margin:20px 0 8px;font-size:14px;font-weight:600;color:var(--ink)}
+.jg-h small{font-size:12.5px;font-weight:400;color:var(--ink-3)}
+.pts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+.pt{display:flex;flex-direction:column;gap:4px;min-width:0;padding:14px 16px;border:1px solid var(--rule);border-radius:10px;background:var(--sheet);color:var(--ink);font:inherit;text-align:left;cursor:pointer;transition:border-color .12s}
+.pt:hover{border-color:color-mix(in srgb,var(--ink) 24%,var(--rule))}
+.pt:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pt b{font-size:15px;font-weight:600}
+.pt small{font-size:12.5px;color:var(--ink-3)}
+.pt .spark{margin-top:8px;height:28px}
+.pt.off{background:var(--sheet-2)}
+.jrs{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:6px}
+.jr{display:flex;align-items:center;gap:8px;min-width:0;padding:7px 10px;border:1px solid var(--rule);border-radius:8px;background:var(--sheet);color:var(--ink);font-size:13.5px;text-decoration:none;transition:border-color .12s}
+.jr:hover{border-color:color-mix(in srgb,var(--ink) 24%,var(--rule))}
+.jr .bdg{flex:none;width:20px;height:20px;box-shadow:none}
+.jr b{min-width:0;overflow:hidden;font-weight:500;text-overflow:ellipsis;white-space:nowrap}
+.jr small{flex:none;margin-left:auto;font-size:12px;color:var(--ink-3)}
+.pg.off .jr small{display:none}
 .side .sec a:hover{background:var(--sheet-2);color:var(--ink)}
 .side .sec a.on{background:var(--sheet-2);color:var(--ink);font-weight:500}
 .side .sec a.on::after{content:none}
@@ -874,12 +893,20 @@ const forget = () => { try { sessionStorage.clear(); } catch {} };
 const failed = e => { page(`<div class="pj-empty"><b>That did not load</b><p>${esc(e.message)}</p><p><button class="bar-s" id="retry">Try again</button></p></div>`); $("retry").onclick = route; };
 const SECTIONS = [["overview", "Overview", "", "M2.5 7 8 2.5 13.5 7v6.5h-11zM6.5 13.5V10h3v3.5"], ["pulls", "Pull requests", "pulls", "M4 5.5v5M12 10.5V7a2 2 0 0 0-2-2H8m1.5-2L7.5 5l2 2M4 2.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM4 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3zM12 10.5a1.5 1.5 0 1 0 0 3 1.5 1.5 0 0 0 0-3z"], ["journeys", "Journeys", "journeys", "M3 13V3M3 3.5h8l-2 2.5 2 2.5H3"], ["changes", "Changes", "changes", "M8 2.5v3M8 10.5v3M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"], ["people", "People", "people", "M6 7.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM1.5 13.5c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4M10.5 2.8a2.5 2.5 0 0 1 0 4.4M12 9.8c1.5.5 2.5 1.8 2.5 3.7"]];
 const secIcon = d => `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+// A repo with several products is read one at a time, or all together. Each tab remembers its own.
+const productsOf = () => (PROJ.find(p => p.name === P) || {}).products || [];
+const PRODUCT = () => { const p = kept(`flow-product:${P}`); return productsOf().includes(p) ? p : ""; };
+const inProduct = g => !PRODUCT() || (BOOK[g] && BOOK[g].product === PRODUCT());
+const scoped = () => BOOK.map((b, g) => g).filter(inProduct);
+const inPicked = c => !PRODUCT() || !SUMM[c.id] || groupsOf(SUMM[c.id].journeys).some(inProduct);
 function nav(tab, here){
   const me = PROJ.find(p => p.name === P);
   $("crumb").innerHTML = !P ? "" : `<span class="bar-sl">/</span><button class="sw" id="sw" aria-expanded="${SWITCH}"><i class="tile" style="--c:${colour(P)}">${esc(P.charAt(0).toUpperCase())}</i><span>${esc(P)}</span><i class="chev"></i></button>${SWITCH ? `<div class="cp-menu sw-menu">${PROJ.map(p => `<a class="${p.name === P ? "on" : ""}" href="#/p/${encodeURIComponent(p.name)}"><b>${esc(p.name)}</b><span>${plural(p.changes, "change")}</span></a>`).join("")}<a href="#/"><b>All projects</b></a></div>` : ""}`;
   if ($("sw")) $("sw").onclick = e => { e.stopPropagation(); SWITCH = !SWITCH; nav(tab, here); };
-  $("sec").innerHTML = P ? SECTIONS.map(([k, label, path, d]) => `<a href="${hash(...(path ? [path] : []))}" class="${k === tab ? "on" : ""}" ${k === tab ? 'aria-current="page"' : ""}>${secIcon(d)}${label}</a>`).join("")
+  const pick = P && productsOf().length ? `<label class="sec-p"><span>Product</span><select id="prod"><option value="">All products</option>${productsOf().map(p => `<option${p === PRODUCT() ? " selected" : ""}>${esc(p)}</option>`).join("")}</select></label>` : "";
+  $("sec").innerHTML = P ? pick + SECTIONS.map(([k, label, path, d]) => `<a href="${hash(...(path ? [path] : []))}" class="${k === tab ? "on" : ""}" ${k === tab ? 'aria-current="page"' : ""}>${secIcon(d)}${label}</a>`).join("")
     : `<a href="#/" class="on" aria-current="page">${secIcon(SECTIONS[0][3])}Overview</a><p class="sec-l">Projects</p>${PROJ.map(p => `<a href="#/p/${encodeURIComponent(p.name)}"><i class="tile">${esc(p.name.charAt(0).toUpperCase())}</i>${esc(p.name)}</a>`).join("")}`;
+  if ($("prod")) $("prod").onchange = e => { keep(`flow-product:${P}`, e.target.value); route(); };
   const label = (SECTIONS.find(x => x[0] === tab) || [])[1];
   $("trail").innerHTML = !P ? "<span>Overview</span>" : `<a href="${hash()}">${esc(P)}</a><i>/</i>${here ? `<a href="${hash(...(tab === "overview" ? [] : [tab]))}">${label}</a><i>/</i><span>${esc(here)}</span>` : `<span>${label || ""}</span>`}`;
   document.title = !P ? "Flow control" : `${here || (SECTIONS.find(x => x[0] === tab) || [0, "Change"])[1]}, ${P}`;
@@ -887,7 +914,7 @@ function nav(tab, here){
 }
 
 /* projects */
-let HOME = null, RANGE = 12, ME = null, MAP = null, STAMP = 0;
+let HOME = null, RANGE = 12, ME = null, MAP = null, MAPS = {}, STAMP = 0;
 async function projects(){
   P = null; REDRAW = null; const mine = wants;
   nav("home"); if (PROJ.length > 1) { REDRAW = drawHome; drawHome(); } else loading();
@@ -933,7 +960,7 @@ function drawHome(){
 /* changes */
 async function more(){
   const d = await get(api("commits", `?skip=${LIST.length}`));
-  LIST.push(...d.commits); MORE = d.commits.length === d.size; TOTAL = d.project.changes; BOOK = d.journeys; MAP = d.map || null; STAMP = d.stamp;
+  LIST.push(...d.commits); MORE = d.commits.length === d.size; TOTAL = d.project.changes; BOOK = d.journeys; MAP = d.map || null; MAPS = d.maps || {}; STAMP = d.stamp;
   if (!Object.keys(SUMM).length) Object.assign(SUMM, kept(`flow-summ:${P}:${STAMP}`) || {});
   return d;
 }
@@ -953,9 +980,9 @@ function commitRow(c, i){
 }
 function drawChanges(){
   const days = [];
-  LIST.forEach((c, i) => { const last = days[days.length - 1]; if (last && last.date === c.date) last.rows.push([c, i]); else days.push({ date:c.date, rows:[[c, i]] }); });
+  LIST.forEach((c, i) => { if (!inPicked(c)) return; const last = days[days.length - 1]; if (last && last.date === c.date) last.rows.push([c, i]); else days.push({ date:c.date, rows:[[c, i]] }); });
   page(`<div class="ex-cards on"><div class="ghl-top"><h2>What changed</h2><span class="ghl-n">${plural(TOTAL, "change")}</span></div>
-    ${BOOK.length ? `<div class="ghl-key">${BOOK.map((b, g) => `<span>${gbadge(g)}${esc(b.title)}</span>`).join("")}</div>` : LIST.length ? `${runSlot("journeys", "These letters are single requests, not journeys yet.")}` : ""}
+    ${BOOK.length ? `<div class="ghl-key">${scoped().map(g => `<span>${gbadge(g)}${esc(BOOK[g].title)}</span>`).join("")}</div>` : LIST.length ? `${runSlot("journeys", "These letters are single requests, not journeys yet.")}` : ""}
     ${LIST.length ? `<div class="ghl">${days.map(d => `<section class="ghl-day ${d.rows.every(([c]) => calm(c)) ? "quiet" : ""}"><h3>${esc(ago(d.date))}</h3><ol>${d.rows.map(([c, i]) => commitRow(c, i)).join("")}</ol></section>`).join("")}</div>
     
     ${MORE ? `<button class="more" id="more">Show older changes</button>` : ""}
@@ -967,6 +994,11 @@ function drawChanges(){
   const m = $("more"); if (m) m.onclick = async () => { m.disabled = true; await more(); drawChanges(); fill(); };
 }
 // The list comes straight from git. What each change reaches takes a lift, so it arrives after.
+// What is already worked out arrives in one go, so a page is drawn once with its real numbers.
+async function fillSaved(){
+  const ids = LIST.filter(c => !SUMM[c.id]).slice(0, 200).map(c => c.id);
+  if (ids.length) try { Object.assign(SUMM, await get(api("summaries", `?saved=1&ids=${ids.join(",")}`))); } catch {}
+}
 async function fill(){
   const mine = ++wants;
   for (;;) {
@@ -978,7 +1010,7 @@ async function fill(){
     if (mine === wants && REDRAW) { const y = scrollY; REDRAW(); scrollTo(0, y); }
   }
 }
-async function changes(){ nav("changes"); if (!LIST.length) loading(); await ensureList(); REDRAW = drawChanges; drawChanges(); fill(); }
+async function changes(){ nav("changes"); if (!LIST.length) loading(); await ensureList(); await fillSaved(); REDRAW = drawChanges; drawChanges(); fill(); }
 
 /* explore */
 async function explore(id){
@@ -1140,14 +1172,18 @@ document.addEventListener("click", e => { if (exPick && e.target.isConnected && 
   if (exOpen && e.target.isConnected && !e.target.closest(".fl-open,[data-part]")) { exOpen = null; flow(); } });
 
 /* where you are */
+// In the web app, some pages are drawn by React in a view of their own.
+function screen(s){ const v = $("react-view"); if (!v) return; window.flowScreenNow = s; v.hidden = !s; $("view").hidden = !!s; dispatchEvent(new CustomEvent("flow:screen", { detail:s })); }
 async function route(){
   wants++; REDRAW = null; // Whatever the last page was still reading must not draw over this one.
+  screen(null);
   const parts = (location.hash || "#/").slice(2).split("/").filter(Boolean);
   try {
     if (parts[0] !== "p") return await projects();
     const name = decodeURIComponent(parts[1]);
-    if (name !== P) { P = name; KB = null; $("live").innerHTML = ""; OPEN = new Set(); dropLoaded(); RUN = null; followRun(); }
-    SWITCH = false;
+    if (name !== P) { P = name; KB = null; $("live").innerHTML = ""; OPEN = new Set(); dropLoaded(); RUN = null; }
+    followRun(); SWITCH = false;
+    if (!parts[2] && $("react-view")) { clearTimeout(LOADING); nav("overview"); screen({ name:"overview", project:P, at:Date.now() }); return; }
     const go = { journeys, pulls, pull:() => pull(+parts[3]), change:() => change(parts[3]), journey:() => journey(+parts[3]), request:() => request(decodeURIComponent(parts[3] || "")), changes, explore:() => explore(parts[3]), people };
     await (go[parts[2]] || overview)();
   } catch (e) { failed(e); }
@@ -1192,7 +1228,7 @@ let RUN = null, RUN_T = null, SOBA = false;
 const took = n => n < 60 ? `${n}s` : `${Math.floor(n / 60)}m ${n % 60}s`;
 const dropLoaded = () => { ACT = null; CAT = null; LIST = []; MORE = true; SUMM = {}; D = null; };
 function runBody(task, lead){ const t = TASKS[task], r = RUN;
-  if (r && r.running) return r.task === task ? `<div class="run-m"><span class="run-on"><i></i>${t.doing}, ${took(r.secs)}</span><small>You can leave this page. It keeps going, and the page fills in when it's done.</small></div>` : `<div class="run-m"><span>${esc(lead)}</span><small>${TASKS[r.task].doing} first.</small></div>`;
+  if (r && r.running) return r.task === task ? `<div class="run-m"><span class="run-on"><i></i>${t.doing}, ${took(r.secs)}</span><small>${r.step ? `${esc(r.step)}. ` : ""}You can leave this page. It keeps going, and the page fills in when it's done.</small></div>` : `<div class="run-m"><span>${esc(lead)}</span><small>${TASKS[r.task].doing} first.</small></div>`;
   const stopped = r && r.task === task && r.failed, blocked = stopped && r.code === "no_compute";
   if (blocked) return `<div class="run-m"><span>Connect your computer to run this.</span><small>Nothing you've connected is reachable right now.</small></div><button class="bar-s" data-connect>Connect compute</button><button class="bar-s" data-run="${task}">Try again</button>`;
   const why = !stopped ? SOBA ? "Runs on the computer you connected and can take a few minutes." : "Uses your Claude plan and can take a few minutes." : r.code === "payment_required" ? "This plan's allowance is used up." : r.code ? "The run could not finish." : r.failed;
@@ -1234,26 +1270,41 @@ function drawOverview(){
 
 /* journeys */
 async function journeys(){
-  nav("journeys"); loading(); await loadAll(); await loadCat(); REDRAW = drawJourneys; drawJourneys(); fill();
+  nav("journeys"); loading(); await loadAll(); await loadCat(); await fillSaved(); REDRAW = drawJourneys; drawJourneys(); fill();
 }
 // How the journeys fit together: one row per kind of person, in the order they go.
 function mapView(){
-  if (!MAP) return "";
-  const at = t => BOOK.findIndex(b => b.title === t), node = g => `<li><a href="${hash("journey", g)}">${gbadge(g)}<span>${esc(BOOK[g].title)}</span></a></li>`;
-  const behind = BOOK.map((b, g) => g).filter(g => BOOK[g].icon === "gear");
-  return `<section class="pn jm"><div class="pn-h"><b>How it all fits together</b></div><p class="jm-say">${esc(MAP.say)}</p>
-    <div class="jm-ls">${MAP.paths.map(p => `<div class="jm-l"><b>${esc(p.who)}</b><ol>${p.journeys.map(at).filter(g => g >= 0).map(node).join("")}</ol></div>`).join("")}
+  const map = PRODUCT() ? MAPS[PRODUCT()] : MAP;
+  if (!map) return "";
+  const at = t => BOOK.findIndex((b, g) => b.title === t && inProduct(g)), node = g => `<li><a href="${hash("journey", g)}">${gbadge(g)}<span>${esc(BOOK[g].title)}</span></a></li>`;
+  const behind = scoped().filter(g => BOOK[g].icon === "gear");
+  return `<section class="pn jm"><div class="pn-h"><b>How it all fits together</b></div><p class="jm-say">${esc(map.say)}</p>
+    <div class="jm-ls">${map.paths.map(p => `<div class="jm-l"><b>${esc(p.who)}</b><ol>${p.journeys.map(at).filter(g => g >= 0).map(node).join("")}</ol></div>`).join("")}
     ${behind.length ? `<div class="jm-l jm-b"><b>Behind it all</b><ol>${behind.map(node).join("")}</ol></div>` : ""}</div></section>`; }
 function drawJourneys(){
-  const card = (b, g) => { const mine = read().filter(c => touches(c, g)), n = CAT.filter(r => r.group === g).length;
+  const card = g => { const b = BOOK[g], mine = read().filter(c => touches(c, g)), n = CAT.filter(r => r.group === g).length;
     return `<a class="jc" href="${hash("journey", g)}"><div class="jc-t">${gbadge(g)}${esc(b.title)}</div><div class="jc-m"><span><b>${plural(n, "request")}</b></span><span><b>${plural(mine.length, "change")}</b></span><span>${mine[0] ? esc(when(mine[0].date)) : "No recent change"}</span></div>${spark(weeks(mine.map(c => c.date), 16), tint(g))}</a>`; };
-  const loose = CAT.filter(r => r.group == null);
-  page(`<div class="ex-cards on"><div class="page-h"><h2>Journeys</h2><span class="ghl-n">${BOOK.length ? readNote() : plural(CAT.length, "request")}</span></div>
-    ${mapView()}${BOOK.length ? `<div class="jgrid">${BOOK.map(card).join("")}</div>` : `<div class="pn">${NOBOOK()}</div>`}
+  const grid = gs => `<div class="jgrid">${gs.map(card).join("")}</div>`;
+  const loose = CAT.filter(r => r.group == null && (!PRODUCT() || r.product === PRODUCT()));
+  const own = name => BOOK.map((b, g) => g).filter(g => (BOOK[g].product || "") === name);
+  const facts = name => { const gs = own(name), mine = read().filter(c => gs.some(g => touches(c, g))); return { name, gs, mine, n:CAT.filter(r => gs.includes(r.group)).length }; };
+  // Together, the page has to show every product at a glance: a tile for each, busiest first, then
+  // their journeys as one line each. Two products can both have a "Log in", so each keeps a heading.
+  const row = g => { const b = BOOK[g], ch = read().filter(c => touches(c, g)).length;
+    return `<a class="jr" href="${hash("journey", g)}">${gbadge(g)}<b>${esc(b.title)}</b><small>${plural(ch, "change")}</small></a>`; };
+  const says = p => `${plural(p.gs.length, "journey")} · ${plural(p.n, "request")} · ${plural(p.mine.length, "change")}`;
+  const line = p => p.n ? esc(says(p)) : `${plural(p.gs.length, "journey")} · not committed yet`;
+  const list = !PRODUCT() && productsOf().length ? [...productsOf(), ""].map(facts).filter(p => p.gs.length).sort((a, b) => !a.name - !b.name || b.mine.length - a.mine.length || b.n - a.n) : [];
+  const tile = p => `<button class="pt${p.n ? "" : " off"}" data-prod="${esc(p.name)}"><b>${esc(p.name)}</b><small>${line(p)}</small>${p.n ? spark(weeks(p.mine.map(c => c.date), 16), "var(--accent)") : ""}</button>`;
+  const all = list.length ? `<div class="pts">${list.filter(p => p.name).map(tile).join("")}</div>${list.map(p => `<section class="pg${p.n ? "" : " off"}"><h3 class="jg-h"><span>${esc(p.name || "Shared")}</span><small>${p.n ? esc(says(p)) : "Its code isn't committed yet, so its requests and changes can't be shown."}</small></h3><div class="jrs">${p.gs.map(row).join("")}</div></section>`).join("")}` : grid(scoped());
+  const unwritten = scoped().filter(g => !(BOOK[g].stops || []).length && BOOK[g].icon !== "gear").length;
+  page(`<div class="ex-cards on"><div class="page-h"><h2>${esc(PRODUCT() || "Journeys")}</h2><span class="ghl-n">${BOOK.length ? readNote() : plural(CAT.length, "request")}</span></div>
+    ${mapView()}${!loose.length && unwritten ? `<div class="pn">${runSlot("journeys", `${plural(unwritten, "journey")} still ${unwritten === 1 ? "has" : "have"} no stops written out.`)}</div>` : ""}${BOOK.length ? all : `<div class="pn">${NOBOOK()}</div>`}
     ${loose.length ? `<div class="pn" style="margin-top:12px"><div class="pn-h"><b>${BOOK.length ? "Not in a journey yet" : "Requests"}</b><small>${plural(loose.length, "request")}</small></div>${BOOK.length ? runSlot("journeys", "Place these in journeys.") : ""}${reqList(loose)}</div>` : ""}</div>`);
+  document.querySelectorAll("[data-prod]").forEach(b => b.onclick = () => { keep(`flow-product:${P}`, b.dataset.prod); route(); });
 }
 async function journey(g){
-  JPICK = null; nav("journeys"); loading(); await loadAll(); await loadCat(); if (!BOOK[g]) throw new Error("This project has no such journey."); REDRAW = () => drawJourney(g); drawJourney(g); fill();
+  JPICK = null; nav("journeys"); loading(); await loadAll(); await loadCat(); await fillSaved(); if (!BOOK[g]) throw new Error("This project has no such journey."); REDRAW = () => drawJourney(g); drawJourney(g); fill();
 }
 // The journey runs left to right. Pick a change and it lights up the steps it reached.
 function walkView(g){

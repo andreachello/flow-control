@@ -2,7 +2,7 @@
 
 use crate::parse::Role;
 use crate::repo::{Graph, Repo, Res, SRef, Unres};
-use crate::util::{dirname, slug};
+use crate::util::{dirname, normalize, slug};
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 #[derive(Debug, Clone)]
@@ -84,11 +84,12 @@ pub fn entries(repo: &Repo) -> (Vec<Entry>, Vec<String>) {
         }
     };
     for (fi, f) in repo.files.iter().enumerate() {
-        let p = f.path.strip_prefix("src/").unwrap_or(&f.path);
+        let (app, inner) = repo.app_of(&f.path).unwrap_or(("", &f.path));
+        let p = inner.strip_prefix("src/").unwrap_or(inner);
         let st = stem(p);
         if let Some(rest) = p.strip_prefix("app/") {
             let route = route_of(dirname(rest));
-            let app_root = if f.path.starts_with("src/") { "src/app" } else { "app" };
+            let app_root = normalize(&format!("{app}/{}", if inner.starts_with("src/") { "src/app" } else { "app" }));
             if st == "route" {
                 for m in METHODS {
                     push(&mut out, format!("{m} {route}"), "route", repo.resolve_export(fi, m, 0));
@@ -96,7 +97,7 @@ pub fn entries(repo: &Repo) -> (Vec<Entry>, Vec<String>) {
             } else if st == "page" {
                 push(&mut out, format!("page {route}"), "page", repo.resolve_export(fi, "default", 0));
                 if let Some(e) = out.last_mut().filter(|e| e.at.0 == fi) {
-                    e.framework = around_page(repo, fi, app_root);
+                    e.framework = around_page(repo, fi, &app_root);
                 }
             } else if METADATA_FILES.contains(&st) {
                 let at = if route == "/" { format!("/{st}") } else { format!("{route}/{st}") };
@@ -119,6 +120,13 @@ pub fn entries(repo: &Repo) -> (Vec<Entry>, Vec<String>) {
                 _ => repo.resolve_export(fi, "default", 0),
             };
             push(&mut out, "middleware".into(), "middleware", res);
+        } else if (p == "proxy.ts" || p == "proxy.js") && repo.apps.iter().any(|a| a == app) {
+            // What Next.js calls middleware since version 16.
+            let res = match repo.resolve_export(fi, "proxy", 0) {
+                Res::Slice(r) => Res::Slice(r),
+                _ => repo.resolve_export(fi, "default", 0),
+            };
+            push(&mut out, "middleware".into(), "middleware", res);
         }
         if f.directives.iter().any(|d| d == "use server") {
             for (si, s) in f.slices.iter().enumerate() {
@@ -129,6 +137,12 @@ pub fn entries(repo: &Repo) -> (Vec<Entry>, Vec<String>) {
         }
     }
     universal_entries(repo, &mut out);
+    // Apps in one repo have the same routes, and each app's are its own.
+    for e in &mut out {
+        if let Some((app, _)) = repo.app_of(&repo.files[e.at.0].path) {
+            e.id = format!("{}: {}", app.rsplit('/').next().unwrap_or(app), e.id);
+        }
+    }
     for e in &repo.cfg.entry {
         match repo.file_idx(&e.file) {
             Some(fi) => match repo.resolve_export(fi, &e.export, 0) {
