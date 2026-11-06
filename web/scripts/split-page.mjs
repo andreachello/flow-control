@@ -1,6 +1,6 @@
 // The screens still live in ../src/serve.html, which plain `flow serve` also uses. This takes them
 // apart for Next, so there is one copy while they move into React. Delete it with the last screen.
-import { readFile, writeFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 
 const page = await readFile(new URL("../../src/serve.html", import.meta.url), "utf8")
 const between = (a, b) => {
@@ -18,6 +18,7 @@ const body = whole.slice(0, whole.indexOf("<script>")).replace(view, `${view}<di
 if (!body.includes("react-view")) throw new Error("serve.html has no view to sit beside")
 if (!button.test(body)) throw new Error("serve.html has no Connect compute button to replace")
 
+await mkdir(new URL("../public/", import.meta.url), { recursive: true })
 await writeFile(new URL("../app/flow.generated.css", import.meta.url), css)
 await writeFile(new URL("../public/flow-page.js", import.meta.url), script)
 await writeFile(

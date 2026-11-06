@@ -684,3 +684,19 @@ fn the_key_comes_from_the_file_soba_wrote_and_never_from_a_project() {
     let o = Command::new(env!("CARGO_BIN_EXE_flow")).args(["serve", "--port", "0", "--env-file", "nowhere.env"]).current_dir(&start).env_remove("SOBA_KEY").output().unwrap();
     assert!(!o.status.success() && String::from_utf8_lossy(&o.stderr).contains("@soba-so/cli link"), "a named file that is missing must say so");
 }
+
+#[test]
+fn pull_requests_are_read_before_anyone_asks() {
+    let d = repo("warm");
+    let mark = d.join(".fake-bin-asked");
+    let s = serve_with_gh(&d, &format!("touch {}; echo '[]'", mark.display()));
+    for _ in 0..100 {
+        if mark.exists() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    assert!(mark.exists(), "the slowest first answer is worked out at startup");
+    let name = d.file_name().unwrap().to_string_lossy().to_string();
+    assert!(ask(s.1, "GET", &format!("/api/p/{name}/pulls"), None).1.contains(r#""linked":true"#));
+}

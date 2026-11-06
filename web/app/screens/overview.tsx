@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import { Badge, tint } from "../lib/badge"
-import { api, get, link, pickedProduct, readChanges, SignedOut, type Commit, type Journey, type Page, type Summary } from "../lib/project"
+import { api, get, keptChanges, known, link, pickedProduct, readChanges, SignedOut, type Commit, type Journey, type Page, type Summary } from "../lib/project"
 import { useRun } from "../lib/run"
 import { ago, iso, monday, plural, when } from "../lib/words"
 import { Activity, weeks } from "./activity"
@@ -10,6 +10,8 @@ import { RunControl } from "./run-control"
 
 /** Enough history to say which journeys change most, without reading all of a long project. */
 const LOAD_MOST = 120
+/** How long what the tab knows counts as current. */
+const FRESH_FOR = 30000
 
 function Skeleton() {
   return (
@@ -45,12 +47,14 @@ function Latest({ c, project, book, notes }: { c: Commit; project: string; book:
 }
 
 export function Overview({ project, soba, signedOut }: { project: string; soba: boolean; signedOut: () => void }) {
-  const [list, setList] = useState<Commit[] | null>(null)
-  const [total, setTotal] = useState(0)
-  const [book, setBook] = useState<Journey[]>([])
-  const [activity, setActivity] = useState<[string, string][] | null>(null)
-  const [requests, setRequests] = useState<unknown[] | null>(null)
-  const [read, setRead] = useState<Record<string, Summary>>({})
+  // Drawn from what the tab already knows, then checked. A screen that waits is a screen that blinks.
+  const [had] = useState(() => known(project))
+  const [list, setList] = useState<Commit[] | null>(had?.list ?? null)
+  const [total, setTotal] = useState(had?.total ?? 0)
+  const [book, setBook] = useState<Journey[]>(had?.book ?? [])
+  const [activity, setActivity] = useState<[string, string][] | null>(had?.act ?? null)
+  const [requests, setRequests] = useState<unknown[] | null>(had?.cat ?? null)
+  const [read, setRead] = useState<Record<string, Summary>>(() => (had ? keptChanges(project, had.stamp) : {}))
   const [problem, setProblem] = useState<string | null>(null)
   const [loaded, setLoaded] = useState(0)
   const reload = useRef(() => setLoaded(n => n + 1))
@@ -61,6 +65,7 @@ export function Overview({ project, soba, signedOut }: { project: string; soba: 
     const on = () => live
     ;(async () => {
       try {
+        if (had?.act && loaded === 0 && Date.now() - had.at < FRESH_FOR) return await readChanges(project, read, had.stamp, had.list, setRead, on)
         const all: Commit[] = []
         let first: Page | null = null
         for (;;) {

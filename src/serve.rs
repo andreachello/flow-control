@@ -55,6 +55,8 @@ struct Project {
     titles: Titles,
     /// The list from GitHub, kept briefly: asking takes a second or more.
     pulled: Option<(Instant, Value)>,
+    /// A newer list is on its way, so nobody starts another.
+    pulling: bool,
 }
 
 fn word(s: &JState) -> &'static str {
@@ -79,7 +81,7 @@ impl Project {
         *n += 1;
         let name = if *n == 1 { base } else { format!("{base}-{n}") };
         let store = Store::open(&root);
-        let mut p = Project { name, root, v, store, details: HashMap::new(), summaries: HashMap::new(), book: Journeys::default(), places: Places::default(), ids: Ids::default(), read: None, catalog: None, titles: Titles::new(), pulled: None };
+        let mut p = Project { name, root, v, store, details: HashMap::new(), summaries: HashMap::new(), book: Journeys::default(), places: Places::default(), ids: Ids::default(), read: None, catalog: None, titles: Titles::new(), pulled: None, pulling: false };
         p.refresh()?;
         Ok(p)
     }
@@ -594,13 +596,29 @@ fn signing_in(s: &mut TcpStream, a: &Auth) {
     }
 }
 
-type Shared = Arc<Vec<Mutex<Project>>>;
+/// Each project beside its name, so finding one never waits on another that is busy.
+type Shared = Arc<Vec<(String, Mutex<Project>)>>;
+
+/// GitHub can be away for a moment. What it said last stands until it says otherwise.
+fn pull_list(projects: &Shared, at: usize, root: &Path) -> Value {
+    let v = crate::pulls::list(root);
+    let mut p = projects[at].1.lock().unwrap_or_else(|e| e.into_inner());
+    p.pulling = false;
+    let away = v["linked"] != json!(true) && p.pulled.as_ref().is_some_and(|(_, was)| was["linked"] == json!(true));
+    if away {
+        let kept = p.pulled.as_ref().map(|(_, was)| was.clone()).unwrap_or(v);
+        p.pulled = Some((Instant::now(), kept.clone()));
+        return kept;
+    }
+    p.pulled = Some((Instant::now(), v.clone()));
+    v
+}
 
 fn api(projects: &Shared, path: &str, q: &HashMap<String, String>) -> Result<Value> {
     if path == "/api/projects" {
         let mut cards = vec![];
         for p in projects.iter() {
-            let mut p = p.lock().unwrap_or_else(|e| e.into_inner());
+            let mut p = p.1.lock().unwrap_or_else(|e| e.into_inner());
             p.refresh()?;
             cards.push(p.card());
         }
@@ -609,21 +627,27 @@ fn api(projects: &Shared, path: &str, q: &HashMap<String, String>) -> Result<Val
     let rest = path.strip_prefix("/api/p/").context("no such page")?;
     let mut parts = rest.splitn(3, '/');
     let (name, what, arg) = (unescape(parts.next().unwrap_or("")), parts.next().unwrap_or(""), parts.next());
-    let cell = projects.iter().find(|p| p.lock().unwrap_or_else(|e| e.into_inner()).name == name).context("no such project")?;
+    let at = projects.iter().position(|(n, _)| *n == name).context("no such project")?;
+    let cell = &projects[at].1;
     // GitHub can take seconds. Nothing else about this project waits for it.
     let lock = || cell.lock().unwrap_or_else(|e| e.into_inner());
     match (what, arg) {
         ("pulls", None) => {
-            let (kept, root) = {
-                let p = lock();
-                (p.pulled.as_ref().filter(|(at, _)| at.elapsed() < PULLS_KEPT_FOR).map(|(_, v)| v.clone()), p.root.clone())
+            // Whoever asks gets the list at once. A stale one is replaced behind them.
+            let (kept, stale, root) = {
+                let mut p = lock();
+                let stale = !p.pulling && p.pulled.as_ref().is_some_and(|(at, _)| at.elapsed() >= PULLS_KEPT_FOR);
+                p.pulling |= stale;
+                (p.pulled.as_ref().map(|(_, v)| v.clone()), stale, p.root.clone())
             };
-            if let Some(v) = kept {
-                return Ok(v);
+            if stale {
+                let (all, root) = (projects.clone(), root.clone());
+                std::thread::spawn(move || pull_list(&all, at, &root));
             }
-            let v = crate::pulls::list(&root);
-            lock().pulled = Some((Instant::now(), v.clone()));
-            return Ok(v);
+            return Ok(match kept {
+                Some(v) => v,
+                None => pull_list(projects, at, &root),
+            });
         }
         ("pull", Some(n)) => {
             let number: u64 = n.parse().context("no such pull request")?;
@@ -803,7 +827,16 @@ pub fn run(roots: &[PathBuf], out: &str, port: u16, public: Option<u16>) -> Resu
             std::thread::spawn(move || reports::read_ahead(v, store));
         }
     }
-    let projects: Shared = Arc::new(projects);
+    let projects: Shared = Arc::new(projects.into_iter().map(|m| { let name = m.lock().unwrap_or_else(|e| e.into_inner()).name.clone(); (name, m) }).collect());
+    // The two slowest first answers are worked out before anyone opens a page.
+    for at in 0..projects.len() {
+        let all = projects.clone();
+        std::thread::spawn(move || {
+            let root = all[at].1.lock().unwrap_or_else(|e| e.into_inner()).root.clone();
+            pull_list(&all, at, &root);
+            let _ = all[at].1.lock().unwrap_or_else(|e| e.into_inner()).requests();
+        });
+    }
     for s in listener.incoming().flatten() {
         let (p, r, h, a) = (projects.clone(), runs.clone(), hosts.clone(), a.clone());
         std::thread::spawn(move || handle(s, p, r, h, a));

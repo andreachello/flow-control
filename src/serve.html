@@ -965,12 +965,50 @@ async function more(){
   return d;
 }
 let TOTAL = 0;
-async function ensureList(){ if (!LIST.length) await more(); }
+/* everything a project's pages draw from */
+// Read once in the background and kept in this tab, so a page draws at once and is corrected after.
+const LOAD_MOST = 120, KNOWN = window.flowKnown = {}, READING = {};
+let HAVE = {}, PULLS = null, WAITING = [], STALE_AFTER = 30000;
+const known = name => KNOWN[name] || (KNOWN[name] = kept(`flow-proj:${name}`));
+const arrive = key => HAVE[key] ? Promise.resolve() : new Promise((ok, no) => WAITING.push({ key, ok, no }));
+const arrived = () => { WAITING = WAITING.filter(w => !HAVE[w.key] || (w.ok(), false)); };
+// Only what really differs is drawn again, so checking a page never makes it flicker.
+function adopt(s){ let moved = false;
+  if (s.list && (!HAVE.list || s.list[0]?.id !== LIST[0]?.id || s.total !== TOTAL || s.stamp !== STAMP)) {
+    LIST = [...s.list]; MORE = s.more; TOTAL = s.total; BOOK = s.book; MAP = s.map; MAPS = s.maps; if (s.stamp !== STAMP) SUMM = {}; STAMP = s.stamp;
+    Object.assign(SUMM, kept(`flow-summ:${P}:${STAMP}`) || {}); HAVE.list = true; moved = true; }
+  if (s.act && JSON.stringify(s.act) !== JSON.stringify(ACT)) { ACT = s.act; HAVE.act = true; moved = true; }
+  if (s.cat && JSON.stringify(s.cat) !== JSON.stringify(CAT)) { CAT = s.cat; HAVE.cat = true; moved = true; }
+  if (s.pulls && JSON.stringify(s.pulls) !== JSON.stringify(PULLS)) { PULLS = s.pulls; HAVE.pulls = true; moved = true; }
+  arrived(); if (moved && REDRAW) { const y = scrollY; REDRAW(); scrollTo(0, y); } }
+function readProject(name, again){
+  if (READING[name] && !again) return READING[name];
+  const at = (what, q = "") => `/api/p/${encodeURIComponent(name)}/${what}${q}`;
+  const put = x => { KNOWN[name] = { ...KNOWN[name], ...x, at:Date.now() }; keep(`flow-proj:${name}`, KNOWN[name]); if (name === P) adopt(x); };
+  const failed = e => { if (name === P) { const w = WAITING; WAITING = []; w.forEach(x => x.no(e)); } };
+  const run = (async () => {
+    const list = []; let d, first;
+    do { d = await get(at("commits", `?skip=${list.length}`)); first = first || d; list.push(...d.commits); } while (d.commits.length === d.size && list.length < LOAD_MOST);
+    put({ list, more:d.commits.length === d.size, total:first.project.changes, book:first.journeys, map:first.map || null, maps:first.maps || {}, stamp:first.stamp });
+    // Each arrives on its own: a slow one holds up no page that does not need it.
+    await Promise.all([get(at("activity")).then(act => put({ act })), get(at("requests")).then(cat => put({ cat })), get(at("pulls")).then(pulls => put({ pulls }), () => put({ pulls:{ linked:false, pulls:[] } }))]);
+  })().catch(failed).finally(() => { if (READING[name] === run) delete READING[name]; });
+  return READING[name] = run;
+}
+// Open a project with what the tab already knows, and check it behind the page.
+function enter(name){ HAVE = {}; ACT = null; CAT = null; PULLS = null; LIST = []; MORE = true; SUMM = {}; D = null; const s = known(name); if (s) adopt(s); readProject(name); }
+const check = () => { const s = KNOWN[P]; if (!s || Date.now() - s.at > STALE_AFTER) readProject(P); };
+// The other projects, one at a time and only once nothing else is happening.
+let LOOKED = false;
+async function lookAhead(){ if (LOOKED) return; LOOKED = true; await new Promise(r => setTimeout(r, 1500)); for (const p of PROJ) if (p.name !== P && !known(p.name)) await readProject(p.name).catch(() => {}); }
+const ensureList = () => arrive("list");
 const calm = c => c.quiet ?? (SUMM[c.id] && !SUMM[c.id].journeys.length);
+const MOST_BESIDE = 12;
 function commitRow(c, i){
   const s = SUMM[c.id], open = OPEN.has(c.id), js = s ? s.journeys.map(j => j.title) : [], gs = s ? groupsOf(s.journeys) : [], loose = s ? s.journeys.filter(j => j.group == null).length : 0;
   const about = s && !c.quiet ? s.focus : [], also = gs.filter(g => !about.includes(g)), name = g => BOOK[g].title;
-  const lit = BOOK.length ? BOOK.map((b, g) => gbadge(g, !about.includes(g))).join("") : badges(js);
+  // Every journey beside every row reads well for a few. For many it is thousands of icons to draw.
+  const lit = BOOK.length ? (BOOK.length > MOST_BESIDE ? about.map(g => gbadge(g)) : BOOK.map((b, g) => gbadge(g, !about.includes(g)))).join("") : badges(js);
   const says = BOOK.length && c.quiet && gs.length ? `People won't notice this. The code it changed runs in ${words(also.map(name))}` : BOOK.length && gs.length ? `Changes ${words(about.map(name))}${also.length ? `. Shared code also reaches ${words(also.map(name))}` : ""}` : BOOK.length && loose ? `Changes ${plural(loose, "request")} not in a journey yet` : s && s.line;
   const who = !s ? "" : BOOK.length ? about.concat(also).map(g => `<span><i style="background:${tint(g)}"></i>${esc(BOOK[g].title)}</span>`).join("") : s.journeys.map(j => `<span><i style="background:${colour(j.title)}"></i>${esc(j.title)}${j.was ? ` (was ${esc(j.was)})` : ""}${j.state==="changed"?"":`, ${j.state}`}</span>`).join("");
   return `<li class="ghc ${calm(c) ? "quiet" : ""}" data-row="${esc(c.id)}"><div class="ghc-line"><div class="ghc-main"><div class="ghc-t"><button class="ghc-title" title="${esc(c.subject)}" aria-expanded="${open}">${esc(c.title)}</button></div></div>
@@ -997,20 +1035,24 @@ function drawChanges(){
 // What is already worked out arrives in one go, so a page is drawn once with its real numbers.
 async function fillSaved(){
   const ids = LIST.filter(c => !SUMM[c.id]).slice(0, 200).map(c => c.id);
-  if (ids.length) try { Object.assign(SUMM, await get(api("summaries", `?saved=1&ids=${ids.join(",")}`))); } catch {}
+  if (ids.length) try { Object.assign(SUMM, await get(api("summaries", `?saved=1&ids=${ids.join(",")}`))); keep(`flow-summ:${P}:${STAMP}`, SUMM); } catch {}
 }
+// Worth a moment so a page draws once with its numbers. Never worth holding the page.
+const soonSaved = () => Promise.race([fillSaved(), new Promise(r => setTimeout(r, 120))]);
 async function fill(){
-  const mine = ++wants;
+  const mine = ++wants; let drew = performance.now(), behind = false;
   for (;;) {
     const ids = LIST.filter(c => !SUMM[c.id]).slice(0, 4).map(c => c.id);
-    if (!ids.length) { if (mine === wants) keep(`flow-summ:${P}:${STAMP}`, SUMM); return; }
+    if (!ids.length) { if (mine === wants) { keep(`flow-summ:${P}:${STAMP}`, SUMM); if (behind && REDRAW) { const y = scrollY; REDRAW(); scrollTo(0, y); } } return; }
+    behind = true;
     if (mine !== wants) return;
     try { Object.assign(SUMM, await get(api("summaries", `?ids=${ids.join(",")}`))); }
     catch { for (const id of ids) SUMM[id] = { journeys:[], focus:[], line:"Could not read this change", untouched:0 }; }
-    if (mine === wants && REDRAW) { const y = scrollY; REDRAW(); scrollTo(0, y); }
+    // Drawn now and then, not on every answer: a long page takes real time to draw.
+    if (mine === wants && REDRAW && performance.now() - drew > 600) { const y = scrollY; REDRAW(); scrollTo(0, y); drew = performance.now(); }
   }
 }
-async function changes(){ nav("changes"); if (!LIST.length) loading(); await ensureList(); await fillSaved(); REDRAW = drawChanges; drawChanges(); fill(); }
+async function changes(){ nav("changes"); if (!LIST.length) loading(); await ensureList(); await soonSaved(); REDRAW = drawChanges; drawChanges(); fill(); }
 
 /* explore */
 async function explore(id){
@@ -1181,7 +1223,8 @@ async function route(){
   try {
     if (parts[0] !== "p") return await projects();
     const name = decodeURIComponent(parts[1]);
-    if (name !== P) { P = name; KB = null; $("live").innerHTML = ""; OPEN = new Set(); dropLoaded(); RUN = null; }
+    if (name !== P) { P = name; KB = null; $("live").innerHTML = ""; OPEN = new Set(); enter(P); RUN = null; } else check();
+    lookAhead();
     followRun(); SWITCH = false;
     if (!parts[2] && $("react-view")) { clearTimeout(LOADING); nav("overview"); screen({ name:"overview", project:P, at:Date.now() }); return; }
     const go = { journeys, pulls, pull:() => pull(+parts[3]), change:() => change(parts[3]), journey:() => journey(+parts[3]), request:() => request(decodeURIComponent(parts[3] || "")), changes, explore:() => explore(parts[3]), people };
@@ -1189,10 +1232,9 @@ async function route(){
   } catch (e) { failed(e); }
 }
 /* what every page draws from */
-const LOAD_MOST = 120;
-async function loadAll(){ await ensureList(); while (MORE && LIST.length < LOAD_MOST) await more(); }
-const loadAct = async () => { ACT = ACT || await get(api("activity")); };
-const loadCat = async () => { CAT = CAT || await get(api("requests")); };
+const loadAll = ensureList;
+const loadAct = () => arrive("act");
+const loadCat = () => arrive("cat");
 const read = () => LIST.filter(c => SUMM[c.id]);
 const noted = c => SUMM[c.id] && !c.quiet ? SUMM[c.id].focus : [];
 const touches = (c, g) => noted(c).includes(g);
@@ -1226,7 +1268,8 @@ const reqList = list => { const by = {}; for (const r of list) (by[r.kind] ||= [
 const TASKS = { journeys:{ go:"Find journeys", doing:"Finding journeys" }, titles:{ go:"Write the changes", doing:"Writing the changes" } };
 let RUN = null, RUN_T = null, SOBA = false;
 const took = n => n < 60 ? `${n}s` : `${Math.floor(n / 60)}m ${n % 60}s`;
-const dropLoaded = () => { ACT = null; CAT = null; LIST = []; MORE = true; SUMM = {}; D = null; };
+// Something behind the page changed, so what the tab kept is not to be trusted.
+const dropLoaded = () => { delete KNOWN[P]; try { sessionStorage.removeItem(`flow-proj:${P}`); } catch {} HAVE = {}; ACT = null; CAT = null; PULLS = null; LIST = []; MORE = true; SUMM = {}; D = null; readProject(P, true); };
 function runBody(task, lead){ const t = TASKS[task], r = RUN;
   if (r && r.running) return r.task === task ? `<div class="run-m"><span class="run-on"><i></i>${t.doing}, ${took(r.secs)}</span><small>${r.step ? `${esc(r.step)}. ` : ""}You can leave this page. It keeps going, and the page fills in when it's done.</small></div>` : `<div class="run-m"><span>${esc(lead)}</span><small>${TASKS[r.task].doing} first.</small></div>`;
   const stopped = r && r.task === task && r.failed, blocked = stopped && r.code === "no_compute";
@@ -1239,7 +1282,7 @@ async function connectSoba(){ if (window.flowSoba) return window.flowSoba.open()
   try { const r = await fetch("/api/soba/session", { method:"POST" }); if (r.status === 401) { tab.close(); return signedOut(); } const d = await r.json(); if (!r.ok || !d.url) throw new Error((d.error && d.error.message) || d.error || "Soba did not offer a way to connect"); tab.location = d.url; }
   catch (err) { tab.close(); RUN = { task:RUN ? RUN.task : "journeys", running:false, failed:err.message, secs:0 }; paintRuns(); } }
 document.addEventListener("click", e => { if (e.target.closest("#soba-go,[data-connect]")) connectSoba(); });
-const paintRuns = () => document.querySelectorAll(".run").forEach(el => { el.innerHTML = runBody(el.dataset.task, el.dataset.lead); });
+const paintRuns = () => document.querySelectorAll(".run[data-task]").forEach(el => { el.innerHTML = runBody(el.dataset.task, el.dataset.lead); });
 async function followRun(){
   clearTimeout(RUN_T); const at = P; if (!at) return;
   let r; try { r = (await get(api("run"))).run; } catch { return; }
@@ -1270,7 +1313,7 @@ function drawOverview(){
 
 /* journeys */
 async function journeys(){
-  nav("journeys"); loading(); await loadAll(); await loadCat(); await fillSaved(); REDRAW = drawJourneys; drawJourneys(); fill();
+  nav("journeys"); loading(); await loadAll(); await loadCat(); await soonSaved(); REDRAW = drawJourneys; drawJourneys(); fill();
 }
 // How the journeys fit together: one row per kind of person, in the order they go.
 function mapView(){
@@ -1304,7 +1347,7 @@ function drawJourneys(){
   document.querySelectorAll("[data-prod]").forEach(b => b.onclick = () => { keep(`flow-product:${P}`, b.dataset.prod); route(); });
 }
 async function journey(g){
-  JPICK = null; nav("journeys"); loading(); await loadAll(); await loadCat(); await fillSaved(); if (!BOOK[g]) throw new Error("This project has no such journey."); REDRAW = () => drawJourney(g); drawJourney(g); fill();
+  JPICK = null; nav("journeys"); loading(); await loadAll(); await loadCat(); await soonSaved(); if (!BOOK[g]) throw new Error("This project has no such journey."); REDRAW = () => drawJourney(g); drawJourney(g); fill();
 }
 // The journey runs left to right. Pick a change and it lights up the steps it reached.
 function walkView(g){
@@ -1391,8 +1434,8 @@ const PR_STATE = { open:"Open", draft:"Draft", merged:"Merged", closed:"Closed" 
 const prTag = s => `<span class="pr-tag ${s}">${PR_STATE[s]}</span>`;
 let PR_SHOW = null;
 async function pulls(){
-  nav("pulls"); loading(); const mine = wants, d = await get(api("pulls")); if (mine !== wants) return;
-  REDRAW = () => drawPulls(d); drawPulls(d);
+  nav("pulls"); loading(); const mine = wants; await arrive("pulls"); if (mine !== wants) return;
+  REDRAW = () => drawPulls(PULLS); drawPulls(PULLS);
 }
 function drawPulls(d){
   if (!d.linked) return page(`<div class="ex-cards on"><div class="page-h"><h2>Pull requests</h2></div><div class="pj-empty"><b>This project is not linked to GitHub</b><p>Pull requests come from GitHub. Give this project a GitHub remote and sign in with <code>gh auth login</code>, then reload.</p></div></div>`);
@@ -1526,12 +1569,12 @@ async function watch(){
   try { const list = await get("/api/projects"), text = JSON.stringify(list); if (text === SEEN) return; SEEN = text; PROJ = list;
     const me = list.find(p => p.name === P), fresh = me && TOTAL ? me.changes - TOTAL : 0;
     $("live").innerHTML = fresh > 0 ? `<button class="live" id="live-b"><i></i>${plural(fresh, "new change")}</button>` : "";
-    if (fresh > 0) $("live-b").onclick = () => { LIST = []; MORE = true; TOTAL = 0; ACT = null; CAT = null; $("live").innerHTML = ""; route(); };
+    if (fresh > 0) $("live-b").onclick = () => { $("live").innerHTML = ""; dropLoaded(); route(); };
   } catch {}
 }
 setInterval(watch, 20000);
 
-addEventListener("hashchange", () => { const v = $("view"); route(); scrollTo(0, 0); v.classList.add("enter"); setTimeout(() => v.classList.remove("enter"), 240); });
+addEventListener("hashchange", () => { route(); scrollTo(0, 0); });
 (async () => {
   const me = await get("/api/me"); SOBA = !!me.soba; if ($("soba-go")) $("soba-go").hidden = !SOBA;
   if (me.required && !me.user) return signedOut();

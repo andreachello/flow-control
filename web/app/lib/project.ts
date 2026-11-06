@@ -18,6 +18,14 @@ const keep = (key: string, value: unknown) => {
   } catch {}
 }
 
+/** What the rest of the app last read about a project, so a screen can draw before it asks again. */
+export type Known = { list: Commit[]; total: number; book: Journey[]; stamp: number; act?: [string, string][]; cat?: unknown[]; at: number }
+export const known = (project: string): Known | null => {
+  const here = (window as unknown as { flowKnown?: Record<string, Known> }).flowKnown?.[project]
+  return here ?? kept<Known>(`flow-proj:${project}`)
+}
+export const keptChanges = (project: string, stamp: number) => kept<Record<string, Summary>>(`flow-summ:${project}:${stamp}`) ?? {}
+
 /** The product this tab is reading, picked in the sidebar. Empty is all of them. */
 export const pickedProduct = (project: string, book: Journey[]) => {
   const p = kept<string>(`flow-product:${project}`)
